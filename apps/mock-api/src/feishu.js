@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
 const appId = process.env.FEISHU_APP_ID || '';
