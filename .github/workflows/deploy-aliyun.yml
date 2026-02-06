@@ -30,11 +30,10 @@ jobs:
 
       - name: Build And Test
         env:
-          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           set -euo pipefail
-          API_URL="${VITE_API_URL:-http://${ALIYUN_HOST}:8080}"
+          API_URL="${VITE_API_URL:-http://112.124.103.65:8080}"
           npm ci --prefix apps/mock-api
           npm test --prefix apps/mock-api
           npm ci --prefix apps/web
@@ -65,8 +64,8 @@ jobs:
       - name: Upload Release To Server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
+          host: ${{ secrets.ALIYUN_HOST || '112.124.103.65' }}
+          username: ${{ secrets.ALIYUN_USER || 'root' }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           source: "release.tgz"
           target: "/tmp"
@@ -81,8 +80,8 @@ jobs:
           FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
           FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
         with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
+          host: ${{ secrets.ALIYUN_HOST || '112.124.103.65' }}
+          username: ${{ secrets.ALIYUN_USER || 'root' }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           envs: APP_DIR,WEB_ORIGIN,FEISHU_APP_ID,FEISHU_APP_SECRET,FEISHU_APP_TOKEN,FEISHU_TABLE_ID,GITHUB_SHA
           script: |
@@ -93,9 +92,6 @@ jobs:
             CURRENT_LINK="${APP_ROOT}/current"
             RELEASE_DIR="${RELEASES_DIR}/${GITHUB_SHA}"
 
-            : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret}"
-            : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret}"
-
             mkdir -p "${RELEASES_DIR}"
             rm -rf "${RELEASE_DIR}"
             mkdir -p "${RELEASE_DIR}"
@@ -104,22 +100,36 @@ jobs:
 
             npm ci --omit=dev --prefix "${RELEASE_DIR}/apps/mock-api"
 
-            cat > "${RELEASE_DIR}/apps/mock-api/.env" <<EOF
-            MOCK_API_PORT=8080
-            WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}
-            MOCK_API_SYNC_PROVIDER=feishu
-            FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}
-            FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
-            FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
-            FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}
-            FEISHU_FIELD_NAME=姓名（问卷题）
-            FEISHU_FIELD_PHONE=手机号（问卷题）
-            FEISHU_FIELD_TITLE=职位（问卷题）
-            FEISHU_FIELD_COMPANY=公司（问卷题）
-            FEISHU_FIELD_ID=证件号码（问卷题）
-            FEISHU_FIELD_SUBMITTED_AT=
-            FEISHU_FIELD_SYNC_STATUS=
-            EOF
+            SOURCE_ENV=""
+            if [ -f "${CURRENT_LINK}/apps/mock-api/.env" ]; then
+              SOURCE_ENV="${CURRENT_LINK}/apps/mock-api/.env"
+            elif [ -f "${APP_ROOT}/apps/mock-api/.env" ]; then
+              SOURCE_ENV="${APP_ROOT}/apps/mock-api/.env"
+            fi
+
+            if [ -n "${SOURCE_ENV}" ]; then
+              cp "${SOURCE_ENV}" "${RELEASE_DIR}/apps/mock-api/.env"
+            else
+              : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret (or existing server .env)}"
+              : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret (or existing server .env)}"
+
+              cat > "${RELEASE_DIR}/apps/mock-api/.env" <<EOF
+              MOCK_API_PORT=8080
+              WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}
+              MOCK_API_SYNC_PROVIDER=feishu
+              FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}
+              FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+              FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
+              FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}
+              FEISHU_FIELD_NAME=姓名（问卷题）
+              FEISHU_FIELD_PHONE=手机号（问卷题）
+              FEISHU_FIELD_TITLE=职位（问卷题）
+              FEISHU_FIELD_COMPANY=公司（问卷题）
+              FEISHU_FIELD_ID=证件号码（问卷题）
+              FEISHU_FIELD_SUBMITTED_AT=
+              FEISHU_FIELD_SYNC_STATUS=
+              EOF
+            fi
 
             ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
