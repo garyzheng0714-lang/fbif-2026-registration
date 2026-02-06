@@ -10,6 +10,10 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const SYNC_TIMEOUT_MS = Number(import.meta.env.VITE_SYNC_TIMEOUT_MS || 30000);
+const TOP_BANNER_URL =
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
+const INTRO_IMAGE_URL =
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_aeXDYztiGyBFAT2G19ucSw_1770366620361/img_v3_02ul_c14d5054-04f3-474c-bcec-2441d659c6fg_1770366622387.png';
 
 const initialForm = {
   phone: '',
@@ -145,7 +149,7 @@ export default function App() {
   return (
     <div className="page">
       <div className="frame">
-        <img className="banner" src="/banner.png" alt="FBIF 食品创新展" />
+        <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
 
         <div className="grid">
           <section className="card">
@@ -229,6 +233,8 @@ export default function App() {
               )}
             </form>
           </section>
+
+          <img className="intro-image" src={INTRO_IMAGE_URL} alt="活动介绍" />
         </div>
       </div>
     </div>
