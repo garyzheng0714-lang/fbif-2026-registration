@@ -207,6 +207,12 @@ jobs:
               } > "${RELEASE_DIR}/apps/mock-api/.env"
             fi
 
+            # Avoid exporting empty FEISHU_* env to pm2 process.
+            unset WEB_ORIGIN MOCK_API_SYNC_PROVIDER
+            unset FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN FEISHU_TABLE_ID
+            unset FEISHU_FIELD_NAME FEISHU_FIELD_PHONE FEISHU_FIELD_TITLE FEISHU_FIELD_COMPANY FEISHU_FIELD_ID
+            unset FEISHU_FIELD_SUBMITTED_AT FEISHU_FIELD_SYNC_STATUS
+
             ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
             if ! command -v pm2 >/dev/null 2>&1; then
