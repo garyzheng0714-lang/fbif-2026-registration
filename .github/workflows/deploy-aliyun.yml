@@ -74,14 +74,7 @@ jobs:
 
           mkdir -p ~/.ssh
 
-          if [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
-            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
-          else
-            if [ -z "${ALIYUN_SSH_KEY:-}" ]; then
-              echo "::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64"
-              exit 1
-            fi
-
+          if [ -n "${ALIYUN_SSH_KEY:-}" ]; then
             KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
             if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
               echo "::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content."
@@ -90,6 +83,11 @@ jobs:
 
             # Also support values pasted as a single line with literal "\n".
             printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
+          elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
+          else
+            echo "::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64"
+            exit 1
           fi
 
           chmod 600 ~/.ssh/id_aliyun
