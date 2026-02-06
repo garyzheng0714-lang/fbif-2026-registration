@@ -75,7 +75,7 @@ jobs:
           mkdir -p ~/.ssh
 
           if [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
-            printf '%s' "${ALIYUN_SSH_KEY_B64}" | base64 -d > ~/.ssh/id_aliyun
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
           else
             if [ -z "${ALIYUN_SSH_KEY:-}" ]; then
               echo "::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64"
@@ -88,7 +88,8 @@ jobs:
               exit 1
             fi
 
-            printf '%s\n' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
+            # Also support values pasted as a single line with literal "\n".
+            printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
           fi
 
           chmod 600 ~/.ssh/id_aliyun
