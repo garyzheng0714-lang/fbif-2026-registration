@@ -81,8 +81,17 @@ jobs:
               exit 1
             fi
 
-            # Also support values pasted as a single line with literal "\n".
-            printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
+            # Support pasted values with extra text around the key block.
+            RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
+            if printf '%s' "${RAW_KEY}" | grep -q -- '-----BEGIN OPENSSH PRIVATE KEY-----'; then
+              printf '%s\n' "${RAW_KEY}" | awk '
+                /-----BEGIN OPENSSH PRIVATE KEY-----/ {in_key=1}
+                in_key {print}
+                /-----END OPENSSH PRIVATE KEY-----/ {if (in_key) {exit}}
+              ' > ~/.ssh/id_aliyun
+            else
+              printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
+            fi
           elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
             printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
           else
@@ -93,7 +102,7 @@ jobs:
           chmod 600 ~/.ssh/id_aliyun
 
           if ! ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null 2>/tmp/ssh_key_err.log; then
-            echo "::error::Invalid private key content in Actions secret. Please verify ALIYUN_SSH_KEY_B64."
+            echo "::error::Invalid private key content in Actions secret."
             cat /tmp/ssh_key_err.log || true
             exit 1
           fi
