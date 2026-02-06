@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
+import type { ChangeEvent, DragEvent, FormEvent, KeyboardEvent } from 'react';
 import { useThrottleCallback } from './hooks/useThrottleCallback';
 import {
   validateChineseId,
@@ -110,6 +110,58 @@ function fieldKey(identity: Exclude<Identity, ''>, field: string) {
   return `${identity}.${field}`;
 }
 
+function IndustryCardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 9.25c0-1.8 1.45-3.25 3.25-3.25h9.5A3.25 3.25 0 0 1 20 9.25v7.5A3.25 3.25 0 0 1 16.75 20h-9.5A3.25 3.25 0 0 1 4 16.75v-7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M8 6V4.75A1.75 1.75 0 0 1 9.75 3h4.5A1.75 1.75 0 0 1 16 4.75V6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M4 12.5h16" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function ConsumerCardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M5 19.5c0-3.3 2.95-5.5 7-5.5s7 2.2 7 5.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 18.5h10a4 4 0 0 0 .65-7.95A5.5 5.5 0 0 0 6.5 9.7 4 4 0 0 0 7 18.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M12 8.5v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="m9.5 11 2.5-2.5 2.5 2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function App() {
   const [identity, setIdentity] = useState<Identity>('');
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
@@ -119,7 +171,9 @@ export default function App() {
   const [notice, setNotice] = useState<Notice>('');
   const [isSwitching, setIsSwitching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProofDragOver, setIsProofDragOver] = useState(false);
   const switchTimerRef = useRef<number | null>(null);
+  const proofInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
@@ -224,6 +278,7 @@ export default function App() {
     setNotice('');
     setSubmitAttempted(false);
     setTouched({});
+    setIsProofDragOver(false);
 
     if (identity === next) {
       return;
@@ -234,6 +289,25 @@ export default function App() {
       setIdentity(next);
       setIsSwitching(false);
     }, 320);
+  };
+
+  const updateProofFiles = (files: FileList | null) => {
+    const names = Array.from(files || []).map((file) => file.name);
+    setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
+    markTouched(fieldKey('industry', 'proofFiles'));
+  };
+
+  const handleProofDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsProofDragOver(false);
+    updateProofFiles(event.dataTransfer.files);
+  };
+
+  const handleProofZoneKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      proofInputRef.current?.click();
+    }
   };
 
   const pollStatus = async (id: string): Promise<boolean> => {
@@ -390,18 +464,30 @@ export default function App() {
               className={`role-option ${identity === 'industry' ? 'is-active' : ''}`}
               onClick={() => handleIdentitySelect('industry')}
               aria-pressed={identity === 'industry'}
+              aria-label="我是食品行业相关从业者"
             >
-              <span className="dot" aria-hidden="true" />
-              我是食品行业相关从业者
+              <span className="role-icon" aria-hidden="true">
+                <IndustryCardIcon />
+              </span>
+              <span className="role-content">
+                <span className="role-title">我是食品行业相关从业者</span>
+                <span className="role-desc">提交专业材料并审核后发放 3 日展区票</span>
+              </span>
             </button>
             <button
               type="button"
               className={`role-option ${identity === 'consumer' ? 'is-active' : ''}`}
               onClick={() => handleIdentitySelect('consumer')}
               aria-pressed={identity === 'consumer'}
+              aria-label="我是消费者"
             >
-              <span className="dot" aria-hidden="true" />
-              我是消费者
+              <span className="role-icon" aria-hidden="true">
+                <ConsumerCardIcon />
+              </span>
+              <span className="role-content">
+                <span className="role-title">我是消费者</span>
+                <span className="role-desc">无需审核，直接发放 1 日展区票</span>
+              </span>
             </button>
           </div>
         </section>
@@ -494,17 +580,41 @@ export default function App() {
                 <label htmlFor="industry-proof">上传专业观众证明</label>
                 <input
                   id="industry-proof"
-                  className="file-input"
+                  ref={proofInputRef}
+                  className="upload-input"
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
                   multiple
-                  onChange={(event) => {
-                    const names = Array.from(event.target.files || []).map((file) => file.name);
-                    setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
-                    markTouched(fieldKey('industry', 'proofFiles'));
-                  }}
+                  onChange={(event) => updateProofFiles(event.target.files)}
                   onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                 />
+                <div
+                  className={`upload-zone ${isProofDragOver ? 'is-drag-over' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="上传专业观众证明文件"
+                  onClick={() => proofInputRef.current?.click()}
+                  onKeyDown={handleProofZoneKeyDown}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsProofDragOver(true);
+                  }}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsProofDragOver(true);
+                  }}
+                  onDragLeave={(event) => {
+                    event.preventDefault();
+                    setIsProofDragOver(false);
+                  }}
+                  onDrop={handleProofDrop}
+                >
+                  <span className="upload-icon" aria-hidden="true">
+                    <UploadIcon />
+                  </span>
+                  <p className="upload-title">拖拽文件到这里上传</p>
+                  <p className="upload-subtitle">或点击选择文件（支持 JPG / PNG / PDF）</p>
+                </div>
                 <p className="hint">支持名片、工作证、在职证明等材料。刷新后需重新选择文件。</p>
                 {industryForm.proofFiles.length > 0 && (
                   <p className="selected-files">{industryForm.proofFiles.join('、')}</p>
