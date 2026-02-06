@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SyncStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Submission {
+  id            String     @id @default(uuid())
+  name          String     @db.VarChar(64)
+  title         String     @db.VarChar(64)
+  company       String     @db.VarChar(128)
+  phoneEnc      String     @db.Text
+  phoneHash     String     @db.VarChar(64)
+  idEnc         String     @db.Text
+  idHash        String     @db.VarChar(64)
+  syncStatus    SyncStatus @default(PENDING)
+  syncError     String?    @db.Text
+  feishuRecordId String?   @db.VarChar(64)
+  clientIp      String?    @db.VarChar(64)
+  userAgent     String?    @db.VarChar(256)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([phoneHash])
+  @@index([idHash])
+  @@index([syncStatus])
+}

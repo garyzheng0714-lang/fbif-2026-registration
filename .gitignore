@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+
+# Node
+**/node_modules/
+**/dist/
+
+# Env & secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime state
+.local-stack/
+**/.preview.pid
+**/.preview.log
+*.log
+
+# Coverage & cache
+**/.vite/
+**/.cache/
+**/coverage/
+
+# Misc temp
+*.tmp
+*.swp
