@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useThrottleCallback } from './hooks/useThrottleCallback';
 import {
   validateChineseId,
@@ -10,21 +9,75 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const SYNC_TIMEOUT_MS = Number(import.meta.env.VITE_SYNC_TIMEOUT_MS || 30000);
+const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
 const INTRO_IMAGE_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_aeXDYztiGyBFAT2G19ucSw_1770366620361/img_v3_02ul_c14d5054-04f3-474c-bcec-2441d659c6fg_1770366622387.png';
 
-const initialForm = {
-  phone: '',
+type Identity = '' | 'industry' | 'consumer';
+type IdType = '' | 'cn_id' | 'passport' | 'other';
+
+const industryBusinessOptions = [
+  '食品相关品牌方',
+  '食品制造商',
+  '供应链服务商',
+  '咨询/营销/服务机构',
+  '线下零售',
+  '线上零售',
+  '新兴渠道',
+  '进出口贸易',
+  '餐饮及酒店',
+  '其他'
+] as const;
+
+const departmentOptions = [
+  '高管/战略',
+  '研发/生产/品控',
+  '采购/物流/仓储',
+  '采购/市场/生产',
+  '市场/销售/电商',
+  '行政',
+  '其他'
+] as const;
+
+const idTypeOptions = [
+  { value: 'cn_id', label: '身份证' },
+  { value: 'passport', label: '护照' },
+  { value: 'other', label: '其他证件' }
+] as const;
+
+const initialIndustryForm = {
   name: '',
-  title: '',
+  idType: '' as IdType,
+  idNumber: '',
+  phone: '',
   company: '',
-  idNumber: ''
+  title: '',
+  businessType: '',
+  department: '',
+  proofFiles: [] as string[]
 };
 
-type Errors = Record<keyof typeof initialForm, string>;
-type Notice = '' | '提交成功' | '提交失败，请稍后重试' | '请先修正表单错误';
+const initialConsumerForm = {
+  name: '',
+  idType: '' as IdType,
+  idNumber: '',
+  phone: ''
+};
+
+type IndustryForm = typeof initialIndustryForm;
+type ConsumerForm = typeof initialConsumerForm;
+type IndustryErrors = Record<keyof IndustryForm, string>;
+type ConsumerErrors = Record<keyof ConsumerForm, string>;
+type Notice =
+  | ''
+  | '请选择观展身份'
+  | '请先修正表单错误'
+  | '提交成功'
+  | '提交失败，请稍后重试';
+
+const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -42,30 +95,146 @@ async function parseJsonIfPossible(response: Response): Promise<any | null> {
   }
 }
 
+function validateIdNumber(idType: IdType, idNumber: string) {
+  const normalized = idNumber.trim();
+  if (!idType) return '请选择证件类型';
+  if (!normalized) return '请输入证件号码';
+  if (idType === 'cn_id') return validateChineseId(normalized);
+  if (!otherIdRegex.test(normalized)) {
+    return '证件号格式不正确（6-20位字母/数字/短横线）';
+  }
+  return '';
+}
+
+function fieldKey(identity: Exclude<Identity, ''>, field: string) {
+  return `${identity}.${field}`;
+}
+
 export default function App() {
-  const [form, setForm] = useState(initialForm);
+  const [identity, setIdentity] = useState<Identity>('');
+  const [industryForm, setIndustryForm] = useState(initialIndustryForm);
+  const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [notice, setNotice] = useState<Notice>('');
+  const [isSwitching, setIsSwitching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const switchTimerRef = useRef<number | null>(null);
 
-  const debouncedForm = useDebouncedValue(form, 250);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(FORM_DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed.identity === 'industry' || parsed.identity === 'consumer') {
+        setIdentity(parsed.identity);
+      }
+      if (parsed.industryForm) {
+        setIndustryForm((prev) => ({ ...prev, ...parsed.industryForm }));
+      }
+      if (parsed.consumerForm) {
+        setConsumerForm((prev) => ({ ...prev, ...parsed.consumerForm }));
+      }
+    } catch {
+      // Ignore invalid local draft.
+    }
+  }, []);
 
-  const errors: Errors = useMemo(() => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const draft = { identity, industryForm, consumerForm };
+        window.localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        // Ignore temporary storage write failure.
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [identity, industryForm, consumerForm]);
+
+  useEffect(() => {
+    return () => {
+      if (switchTimerRef.current) {
+        window.clearTimeout(switchTimerRef.current);
+      }
+    };
+  }, []);
+
+  const industryErrors: IndustryErrors = useMemo(() => {
     return {
-      phone: validatePhone(debouncedForm.phone),
-      name: validateRequired(debouncedForm.name, '姓名', 2, 32),
-      title: validateRequired(debouncedForm.title, '职位', 2, 32),
-      company: validateRequired(debouncedForm.company, '公司', 2, 64),
-      idNumber: validateChineseId(debouncedForm.idNumber)
+      name: validateRequired(industryForm.name, '姓名', 2, 32),
+      idType: industryForm.idType ? '' : '请选择证件类型',
+      idNumber: validateIdNumber(industryForm.idType, industryForm.idNumber),
+      phone: validatePhone(industryForm.phone),
+      company: validateRequired(industryForm.company, '公司', 2, 64),
+      title: validateRequired(industryForm.title, '职位', 2, 32),
+      businessType: industryForm.businessType ? '' : '请选择业务类型',
+      department: industryForm.department ? '' : '请选择所在部门',
+      proofFiles: industryForm.proofFiles.length ? '' : '请上传专业观众证明材料'
     };
-  }, [debouncedForm]);
+  }, [industryForm]);
 
-  const hasError = Object.values(errors).some(Boolean);
-
-  const handleChange =
-    (field: keyof typeof initialForm) =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const consumerErrors: ConsumerErrors = useMemo(() => {
+    return {
+      name: validateRequired(consumerForm.name, '姓名', 2, 32),
+      idType: consumerForm.idType ? '' : '请选择证件类型',
+      idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber),
+      phone: validatePhone(consumerForm.phone)
     };
+  }, [consumerForm]);
+
+  const activeErrors = identity === 'industry'
+    ? industryErrors
+    : identity === 'consumer'
+      ? consumerErrors
+      : null;
+
+  const hasError = activeErrors ? Object.values(activeErrors).some(Boolean) : true;
+
+  const markTouched = (key: string) => {
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  };
+
+  const shouldShowError = (key: string) => submitAttempted || touched[key];
+
+  const handleIndustryChange =
+    (field: keyof IndustryForm) =>
+    (
+      event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
+    ) => {
+      const value = event.target.value;
+      setIndustryForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const handleConsumerChange =
+    (field: keyof ConsumerForm) =>
+    (
+      event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
+    ) => {
+      const value = event.target.value;
+      setConsumerForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const handleIdentitySelect = (next: Exclude<Identity, ''>) => {
+    if (switchTimerRef.current) {
+      window.clearTimeout(switchTimerRef.current);
+    }
+
+    setNotice('');
+    setSubmitAttempted(false);
+    setTouched({});
+
+    if (identity === next) {
+      return;
+    }
+
+    setIsSwitching(true);
+    switchTimerRef.current = window.setTimeout(() => {
+      setIdentity(next);
+      setIsSwitching(false);
+    }, 320);
+  };
 
   const pollStatus = async (id: string): Promise<boolean> => {
     const startedAt = Date.now();
@@ -99,6 +268,14 @@ export default function App() {
   };
 
   const submit = useThrottleCallback(async () => {
+    if (isSubmitting) return;
+    if (!identity) {
+      setNotice('请选择观展身份');
+      return;
+    }
+
+    setSubmitAttempted(true);
+
     if (hasError) {
       setNotice('请先修正表单错误');
       return;
@@ -117,6 +294,29 @@ export default function App() {
         throw new Error('csrf_failed');
       }
 
+      const payload = identity === 'industry'
+        ? {
+            phone: industryForm.phone.trim(),
+            name: industryForm.name.trim(),
+            title: industryForm.title.trim(),
+            company: industryForm.company.trim(),
+            idNumber: industryForm.idNumber.trim(),
+            role: 'industry',
+            idType: industryForm.idType,
+            businessType: industryForm.businessType,
+            department: industryForm.department,
+            proofFileNames: industryForm.proofFiles
+          }
+        : {
+            phone: consumerForm.phone.trim(),
+            name: consumerForm.name.trim(),
+            title: '消费者',
+            company: '个人消费者',
+            idNumber: consumerForm.idNumber.trim(),
+            role: 'consumer',
+            idType: consumerForm.idType
+          };
+
       const submitResp = await fetch(`${API_BASE}/api/submissions`, {
         method: 'POST',
         headers: {
@@ -124,7 +324,7 @@ export default function App() {
           'X-CSRF-Token': csrfData.csrfToken
         },
         credentials: 'include',
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
 
       const submitData = await parseJsonIfPossible(submitResp);
@@ -137,106 +337,352 @@ export default function App() {
         throw new Error('sync_failed');
       }
 
-      setForm(initialForm);
+      setIndustryForm(initialIndustryForm);
+      setConsumerForm(initialConsumerForm);
+      setTouched({});
+      setSubmitAttempted(false);
       setNotice('提交成功');
+      try {
+        window.localStorage.setItem(
+          FORM_DRAFT_KEY,
+          JSON.stringify({
+            identity,
+            industryForm: initialIndustryForm,
+            consumerForm: initialConsumerForm
+          })
+        );
+      } catch {
+        // Ignore temporary storage write failure.
+      }
     } catch {
       setNotice('提交失败，请稍后重试');
     } finally {
       setIsSubmitting(false);
     }
-  }, 2000);
+  }, 1500);
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    submit();
+  };
 
   return (
     <div className="page">
       <div className="frame">
         <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
 
-        <div className="grid">
-          <section className="card">
-            <h3>填写信息</h3>
+        <section className="card role-card">
+          <h2>
+            <span className="step">*1</span>
+            请选择您的观展身份
+          </h2>
+          <p className="tips">
+            我们将为您发放对应观展票，权益说明如下：
+            <br />
+            【专业观众】需审核，通过后发放 2026 年 4 月 27-29 日展区票（3日票）。
+            <br />
+            【消费者】无需审核，直接发放 2026 年 4 月 29 日展区票（1日票）。
+          </p>
 
-            <form
-              className="form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submit();
-              }}
+          <div className="role-options">
+            <button
+              type="button"
+              className={`role-option ${identity === 'industry' ? 'is-active' : ''}`}
+              onClick={() => handleIdentitySelect('industry')}
+              aria-pressed={identity === 'industry'}
             >
+              <span className="dot" aria-hidden="true" />
+              我是食品行业相关从业者
+            </button>
+            <button
+              type="button"
+              className={`role-option ${identity === 'consumer' ? 'is-active' : ''}`}
+              onClick={() => handleIdentitySelect('consumer')}
+              aria-pressed={identity === 'consumer'}
+            >
+              <span className="dot" aria-hidden="true" />
+              我是消费者
+            </button>
+          </div>
+        </section>
+
+        <section className="card form-shell" aria-live="polite">
+          {!identity && !isSwitching && (
+            <p className="empty-state">请先选择身份后继续填写报名表。</p>
+          )}
+
+          {isSwitching && (
+            <div className="loading-state">
+              <span className="spinner" />
+              <span>表单加载中...</span>
+            </div>
+          )}
+
+          {!isSwitching && identity === 'industry' && (
+            <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
               <div className="field">
-                <label>手机号</label>
+                <label htmlFor="industry-name">姓名</label>
                 <input
+                  id="industry-name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="请输入姓名"
+                  value={industryForm.name}
+                  onChange={handleIndustryChange('name')}
+                  onBlur={() => markTouched(fieldKey('industry', 'name'))}
+                />
+                {shouldShowError(fieldKey('industry', 'name')) && industryErrors.name && (
+                  <span className="error">{industryErrors.name}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="industry-idType">证件类型</label>
+                <select
+                  id="industry-idType"
+                  value={industryForm.idType}
+                  onChange={handleIndustryChange('idType')}
+                  onBlur={() => markTouched(fieldKey('industry', 'idType'))}
+                >
+                  <option value="">请选择证件类型</option>
+                  {idTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {shouldShowError(fieldKey('industry', 'idType')) && industryErrors.idType && (
+                  <span className="error">{industryErrors.idType}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="industry-idNumber">证件号码</label>
+                <input
+                  id="industry-idNumber"
+                  type="text"
+                  autoComplete="off"
+                  inputMode="text"
+                  placeholder="请输入证件号码"
+                  value={industryForm.idNumber}
+                  onChange={handleIndustryChange('idNumber')}
+                  onBlur={() => markTouched(fieldKey('industry', 'idNumber'))}
+                />
+                {shouldShowError(fieldKey('industry', 'idNumber')) && industryErrors.idNumber && (
+                  <span className="error">{industryErrors.idNumber}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="industry-phone">手机号</label>
+                <input
+                  id="industry-phone"
                   type="tel"
-                  value={form.phone}
-                  onChange={handleChange('phone')}
-                  placeholder="例如 13800000000"
-                  required
+                  autoComplete="tel"
+                  inputMode="numeric"
+                  placeholder="请输入手机号"
+                  value={industryForm.phone}
+                  onChange={handleIndustryChange('phone')}
+                  onBlur={() => markTouched(fieldKey('industry', 'phone'))}
                 />
-                {errors.phone && <span className="error">{errors.phone}</span>}
+                {shouldShowError(fieldKey('industry', 'phone')) && industryErrors.phone && (
+                  <span className="error">{industryErrors.phone}</span>
+                )}
               </div>
 
               <div className="field">
-                <label>姓名</label>
+                <label htmlFor="industry-proof">上传专业观众证明</label>
                 <input
-                  type="text"
-                  value={form.name}
-                  onChange={handleChange('name')}
-                  placeholder="例如 张三"
-                  required
+                  id="industry-proof"
+                  className="file-input"
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  multiple
+                  onChange={(event) => {
+                    const names = Array.from(event.target.files || []).map((file) => file.name);
+                    setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
+                    markTouched(fieldKey('industry', 'proofFiles'));
+                  }}
+                  onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                 />
-                {errors.name && <span className="error">{errors.name}</span>}
+                <p className="hint">支持名片、工作证、在职证明等材料。刷新后需重新选择文件。</p>
+                {industryForm.proofFiles.length > 0 && (
+                  <p className="selected-files">{industryForm.proofFiles.join('、')}</p>
+                )}
+                {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
+                  <span className="error">{industryErrors.proofFiles}</span>
+                )}
               </div>
 
               <div className="field">
-                <label>职位</label>
+                <label htmlFor="industry-company">公司</label>
                 <input
+                  id="industry-company"
                   type="text"
-                  value={form.title}
-                  onChange={handleChange('title')}
-                  placeholder="例如 运营负责人"
-                  required
+                  autoComplete="organization"
+                  placeholder="请输入公司名称"
+                  value={industryForm.company}
+                  onChange={handleIndustryChange('company')}
+                  onBlur={() => markTouched(fieldKey('industry', 'company'))}
                 />
-                {errors.title && <span className="error">{errors.title}</span>}
+                {shouldShowError(fieldKey('industry', 'company')) && industryErrors.company && (
+                  <span className="error">{industryErrors.company}</span>
+                )}
               </div>
 
               <div className="field">
-                <label>公司</label>
+                <label htmlFor="industry-title">职位</label>
                 <input
+                  id="industry-title"
                   type="text"
-                  value={form.company}
-                  onChange={handleChange('company')}
-                  placeholder="例如 飞书科技有限公司"
-                  required
+                  autoComplete="organization-title"
+                  placeholder="请输入职位"
+                  value={industryForm.title}
+                  onChange={handleIndustryChange('title')}
+                  onBlur={() => markTouched(fieldKey('industry', 'title'))}
                 />
-                {errors.company && <span className="error">{errors.company}</span>}
+                {shouldShowError(fieldKey('industry', 'title')) && industryErrors.title && (
+                  <span className="error">{industryErrors.title}</span>
+                )}
               </div>
 
               <div className="field">
-                <label>身份证号</label>
-                <input
-                  type="text"
-                  value={form.idNumber}
-                  onChange={handleChange('idNumber')}
-                  placeholder="18 位身份证号"
-                  required
-                />
-                {errors.idNumber && <span className="error">{errors.idNumber}</span>}
+                <label htmlFor="industry-businessType">贵司业务类型</label>
+                <select
+                  id="industry-businessType"
+                  value={industryForm.businessType}
+                  onChange={handleIndustryChange('businessType')}
+                  onBlur={() => markTouched(fieldKey('industry', 'businessType'))}
+                >
+                  <option value="">请选择业务类型</option>
+                  {industryBusinessOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType && (
+                  <span className="error">{industryErrors.businessType}</span>
+                )}
               </div>
 
-              <button className="submit" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? '提交中...' : '提交'}
-              </button>
-
-              {notice && (
-                <p className={`notice ${notice === '提交成功' ? 'notice-ok' : 'notice-error'}`}>
-                  {notice}
-                </p>
-              )}
+              <div className="field">
+                <label htmlFor="industry-department">您所处部门</label>
+                <select
+                  id="industry-department"
+                  value={industryForm.department}
+                  onChange={handleIndustryChange('department')}
+                  onBlur={() => markTouched(fieldKey('industry', 'department'))}
+                >
+                  <option value="">请选择所在部门</option>
+                  {departmentOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {shouldShowError(fieldKey('industry', 'department')) && industryErrors.department && (
+                  <span className="error">{industryErrors.department}</span>
+                )}
+              </div>
             </form>
-          </section>
+          )}
 
-          <img className="intro-image" src={INTRO_IMAGE_URL} alt="活动介绍" />
-        </div>
+          {!isSwitching && identity === 'consumer' && (
+            <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
+              <div className="field">
+                <label htmlFor="consumer-name">姓名</label>
+                <input
+                  id="consumer-name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="请输入姓名"
+                  value={consumerForm.name}
+                  onChange={handleConsumerChange('name')}
+                  onBlur={() => markTouched(fieldKey('consumer', 'name'))}
+                />
+                {shouldShowError(fieldKey('consumer', 'name')) && consumerErrors.name && (
+                  <span className="error">{consumerErrors.name}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="consumer-idType">证件类型</label>
+                <select
+                  id="consumer-idType"
+                  value={consumerForm.idType}
+                  onChange={handleConsumerChange('idType')}
+                  onBlur={() => markTouched(fieldKey('consumer', 'idType'))}
+                >
+                  <option value="">请选择证件类型</option>
+                  {idTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {shouldShowError(fieldKey('consumer', 'idType')) && consumerErrors.idType && (
+                  <span className="error">{consumerErrors.idType}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="consumer-idNumber">证件号码</label>
+                <input
+                  id="consumer-idNumber"
+                  type="text"
+                  autoComplete="off"
+                  inputMode="text"
+                  placeholder="请输入证件号码"
+                  value={consumerForm.idNumber}
+                  onChange={handleConsumerChange('idNumber')}
+                  onBlur={() => markTouched(fieldKey('consumer', 'idNumber'))}
+                />
+                {shouldShowError(fieldKey('consumer', 'idNumber')) && consumerErrors.idNumber && (
+                  <span className="error">{consumerErrors.idNumber}</span>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor="consumer-phone">手机号</label>
+                <input
+                  id="consumer-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="numeric"
+                  placeholder="请输入手机号"
+                  value={consumerForm.phone}
+                  onChange={handleConsumerChange('phone')}
+                  onBlur={() => markTouched(fieldKey('consumer', 'phone'))}
+                />
+                {shouldShowError(fieldKey('consumer', 'phone')) && consumerErrors.phone && (
+                  <span className="error">{consumerErrors.phone}</span>
+                )}
+              </div>
+            </form>
+          )}
+        </section>
+
+        <img className="intro-image" src={INTRO_IMAGE_URL} alt="活动介绍" />
       </div>
+
+      <footer className="submit-dock">
+        <div className="submit-dock-inner">
+          {notice && (
+            <p className={`notice ${notice === '提交成功' ? 'notice-ok' : 'notice-error'}`}>
+              {notice}
+            </p>
+          )}
+          <button
+            className="submit-button"
+            type="submit"
+            form="fbif-ticket-form"
+            disabled={!identity || isSwitching || isSubmitting}
+          >
+            {isSubmitting ? '提交中...' : '领取观展票'}
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
