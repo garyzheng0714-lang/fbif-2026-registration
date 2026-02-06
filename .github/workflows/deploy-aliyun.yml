@@ -94,16 +94,31 @@ jobs:
 
           chmod 600 ~/.ssh/id_aliyun
 
-          # Fail fast if secret is not a valid private key.
-          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
+          if ! ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null 2>/tmp/ssh_key_err.log; then
+            echo "::error::Invalid private key content in Actions secret. Please verify ALIYUN_SSH_KEY_B64."
+            cat /tmp/ssh_key_err.log || true
+            exit 1
+          fi
 
-          ssh \
+          if ! ssh \
             -i ~/.ssh/id_aliyun \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             -o StrictHostKeyChecking=accept-new \
             "${USER}@${HOST}" \
-            "echo SSH_OK"
+            "echo SSH_OK" >/tmp/ssh_probe_out.log 2>/tmp/ssh_probe_err.log; then
+            if grep -qi "Permission denied" /tmp/ssh_probe_err.log; then
+              echo "::error::SSH authentication failed. Ensure the public key is in server ~/.ssh/authorized_keys."
+            elif grep -Eqi "Connection timed out|No route to host|Connection refused" /tmp/ssh_probe_err.log; then
+              echo "::error::Cannot reach server SSH port 22 from GitHub Actions. Check Aliyun security group/firewall."
+            else
+              echo "::error::SSH probe failed. See logs below."
+            fi
+            cat /tmp/ssh_probe_err.log || true
+            exit 1
+          fi
+
+          grep -q "SSH_OK" /tmp/ssh_probe_out.log
 
       - name: Upload Release To Server
         env:
