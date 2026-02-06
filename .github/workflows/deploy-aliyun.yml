@@ -66,24 +66,31 @@ jobs:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
           ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
         run: |
           set -euo pipefail
           HOST="${ALIYUN_HOST:-112.124.103.65}"
           USER="${ALIYUN_USER:-root}"
 
-          if [ -z "${ALIYUN_SSH_KEY:-}" ]; then
-            echo "::error::Missing Actions secret: ALIYUN_SSH_KEY"
-            exit 1
-          fi
-
           mkdir -p ~/.ssh
-          KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
-          if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
-            echo "::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content."
-            exit 1
+
+          if [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | base64 -d > ~/.ssh/id_aliyun
+          else
+            if [ -z "${ALIYUN_SSH_KEY:-}" ]; then
+              echo "::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64"
+              exit 1
+            fi
+
+            KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
+            if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
+              echo "::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content."
+              exit 1
+            fi
+
+            printf '%s\n' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
           fi
 
-          printf '%s\n' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
           chmod 600 ~/.ssh/id_aliyun
 
           # Fail fast if secret is not a valid private key.

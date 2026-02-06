@@ -9,7 +9,9 @@
 在仓库 `Settings -> Secrets and variables -> Actions -> New repository secret` 新增：
 
 - 必填：
-  - `ALIYUN_SSH_KEY`: 服务器 SSH 私钥全文（PEM）
+  - `ALIYUN_SSH_KEY` 或 `ALIYUN_SSH_KEY_B64` 二选一
+  - `ALIYUN_SSH_KEY`: 服务器 SSH 私钥全文（推荐）
+  - `ALIYUN_SSH_KEY_B64`: 私钥文件的 base64 单行字符串（用于规避换行粘贴问题）
 
 - 选填（不填会使用默认值）：
   - `ALIYUN_HOST`: 默认 `112.124.103.65`
