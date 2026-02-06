@@ -61,36 +61,76 @@ jobs:
             .
           cp /tmp/release.tgz release.tgz
 
+      - name: Validate SSH Key
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
+          USER="${ALIYUN_USER:-root}"
+
+          if [ -z "${ALIYUN_SSH_KEY:-}" ]; then
+            echo "::error::Missing Actions secret: ALIYUN_SSH_KEY"
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "${ALIYUN_SSH_KEY}" > ~/.ssh/id_aliyun
+          chmod 600 ~/.ssh/id_aliyun
+
+          # Fail fast if secret is not a valid private key.
+          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            "echo SSH_OK"
+
       - name: Upload Release To Server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.ALIYUN_HOST || '112.124.103.65' }}
-          username: ${{ secrets.ALIYUN_USER || 'root' }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          source: "release.tgz"
-          target: "/tmp"
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
+          USER="${ALIYUN_USER:-root}"
+
+          scp \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            release.tgz \
+            "${USER}@${HOST}:/tmp/release.tgz"
 
       - name: Deploy On Server
-        uses: appleboy/ssh-action@v1.0.3
         env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
           APP_DIR: ${{ secrets.APP_DIR }}
           WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
           FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
-        with:
-          host: ${{ secrets.ALIYUN_HOST || '112.124.103.65' }}
-          username: ${{ secrets.ALIYUN_USER || 'root' }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          envs: APP_DIR,WEB_ORIGIN,FEISHU_APP_ID,FEISHU_APP_SECRET,FEISHU_APP_TOKEN,FEISHU_TABLE_ID,GITHUB_SHA
-          script: |
+          GH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
+          USER="${ALIYUN_USER:-root}"
+
+          cat > /tmp/remote_deploy.sh <<'REMOTE_SCRIPT'
             set -euo pipefail
 
             APP_ROOT="${APP_DIR:-/opt/web-fbif-form}"
             RELEASES_DIR="${APP_ROOT}/releases"
             CURRENT_LINK="${APP_ROOT}/current"
-            RELEASE_DIR="${RELEASES_DIR}/${GITHUB_SHA}"
+            RELEASE_DIR="${RELEASES_DIR}/${GH_SHA}"
 
             mkdir -p "${RELEASES_DIR}"
             rm -rf "${RELEASE_DIR}"
@@ -150,3 +190,20 @@ jobs:
             curl -fsS http://127.0.0.1:3001 >/dev/null
 
             ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+          REMOTE_SCRIPT
+
+          REMOTE_ENV="$(printf \
+            "APP_DIR=%q WEB_ORIGIN=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q GH_SHA=%q" \
+            "${APP_DIR:-}" "${WEB_ORIGIN:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${GH_SHA}")"
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            "${REMOTE_ENV} bash -s" < /tmp/remote_deploy.sh
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_aliyun /tmp/remote_deploy.sh /tmp/release.tgz release.tgz
