@@ -61,3 +61,8 @@ node scripts/local-stack.mjs status
 - `DATA_KEY` 使用 32 字节 base64 密钥
 
 更多内容见 `docs/`。
+
+## CI/CD 自动部署
+已支持 GitHub Actions 自动部署到阿里云（推送 `main` 自动触发）。
+
+说明文档：`/Library/vibecoding_home/fbif_form/docs/github-actions-deploy.md`

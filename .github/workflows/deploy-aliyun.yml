@@ -1,0 +1,138 @@
+name: Deploy To Aliyun
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/mock-api/package-lock.json
+
+      - name: Build And Test
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          set -euo pipefail
+          API_URL="${VITE_API_URL:-http://${ALIYUN_HOST}:8080}"
+          npm ci --prefix apps/mock-api
+          npm test --prefix apps/mock-api
+          npm ci --prefix apps/web
+          VITE_API_URL="${API_URL}" npm run build --prefix apps/web
+
+      - name: Package Release
+        run: |
+          set -euo pipefail
+          tar -czf release.tgz \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude="apps/web/node_modules" \
+            --exclude="apps/mock-api/node_modules" \
+            --exclude="apps/api/node_modules" \
+            --exclude="apps/web/.env" \
+            --exclude="apps/web/.env.*" \
+            --exclude="apps/mock-api/.env" \
+            --exclude="apps/mock-api/.env.*" \
+            --exclude="apps/api/.env" \
+            --exclude="apps/api/.env.*" \
+            --exclude=".local-stack" \
+            .
+
+      - name: Upload Release To Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          source: "release.tgz"
+          target: "/tmp"
+
+      - name: Deploy On Server
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          APP_DIR: ${{ secrets.APP_DIR }}
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
+          FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          envs: APP_DIR,WEB_ORIGIN,FEISHU_APP_ID,FEISHU_APP_SECRET,FEISHU_APP_TOKEN,FEISHU_TABLE_ID,GITHUB_SHA
+          script: |
+            set -euo pipefail
+
+            APP_ROOT="${APP_DIR:-/opt/web-fbif-form}"
+            RELEASES_DIR="${APP_ROOT}/releases"
+            CURRENT_LINK="${APP_ROOT}/current"
+            RELEASE_DIR="${RELEASES_DIR}/${GITHUB_SHA}"
+
+            : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret}"
+            : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret}"
+
+            mkdir -p "${RELEASES_DIR}"
+            rm -rf "${RELEASE_DIR}"
+            mkdir -p "${RELEASE_DIR}"
+
+            tar -xzf /tmp/release.tgz -C "${RELEASE_DIR}"
+
+            npm ci --omit=dev --prefix "${RELEASE_DIR}/apps/mock-api"
+
+            cat > "${RELEASE_DIR}/apps/mock-api/.env" <<EOF
+            MOCK_API_PORT=8080
+            WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}
+            MOCK_API_SYNC_PROVIDER=feishu
+            FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}
+            FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+            FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
+            FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}
+            FEISHU_FIELD_NAME=姓名（问卷题）
+            FEISHU_FIELD_PHONE=手机号（问卷题）
+            FEISHU_FIELD_TITLE=职位（问卷题）
+            FEISHU_FIELD_COMPANY=公司（问卷题）
+            FEISHU_FIELD_ID=证件号码（问卷题）
+            FEISHU_FIELD_SUBMITTED_AT=
+            FEISHU_FIELD_SYNC_STATUS=
+            EOF
+
+            ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+
+            if ! command -v pm2 >/dev/null 2>&1; then
+              npm install -g pm2
+            fi
+
+            pm2 delete fbif-mock-api >/dev/null 2>&1 || true
+            pm2 start "${CURRENT_LINK}/apps/mock-api/src/server.js" --name fbif-mock-api --cwd "${CURRENT_LINK}/apps/mock-api" --update-env
+
+            pm2 delete fbif-web >/dev/null 2>&1 || true
+            pm2 serve "${CURRENT_LINK}/apps/web/dist" 3001 --name fbif-web --spa
+
+            pm2 save
+            pm2 startup systemd -u root --hp /root || true
+
+            curl -fsS http://127.0.0.1:8080/health >/dev/null
+            curl -fsS http://127.0.0.1:3001 >/dev/null
+
+            ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
