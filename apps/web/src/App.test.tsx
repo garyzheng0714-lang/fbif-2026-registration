@@ -21,16 +21,20 @@ describe('App dynamic form', () => {
     vi.unstubAllGlobals();
   });
 
-  it('switches form content with loading indicator', async () => {
+  it('shows only banner and role selection first, then enters form page', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '我是食品行业相关从业者' }));
-    expect(screen.getByText('表单加载中...')).toBeInTheDocument();
-    await screen.findByLabelText('公司');
+    expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /返回选择身份/ })).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: '我是食品行业相关从业者' }));
+    await screen.findByLabelText('公司');
+    expect(screen.getByRole('button', { name: /返回选择身份/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '我是消费者' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /返回选择身份/ }));
     await user.click(screen.getByRole('button', { name: '我是消费者' }));
-    expect(screen.getByText('表单加载中...')).toBeInTheDocument();
     await screen.findByLabelText('姓名');
     expect(screen.queryByLabelText('公司')).not.toBeInTheDocument();
   });

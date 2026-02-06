@@ -15,6 +15,7 @@
   --radius-md: 16px;
   --shadow-soft: 0 10px 28px rgba(17, 24, 39, 0.08);
   --motion: 200ms ease-out;
+  --motion-apple: 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -35,7 +36,7 @@ body {
 
 .page {
   min-height: 100vh;
-  padding: 16px 12px 132px;
+  padding: 16px 12px 28px;
   overflow-x: hidden;
 }
 
@@ -71,6 +72,58 @@ body {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
   padding: 20px;
+}
+
+.stage-head {
+  position: relative;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.stage-back {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--deep-blue);
+  padding: 4px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--motion), opacity var(--motion);
+}
+
+.stage-back:hover {
+  opacity: 0.8;
+}
+
+.stage-back:focus-visible {
+  outline: 2px solid rgba(18, 64, 143, 0.24);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.stage-current {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.stage-current-centered {
+  text-align: center;
+}
+
+.stage-current-value {
+  color: var(--deep-blue);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 
 .role-card h2 {
@@ -178,11 +231,8 @@ body {
   display: grid;
 }
 
-.empty-state {
-  margin: 0;
-  place-self: center;
-  color: var(--muted);
-  font-size: 0.95rem;
+.form-shell-reveal {
+  animation: formReveal var(--motion-apple) both;
 }
 
 .loading-state {
@@ -340,22 +390,12 @@ select:focus {
   line-height: 1.35rem;
 }
 
-.submit-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  background: rgba(245, 246, 247, 0.94);
-  border-top: 1px solid #d5dbe6;
-  backdrop-filter: blur(8px);
-}
-
-.submit-dock-inner {
-  width: min(100%, var(--content-width));
-  margin: 0 auto;
+.form-actions {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e9f5;
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .notice {
@@ -373,6 +413,7 @@ select:focus {
 }
 
 .submit-button {
+  width: 100%;
   min-height: 48px;
   border: none;
   border-radius: 999px;
@@ -410,19 +451,58 @@ select:focus {
   }
 }
 
+@keyframes formReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .form-shell-reveal,
+  .dynamic-form,
+  .submit-button,
+  .role-option,
+  .upload-zone {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   .page {
-    padding: 12px 10px 124px;
+    padding: 12px 10px 20px;
   }
 
   .card {
     padding: 16px;
+  }
+
+  .stage-head {
+    min-height: auto;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .stage-back {
+    position: static;
+    transform: none;
+    justify-self: start;
   }
 
   .role-card h2 {
