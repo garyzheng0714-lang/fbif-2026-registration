@@ -189,22 +189,22 @@ jobs:
               : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret (or existing server .env)}"
               : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret (or existing server .env)}"
 
-              cat > "${RELEASE_DIR}/apps/mock-api/.env" <<EOF
-              MOCK_API_PORT=8080
-              WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}
-              MOCK_API_SYNC_PROVIDER=feishu
-              FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}
-              FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
-              FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}
-              FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}
-              FEISHU_FIELD_NAME=姓名（问卷题）
-              FEISHU_FIELD_PHONE=手机号（问卷题）
-              FEISHU_FIELD_TITLE=职位（问卷题）
-              FEISHU_FIELD_COMPANY=公司（问卷题）
-              FEISHU_FIELD_ID=证件号码（问卷题）
-              FEISHU_FIELD_SUBMITTED_AT=
-              FEISHU_FIELD_SYNC_STATUS=
-              EOF
+              {
+                echo "MOCK_API_PORT=8080"
+                echo "WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}"
+                echo "MOCK_API_SYNC_PROVIDER=feishu"
+                echo "FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}"
+                echo "FEISHU_APP_SECRET=${FEISHU_APP_SECRET}"
+                echo "FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}"
+                echo "FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}"
+                echo "FEISHU_FIELD_NAME=姓名（问卷题）"
+                echo "FEISHU_FIELD_PHONE=手机号（问卷题）"
+                echo "FEISHU_FIELD_TITLE=职位（问卷题）"
+                echo "FEISHU_FIELD_COMPANY=公司（问卷题）"
+                echo "FEISHU_FIELD_ID=证件号码（问卷题）"
+                echo "FEISHU_FIELD_SUBMITTED_AT="
+                echo "FEISHU_FIELD_SYNC_STATUS="
+              } > "${RELEASE_DIR}/apps/mock-api/.env"
             fi
 
             ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
