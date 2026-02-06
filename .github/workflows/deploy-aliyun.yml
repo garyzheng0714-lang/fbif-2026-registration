@@ -77,7 +77,13 @@ jobs:
           fi
 
           mkdir -p ~/.ssh
-          printf '%s\n' "${ALIYUN_SSH_KEY}" > ~/.ssh/id_aliyun
+          KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
+          if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
+            echo "::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content."
+            exit 1
+          fi
+
+          printf '%s\n' "${ALIYUN_SSH_KEY}" | tr -d '\r' > ~/.ssh/id_aliyun
           chmod 600 ~/.ssh/id_aliyun
 
           # Fail fast if secret is not a valid private key.
