@@ -46,6 +46,8 @@ jobs:
           tar -czf release.tgz \
             --exclude=".git" \
             --exclude=".github" \
+            --exclude="release.tgz" \
+            --exclude="./release.tgz" \
             --exclude="apps/web/node_modules" \
             --exclude="apps/mock-api/node_modules" \
             --exclude="apps/api/node_modules" \
