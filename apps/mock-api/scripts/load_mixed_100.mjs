@@ -1,11 +1,18 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 
 const API_BASE = process.env.API_BASE || 'http://127.0.0.1:8080';
 const TOTAL = Number(process.env.TOTAL || 100);
 const INDUSTRY = Number(process.env.INDUSTRY || 60);
-const PROOF_PATH = process.env.PROOF_PATH || '/opt/web-fbif-form/current/apps/web/dist/banner.png';
+const ATTACHMENTS_PER_INDUSTRY = Math.max(1, Number(process.env.ATTACHMENTS_PER_INDUSTRY || 1));
+const ATTACHMENT_MB_CHOICES = String(process.env.ATTACHMENT_MB_CHOICES || '').trim();
+const ATTACHMENT_MIN_MB = Number(process.env.ATTACHMENT_MIN_MB || 0);
+const ATTACHMENT_MAX_MB = Number(process.env.ATTACHMENT_MAX_MB || 0);
+const ATTACHMENT_BUCKET_STEP_MB = Math.max(1, Number(process.env.ATTACHMENT_BUCKET_STEP_MB || 10));
+const ATTACHMENT_PICK = String(process.env.ATTACHMENT_PICK || 'cycle').trim().toLowerCase();
+const FILE_MB_LIST = String(process.env.FILE_MB_LIST || '').trim();
+const FILE_TYPE = String(process.env.FILE_TYPE || 'application/octet-stream').trim() || 'application/octet-stream';
+const PROOF_PATH = process.env.PROOF_PATH || '';
 const POLL = (process.env.POLL || '1').trim() === '1';
 const POLL_TIMEOUT_MS = Number(process.env.POLL_TIMEOUT_MS || 12 * 60_000);
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 2000);
@@ -35,6 +42,14 @@ function percentile(values, p) {
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.min(sorted.length - 1, Math.max(0, idx))];
+}
+
+function parseMbCsv(text) {
+  return String(text || '')
+    .split(',')
+    .map((v) => Number(String(v).trim()))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .map((n) => Math.round(n * 1000) / 1000); // keep stable decimals
 }
 
 async function mustJson(resp) {
@@ -67,7 +82,7 @@ function makeIdNumber(prefix, idx) {
   return raw.slice(0, 20);
 }
 
-async function submitOne(idx, proofBlob) {
+async function submitOne(idx, pickProofBlob) {
   const role = idx <= INDUSTRY ? 'industry' : 'consumer';
   const startedAt = performance.now();
 
@@ -117,9 +132,12 @@ async function submitOne(idx, proofBlob) {
       form.append('businessType', '食品相关品牌方');
       form.append('department', '高管/战略');
 
-      // Unique filename to bypass sha256+filename cache in the service.
-      const fileName = `proof_${RUN_MARK}_${pad3(idx)}.png`;
-      form.append('proofFiles', proofBlob, fileName);
+      for (let i = 0; i < ATTACHMENTS_PER_INDUSTRY; i += 1) {
+        // Unique filename to bypass sha256+filename cache in the service.
+        const fileName = `proof_${RUN_MARK}_${pad3(idx)}_${i + 1}.bin`;
+        const proofBlob = pickProofBlob(i);
+        form.append('proofFiles', proofBlob, fileName);
+      }
 
       resp = await fetch(`${API_BASE}/api/submissions`, {
         method: 'POST',
@@ -213,15 +231,90 @@ async function pollStatuses(submissionIds) {
   return { statuses, pending };
 }
 
-async function main() {
-  console.log(`${nowIso()} load test start: api=${API_BASE} total=${TOTAL} industry=${INDUSTRY} poll=${POLL ? '1' : '0'} mark=${RUN_MARK}`);
+async function buildProofBlobPicker() {
+  const pickMode = ATTACHMENT_PICK === 'random' ? 'random' : 'cycle';
+  const mbChoicesRaw = parseMbCsv(ATTACHMENT_MB_CHOICES);
+
+  let mbChoices = mbChoicesRaw;
+  if (mbChoices.length === 0) {
+    const minOk = Number.isFinite(ATTACHMENT_MIN_MB) && ATTACHMENT_MIN_MB > 0;
+    const maxOk = Number.isFinite(ATTACHMENT_MAX_MB) && ATTACHMENT_MAX_MB > 0;
+    if (minOk && maxOk && ATTACHMENT_MAX_MB >= ATTACHMENT_MIN_MB) {
+      const list = [];
+      for (let mb = ATTACHMENT_MIN_MB; mb <= ATTACHMENT_MAX_MB + 1e-9; mb += ATTACHMENT_BUCKET_STEP_MB) {
+        list.push(Math.round(mb * 1000) / 1000);
+      }
+      if (list.length === 0 || list[list.length - 1] !== ATTACHMENT_MAX_MB) {
+        list.push(Math.round(ATTACHMENT_MAX_MB * 1000) / 1000);
+      }
+      mbChoices = list;
+    }
+  }
+
+  if (mbChoices.length > 0) {
+    const uniqueSorted = Array.from(new Set(mbChoices)).sort((a, b) => a - b);
+    for (const mb of uniqueSorted) {
+      if (mb > 100) {
+        throw new Error(`attachment mb too large: ${mb} (cap=100MB). Use smaller files or update script cap.`);
+      }
+    }
+
+    const blobByMb = new Map();
+    for (const mb of uniqueSorted) {
+      const sizeBytes = Math.floor(mb * 1024 * 1024);
+      blobByMb.set(mb, new Blob([Buffer.alloc(sizeBytes, 0)], { type: FILE_TYPE }));
+    }
+
+    console.log(
+      `${nowIso()} using attachment size choices: ` +
+      `choices=${mbChoices.join(',')} unique=${uniqueSorted.join(',')} pick=${pickMode} type=${FILE_TYPE}`
+    );
+
+    const pickProofBlob = (attachmentIdx) => {
+      const mb = pickMode === 'random'
+        ? mbChoices[Math.floor(Math.random() * mbChoices.length)]
+        : mbChoices[Math.max(0, attachmentIdx) % mbChoices.length];
+      const blob = blobByMb.get(mb);
+      if (!blob) throw new Error(`internal: missing blob for mb=${mb}`);
+      return blob;
+    };
+
+    return { pickProofBlob, mode: 'choices' };
+  }
+
+  if (FILE_MB_LIST) {
+    const parts = FILE_MB_LIST
+      .split(',')
+      .map((v) => Number(v.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (parts.length === 0) {
+      throw new Error(`invalid FILE_MB_LIST=${FILE_MB_LIST}`);
+    }
+    const buffers = parts.map((mb) => Buffer.alloc(Math.floor(mb * 1024 * 1024), 0));
+    const totalMb = parts.reduce((sum, mb) => sum + mb, 0);
+    console.log(`${nowIso()} using in-memory attachment blob: parts=${parts.join(',')} total=${totalMb}MB type=${FILE_TYPE}`);
+    const blob = new Blob(buffers, { type: FILE_TYPE });
+    return { pickProofBlob: () => blob, mode: 'file_mb_list' };
+  }
+
+  if (!PROOF_PATH) {
+    throw new Error('missing attachment config: set ATTACHMENT_MB_CHOICES, ATTACHMENT_MIN_MB/ATTACHMENT_MAX_MB, PROOF_PATH, or FILE_MB_LIST');
+  }
 
   const proofBuffer = await fs.readFile(PROOF_PATH);
-  const proofBlob = new Blob([proofBuffer], { type: 'image/png' });
+  console.log(`${nowIso()} using attachment file: path=${PROOF_PATH} bytes=${proofBuffer.length} type=${FILE_TYPE}`);
+  const blob = new Blob([proofBuffer], { type: FILE_TYPE });
+  return { pickProofBlob: () => blob, mode: 'file_path' };
+}
+
+async function main() {
+  console.log(`${nowIso()} load test start: api=${API_BASE} total=${TOTAL} industry=${INDUSTRY} attachmentsPerIndustry=${ATTACHMENTS_PER_INDUSTRY} poll=${POLL ? '1' : '0'} mark=${RUN_MARK}`);
+  const { pickProofBlob, mode } = await buildProofBlobPicker();
+  console.log(`${nowIso()} attachment mode: ${mode}`);
 
   const startedAt = performance.now();
   const results = await Promise.all(
-    Array.from({ length: TOTAL }, (_, idx) => submitOne(idx + 1, proofBlob))
+    Array.from({ length: TOTAL }, (_, idx) => submitOne(idx + 1, pickProofBlob))
   );
   const elapsedAllMs = Math.round(performance.now() - startedAt);
 
@@ -278,4 +371,3 @@ main().catch((err) => {
   console.error(`${nowIso()} load test failed:`, err instanceof Error ? err.message : String(err));
   process.exitCode = 1;
 });
-
