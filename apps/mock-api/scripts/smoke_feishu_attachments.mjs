@@ -57,6 +57,8 @@ async function submitIndustry({ csrfToken, cookie, idNumber, fileBlob, fileType 
   form.append('idType', 'passport');
   form.append('idNumber', idNumber);
   form.append('role', 'industry');
+  form.append('businessType', process.env.BUSINESS_TYPE || '食品相关品牌方');
+  form.append('department', process.env.DEPARTMENT || '高管/战略');
 
   for (let i = 0; i < ATTACHMENTS_PER_RUN; i += 1) {
     const fileName = `proof_${Date.now()}_${i + 1}.bin`;
@@ -221,4 +223,3 @@ main().catch((err) => {
   console.error(`${nowIso()} smoke failed:`, err instanceof Error ? err.message : String(err));
   process.exitCode = 1;
 });
-
