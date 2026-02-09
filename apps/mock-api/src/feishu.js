@@ -1,6 +1,10 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
+const DRIVE_UPLOAD_ALL_LIMIT = 20 * 1024 * 1024;
 
 const appId = process.env.FEISHU_APP_ID || '';
 const appSecret = process.env.FEISHU_APP_SECRET || '';
@@ -13,6 +17,9 @@ const fieldMap = {
   title: process.env.FEISHU_FIELD_TITLE || '职位（问卷题）',
   company: process.env.FEISHU_FIELD_COMPANY || '公司（问卷题）',
   idNumber: process.env.FEISHU_FIELD_ID || '证件号码（问卷题）',
+  identity: process.env.FEISHU_FIELD_IDENTITY || '',
+  idType: process.env.FEISHU_FIELD_ID_TYPE || '',
+  proof: process.env.FEISHU_FIELD_PROOF || '',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || ''
 };
@@ -21,6 +28,13 @@ let tokenCache = {
   value: '',
   expiresAt: 0
 };
+
+let driveRootFolderCache = {
+  value: '',
+  expiresAt: 0
+};
+
+const fileTokenCacheBySha256 = new Map();
 
 function hasFeishuConfig() {
   return Boolean(appId && appSecret && appToken && tableId);
@@ -42,6 +56,47 @@ async function retry(fn, retries = 3) {
     }
   }
   throw lastError;
+}
+
+async function readResponseBody(response) {
+  const text = await response.text();
+  if (!text) return { json: null, text: '' };
+  try {
+    return { json: JSON.parse(text), text };
+  } catch {
+    return { json: null, text };
+  }
+}
+
+function toAdler32(chunk, state) {
+  const MOD = 65521;
+  let a = state?.a ?? 1;
+  let b = state?.b ?? 0;
+  for (let i = 0; i < chunk.length; i += 1) {
+    a = (a + chunk[i]) % MOD;
+    b = (b + a) % MOD;
+  }
+  return { a, b, value: ((b << 16) | a) >>> 0 };
+}
+
+async function hashFile(filePath) {
+  const sha256 = crypto.createHash('sha256');
+  let adler = { a: 1, b: 0, value: 1 };
+
+  await new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(filePath);
+    stream.on('data', (chunk) => {
+      sha256.update(chunk);
+      adler = toAdler32(chunk, adler);
+    });
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+
+  return {
+    sha256: sha256.digest('hex'),
+    adler32: String(adler.value)
+  };
 }
 
 async function getTenantAccessToken() {
@@ -75,6 +130,32 @@ async function getTenantAccessToken() {
   return tokenCache.value;
 }
 
+async function getDriveRootFolderToken() {
+  const now = Date.now();
+  if (driveRootFolderCache.value && driveRootFolderCache.expiresAt > now + 5 * 60 * 1000) {
+    return driveRootFolderCache.value;
+  }
+
+  const token = await getTenantAccessToken();
+  const response = await fetch(`${FEISHU_BASE}/drive/explorer/v2/root_folder/meta`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.code !== 0 || !data?.data?.token) {
+    throw new Error(`get drive root folder failed: ${data.msg || response.statusText}`);
+  }
+
+  driveRootFolderCache = {
+    value: data.data.token,
+    expiresAt: now + 10 * 60 * 1000
+  };
+
+  return driveRootFolderCache.value;
+}
+
 function mapFields(submission) {
   const fields = {
     [fieldMap.name]: submission.name,
@@ -83,6 +164,24 @@ function mapFields(submission) {
     [fieldMap.company]: submission.company,
     [fieldMap.idNumber]: submission.idNumber
   };
+
+  if (fieldMap.identity && submission.role) {
+    fields[fieldMap.identity] = submission.role === 'industry'
+      ? '我是食品行业相关从业者'
+      : '我是消费者';
+  }
+
+  if (fieldMap.idType && submission.idType) {
+    const idTypeValue = submission.idType === 'cn_id'
+      ? '中国居民身份证'
+      : submission.idType === 'passport'
+        ? '护照'
+        : '';
+
+    if (idTypeValue) {
+      fields[fieldMap.idType] = idTypeValue;
+    }
+  }
 
   if (fieldMap.submittedAt) {
     fields[fieldMap.submittedAt] = submission.createdAt;
@@ -126,6 +225,247 @@ export async function createBitableRecord(submission) {
 
     return recordId;
   }, 3);
+}
+
+export async function updateBitableRecord(recordId, fields) {
+  if (!hasFeishuConfig()) {
+    throw new Error('feishu config missing');
+  }
+
+  return retry(async () => {
+    const token = await getTenantAccessToken();
+    const response = await fetch(
+      `${FEISHU_BASE}/bitable/v1/apps/${appToken}/tables/${tableId}/records/${recordId}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok || data.code !== 0) {
+      throw new Error(`update record failed: ${data.msg || response.statusText}`);
+    }
+  }, 3);
+}
+
+export async function deleteBitableRecord(recordId) {
+  if (!hasFeishuConfig()) {
+    throw new Error('feishu config missing');
+  }
+
+  return retry(async () => {
+    const token = await getTenantAccessToken();
+    const response = await fetch(
+      `${FEISHU_BASE}/bitable/v1/apps/${appToken}/tables/${tableId}/records/${recordId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok || data.code !== 0) {
+      throw new Error(`delete record failed: ${data.msg || response.statusText}`);
+    }
+  }, 3);
+}
+
+async function uploadAllToDrive({ filePath, fileName, mimeType, size }) {
+  return retry(async () => {
+    const { adler32, sha256 } = await hashFile(filePath);
+    const cacheKey = `${sha256}:${fileName}`;
+    const cached = fileTokenCacheBySha256.get(cacheKey);
+    if (cached) {
+      return { fileToken: cached, sha256 };
+    }
+
+    const token = await getTenantAccessToken();
+    const parentType = process.env.FEISHU_MEDIA_PARENT_TYPE || 'bitable_file';
+    const parentNode = process.env.FEISHU_MEDIA_PARENT_NODE || appToken;
+
+    // Use undici's native FormData/Blob to avoid stream Content-Length mismatches.
+    const form = new FormData();
+    form.append('file_name', fileName);
+    form.append('parent_type', parentType);
+    form.append('parent_node', parentNode);
+    form.append('size', String(size));
+    form.append('checksum', adler32);
+    const fileBuffer = await fs.promises.readFile(filePath);
+    form.append('file', new Blob([fileBuffer], {
+      type: mimeType || 'application/octet-stream'
+    }), fileName);
+
+    const response = await fetch(`${FEISHU_BASE}/drive/v1/medias/upload_all`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: form,
+      duplex: 'half'
+    });
+
+    const { json: data, text } = await readResponseBody(response);
+    if (!response.ok || !data || data.code !== 0) {
+      const msg = data?.msg || text || response.statusText;
+      throw new Error(`drive upload_all failed: ${msg}`);
+    }
+
+    const fileToken = data?.data?.file_token;
+    if (!fileToken) {
+      throw new Error('drive upload_all failed: missing file_token');
+    }
+
+    fileTokenCacheBySha256.set(cacheKey, fileToken);
+    return { fileToken, sha256 };
+  }, 3);
+}
+
+async function uploadChunkedToDrive({ filePath, fileName, mimeType, size }) {
+  const parentType = process.env.FEISHU_MEDIA_PARENT_TYPE || 'bitable_file';
+  const parentNode = process.env.FEISHU_MEDIA_PARENT_NODE || appToken;
+
+  const token = await getTenantAccessToken();
+
+  const prepareData = await retry(async () => {
+    const prepareResp = await fetch(`${FEISHU_BASE}/drive/v1/medias/upload_prepare`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        file_name: fileName,
+        parent_type: parentType,
+        parent_node: parentNode,
+        size
+      })
+    });
+
+    const payload = await prepareResp.json();
+    if (!prepareResp.ok || payload.code !== 0) {
+      throw new Error(`drive upload_prepare failed: ${payload.msg || prepareResp.statusText}`);
+    }
+
+    return payload;
+  }, 3);
+
+  const uploadId = prepareData?.data?.upload_id;
+  const blockSize = Number(prepareData?.data?.block_size || 0);
+  const blockNum = Number(prepareData?.data?.block_num || 0);
+  if (!uploadId || !blockSize || !blockNum) {
+    throw new Error('drive upload_prepare failed: missing upload params');
+  }
+
+  const sha256 = crypto.createHash('sha256');
+  const fd = await fs.promises.open(filePath, 'r');
+  try {
+    for (let seq = 0; seq < blockNum; seq += 1) {
+      const offset = seq * blockSize;
+      const remaining = Math.max(0, size - offset);
+      const chunkSize = Math.min(blockSize, remaining);
+      const buffer = Buffer.allocUnsafe(chunkSize);
+      const { bytesRead } = await fd.read(buffer, 0, chunkSize, offset);
+      const chunk = bytesRead === buffer.length ? buffer : buffer.subarray(0, bytesRead);
+
+      sha256.update(chunk);
+      const checksum = String(toAdler32(chunk).value);
+
+      await retry(async () => {
+        const form = new FormData();
+        form.append('upload_id', uploadId);
+        form.append('seq', String(seq));
+        form.append('size', String(chunk.length));
+        form.append('checksum', checksum);
+        form.append('file', new Blob([chunk], {
+          type: mimeType || 'application/octet-stream'
+        }), fileName);
+
+        const partResp = await fetch(`${FEISHU_BASE}/drive/v1/medias/upload_part`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: form,
+          duplex: 'half'
+        });
+
+        const { json: partData, text: partText } = await readResponseBody(partResp);
+        if (!partResp.ok || !partData || partData.code !== 0) {
+          const msg = partData?.msg || partText || partResp.statusText;
+          throw new Error(`drive upload_part failed: ${msg}`);
+        }
+      }, 3);
+    }
+  } finally {
+    await fd.close();
+  }
+
+  const finishData = await retry(async () => {
+    const finishResp = await fetch(`${FEISHU_BASE}/drive/v1/medias/upload_finish`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        upload_id: uploadId,
+        block_num: blockNum
+      })
+    });
+
+    const payload = await finishResp.json();
+    if (!finishResp.ok || payload.code !== 0) {
+      throw new Error(`drive upload_finish failed: ${payload.msg || finishResp.statusText}`);
+    }
+
+    return payload;
+  }, 3);
+
+  const fileToken = finishData?.data?.file_token;
+  if (!fileToken) {
+    throw new Error('drive upload_finish failed: missing file_token');
+  }
+
+  const sha256Hex = sha256.digest('hex');
+  fileTokenCacheBySha256.set(`${sha256Hex}:${fileName}`, fileToken);
+  return { fileToken, sha256: sha256Hex };
+}
+
+export async function uploadProofFilesToDrive(proofUploads) {
+  if (!Array.isArray(proofUploads) || proofUploads.length === 0) return [];
+
+  const results = [];
+  for (const upload of proofUploads) {
+    const filePath = upload.path;
+    const fileName = upload.originalName || path.basename(filePath);
+    const mimeType = upload.mimeType || 'application/octet-stream';
+    const size = Number(upload.size || 0);
+    if (!filePath || !size) {
+      throw new Error('invalid proof upload');
+    }
+
+    const uploaded = size <= DRIVE_UPLOAD_ALL_LIMIT
+      ? await uploadAllToDrive({ filePath, fileName, mimeType, size })
+      : await uploadChunkedToDrive({ filePath, fileName, mimeType, size });
+    results.push(uploaded.fileToken);
+  }
+
+  return results;
+}
+
+export function buildBitableProofFieldValue(fileTokens) {
+  if (!fieldMap.proof || !Array.isArray(fileTokens) || fileTokens.length === 0) return null;
+  return {
+    fieldName: fieldMap.proof,
+    value: fileTokens.map((token) => ({ file_token: token }))
+  };
 }
 
 export function isFeishuEnabled() {

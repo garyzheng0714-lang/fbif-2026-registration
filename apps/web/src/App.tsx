@@ -175,6 +175,7 @@ export default function App() {
   const [isProofDragOver, setIsProofDragOver] = useState(false);
   const switchTimerRef = useRef<number | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
+  const proofUploadsRef = useRef<File[]>([]);
 
   useEffect(() => {
     try {
@@ -185,7 +186,8 @@ export default function App() {
         setIdentity(parsed.identity);
       }
       if (parsed.industryForm) {
-        setIndustryForm((prev) => ({ ...prev, ...parsed.industryForm }));
+        const { proofFiles: _proofFiles, ...rest } = parsed.industryForm;
+        setIndustryForm((prev) => ({ ...prev, ...rest, proofFiles: [] }));
       }
       if (parsed.consumerForm) {
         setConsumerForm((prev) => ({ ...prev, ...parsed.consumerForm }));
@@ -198,7 +200,11 @@ export default function App() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const draft = { identity, industryForm, consumerForm };
+        const draft = {
+          identity,
+          industryForm: { ...industryForm, proofFiles: [] },
+          consumerForm
+        };
         window.localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft));
       } catch {
         // Ignore temporary storage write failure.
@@ -276,6 +282,14 @@ export default function App() {
       window.clearTimeout(switchTimerRef.current);
     }
 
+    if (next !== 'industry') {
+      proofUploadsRef.current = [];
+      if (proofInputRef.current) {
+        proofInputRef.current.value = '';
+      }
+      setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+    }
+
     setIdentity(next);
     setPage('form');
     setNotice('');
@@ -293,6 +307,12 @@ export default function App() {
       window.clearTimeout(switchTimerRef.current);
     }
 
+    proofUploadsRef.current = [];
+    if (proofInputRef.current) {
+      proofInputRef.current.value = '';
+    }
+    setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+
     setPage('identity');
     setNotice('');
     setSubmitAttempted(false);
@@ -302,7 +322,9 @@ export default function App() {
   };
 
   const updateProofFiles = (files: FileList | null) => {
-    const names = Array.from(files || []).map((file) => file.name);
+    const selected = Array.from(files || []);
+    proofUploadsRef.current = selected;
+    const names = selected.map((file) => file.name);
     setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
     markTouched(fieldKey('industry', 'proofFiles'));
   };
@@ -401,15 +423,39 @@ export default function App() {
             idType: consumerForm.idType
           };
 
-      const submitResp = await fetch(`${API_BASE}/api/submissions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfData.csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+      const shouldUploadProofFiles = identity === 'industry' && proofUploadsRef.current.length > 0;
+      const submitResp = shouldUploadProofFiles
+        ? await fetch(`${API_BASE}/api/submissions`, {
+            method: 'POST',
+            headers: {
+              'X-CSRF-Token': csrfData.csrfToken
+            },
+            credentials: 'include',
+            body: (() => {
+              const form = new FormData();
+              Object.entries(payload).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                  form.append(key, JSON.stringify(value));
+                  return;
+                }
+                if (value === undefined || value === null) return;
+                form.append(key, String(value));
+              });
+              proofUploadsRef.current.forEach((file) => {
+                form.append('proofFiles', file, file.name);
+              });
+              return form;
+            })()
+          })
+        : await fetch(`${API_BASE}/api/submissions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfData.csrfToken
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
 
       const submitData = await parseJsonIfPossible(submitResp);
       if (!submitResp.ok || !submitData?.id) {
@@ -423,6 +469,10 @@ export default function App() {
 
       setIndustryForm(initialIndustryForm);
       setConsumerForm(initialConsumerForm);
+      proofUploadsRef.current = [];
+      if (proofInputRef.current) {
+        proofInputRef.current.value = '';
+      }
       setTouched({});
       setSubmitAttempted(false);
       setNotice('提交成功');
