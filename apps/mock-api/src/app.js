@@ -158,11 +158,23 @@ export function createApp() {
       });
     }
 
-    const submission = createSubmission({
-      ...result.data,
-      proofUploads: files,
-      traceId: res.locals.traceId
-    });
+    let submission;
+    try {
+      submission = createSubmission({
+        ...result.data,
+        proofUploads: files,
+        traceId: res.locals.traceId
+      });
+    } catch (error) {
+      for (const file of req.files || []) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch {
+          // Ignore cleanup errors.
+        }
+      }
+      throw error;
+    }
 
     const idSuffix = String(submission.idNumber || '').slice(-4);
     const totalBytes = files.reduce((sum, file) => sum + Number(file?.size || 0), 0);

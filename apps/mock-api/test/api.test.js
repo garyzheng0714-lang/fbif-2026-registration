@@ -88,7 +88,12 @@ test('industry submissions require proof files', async () => {
     .post('/api/submissions')
     .set('Cookie', cookie)
     .set('X-CSRF-Token', token)
-    .send({ ...validPayload, role: 'industry' });
+    .send({
+      ...validPayload,
+      role: 'industry',
+      businessType: '食品相关品牌方',
+      department: '高管/战略'
+    });
 
   assert.equal(res.status, 400);
   assert.equal(res.body.error, 'ValidationError');
@@ -110,6 +115,8 @@ test('industry submissions accept multipart proof files', async () => {
     .field('idNumber', validPayload.idNumber)
     .field('role', 'industry')
     .field('idType', 'cn_id')
+    .field('businessType', '食品相关品牌方')
+    .field('department', '高管/战略')
     .attach('proofFiles', Buffer.from('fake-png'), {
       filename: 'proof.png',
       contentType: 'image/png'

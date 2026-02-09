@@ -62,8 +62,7 @@ describe('App dynamic form', () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ csrfToken: 'csrf-token' }))
-      .mockResolvedValueOnce(jsonResponse({ id: 'submission-id', syncStatus: 'PENDING' }, 202))
-      .mockResolvedValueOnce(jsonResponse({ syncStatus: 'SUCCESS' }));
+      .mockResolvedValueOnce(jsonResponse({ id: 'submission-id', traceId: 'trace-id', syncStatus: 'PENDING' }, 202));
 
     render(<App />);
 
@@ -77,7 +76,7 @@ describe('App dynamic form', () => {
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     const submitCall = fetchMock.mock.calls[1];
