@@ -1,5 +1,9 @@
 const phoneRegex = /^1[3-9]\d{9}$/;
 const idRegex = /^\d{17}[\dXx]$/;
+const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
+
+const allowedRoles = new Set(['industry', 'consumer']);
+const allowedIdTypes = new Set(['cn_id', 'passport', 'other']);
 
 export function isValidChineseId(id) {
   if (!idRegex.test(id)) return false;
@@ -23,6 +27,9 @@ export function validateSubmission(input) {
   const title = trimText(input.title);
   const company = trimText(input.company);
   const idNumber = trimText(input.idNumber);
+  const role = trimText(input.role);
+  const idTypeRaw = trimText(input.idType);
+  const idType = idTypeRaw ? idTypeRaw : 'cn_id';
 
   if (!phoneRegex.test(phone)) {
     return { ok: false, error: '手机号格式不正确' };
@@ -40,18 +47,36 @@ export function validateSubmission(input) {
     return { ok: false, error: '公司长度不合法' };
   }
 
-  if (!isValidChineseId(idNumber)) {
-    return { ok: false, error: '身份证号校验失败' };
+  if (idTypeRaw && !allowedIdTypes.has(idType)) {
+    return { ok: false, error: '证件类型不合法' };
+  }
+
+  if (idType === 'cn_id') {
+    if (!isValidChineseId(idNumber)) {
+      return { ok: false, error: '身份证号校验失败' };
+    }
+  } else if (!otherIdRegex.test(idNumber)) {
+    return { ok: false, error: '证件号格式不正确（6-20位字母/数字/短横线）' };
+  }
+
+  const payload = {
+    phone,
+    name,
+    title,
+    company,
+    idNumber
+  };
+
+  if (allowedRoles.has(role)) {
+    payload.role = role;
+  }
+
+  if (allowedIdTypes.has(idType)) {
+    payload.idType = idType;
   }
 
   return {
     ok: true,
-    data: {
-      phone,
-      name,
-      title,
-      company,
-      idNumber
-    }
+    data: payload
   };
 }
