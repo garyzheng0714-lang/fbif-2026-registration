@@ -66,6 +66,7 @@ test('submission can be created and reaches SUCCESS status', async () => {
 
   assert.equal(submitRes.status, 202);
   assert.equal(typeof submitRes.body.id, 'string');
+  assert.equal(typeof submitRes.body.traceId, 'string');
 
   let statusRes = await request(app).get(`/api/submissions/${submitRes.body.id}/status`);
   assert.equal(statusRes.status, 200);
@@ -76,6 +77,46 @@ test('submission can be created and reaches SUCCESS status', async () => {
   statusRes = await request(app).get(`/api/submissions/${submitRes.body.id}/status`);
   assert.equal(statusRes.status, 200);
   assert.equal(statusRes.body.syncStatus, 'SUCCESS');
+});
+
+test('industry submissions require proof files', async () => {
+  const csrfRes = await request(app).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const res = await request(app)
+    .post('/api/submissions')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .send({ ...validPayload, role: 'industry' });
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, 'ValidationError');
+});
+
+test('industry submissions accept multipart proof files', async () => {
+  const csrfRes = await request(app).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const submitRes = await request(app)
+    .post('/api/submissions')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .field('phone', validPayload.phone)
+    .field('name', validPayload.name)
+    .field('title', validPayload.title)
+    .field('company', validPayload.company)
+    .field('idNumber', validPayload.idNumber)
+    .field('role', 'industry')
+    .field('idType', 'cn_id')
+    .attach('proofFiles', Buffer.from('fake-png'), {
+      filename: 'proof.png',
+      contentType: 'image/png'
+    });
+
+  assert.equal(submitRes.status, 202);
+  assert.equal(typeof submitRes.body.id, 'string');
 });
 
 test('GET /api/submissions/:id/status returns 404 for unknown id', async () => {

@@ -1,5 +1,13 @@
 import crypto from 'node:crypto';
-import { createBitableRecord, isFeishuEnabled } from './feishu.js';
+import fs from 'node:fs';
+import {
+  buildBitableProofFieldValue,
+  createBitableRecord,
+  deleteBitableRecord,
+  isFeishuEnabled,
+  updateBitableRecord,
+  uploadProofFilesToDrive
+} from './feishu.js';
 
 const submissions = new Map();
 
@@ -15,21 +23,91 @@ function resolveMockFinalStatus() {
   return 'SUCCESS';
 }
 
+function log(...args) {
+  console.log(new Date().toISOString(), ...args);
+}
+
+function logError(...args) {
+  console.error(new Date().toISOString(), ...args);
+}
+
 async function runFeishuSync(id) {
   const latest = submissions.get(id);
   if (!latest) return;
 
+  const traceId = latest.traceId || '';
+  const idSuffix = String(latest.idNumber || '').slice(-4);
+  const logPrefix = `[trace=${traceId}] [idSuffix=${idSuffix}] [sub=${id}]`;
+  const startedAtMs = Date.now();
+  let recordId = null;
+
   try {
-    const recordId = await createBitableRecord(latest);
+    log('multitable sync start:', logPrefix, `files=${Array.isArray(latest.proofUploads) ? latest.proofUploads.length : 0}`);
+
+    recordId = await createBitableRecord(latest);
+    latest.syncTimings = {
+      ...latest.syncTimings,
+      recordCreatedAtMs: Date.now()
+    };
+    log('multitable record created:', logPrefix, `record_id_suffix=${String(recordId).slice(-6)}`, `ms=${Date.now() - startedAtMs}`);
+
+    if (recordId && Array.isArray(latest.proofUploads) && latest.proofUploads.length > 0) {
+      const fileTokens = await uploadProofFilesToDrive(latest.proofUploads);
+      latest.syncTimings = {
+        ...latest.syncTimings,
+        attachmentsUploadedAtMs: Date.now()
+      };
+      log('multitable attachment upload ok:', logPrefix, `count=${fileTokens.length}`, `ms=${Date.now() - startedAtMs}`);
+
+      const proofField = buildBitableProofFieldValue(fileTokens);
+      if (proofField) {
+        await updateBitableRecord(recordId, {
+          [proofField.fieldName]: proofField.value
+        });
+        log('multitable record updated:', logPrefix, `ms=${Date.now() - startedAtMs}`);
+      }
+    }
+
     latest.syncStatus = 'SUCCESS';
     latest.syncError = null;
     latest.feishuRecordId = recordId;
     latest.updatedAt = new Date().toISOString();
+    latest.syncTimings = {
+      ...latest.syncTimings,
+      finishedAtMs: Date.now()
+    };
+    log('multitable sync ok:', logPrefix, `record_id_suffix=${String(recordId).slice(-6)}`, `ms=${Date.now() - startedAtMs}`);
   } catch (error) {
+    if (recordId && Array.isArray(latest.proofUploads) && latest.proofUploads.length > 0) {
+      // Keep table consistency: if record was created but attachment flow failed, rollback.
+      try {
+        await deleteBitableRecord(recordId);
+        recordId = null;
+      } catch (rollbackError) {
+        logError('multitable rollback failed:', logPrefix, rollbackError instanceof Error ? rollbackError.message : String(rollbackError));
+      }
+    }
+
     latest.syncStatus = 'FAILED';
     latest.syncError = error instanceof Error ? error.message : 'feishu sync failed';
     latest.updatedAt = new Date().toISOString();
-    console.error('feishu sync failed:', latest.syncError);
+    latest.syncTimings = {
+      ...latest.syncTimings,
+      finishedAtMs: Date.now()
+    };
+    logError('multitable sync failed:', logPrefix, latest.syncError);
+  } finally {
+    if (Array.isArray(latest.proofUploads)) {
+      for (const file of latest.proofUploads) {
+        if (!file?.path) continue;
+        try {
+          fs.unlinkSync(file.path);
+        } catch {
+          // Ignore cleanup errors.
+        }
+      }
+      latest.proofUploads = [];
+    }
   }
 }
 
@@ -54,7 +132,13 @@ export function createSubmission(record) {
     syncError: null,
     feishuRecordId: null,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    syncTimings: {
+      startedAtMs: Date.now(),
+      recordCreatedAtMs: null,
+      attachmentsUploadedAtMs: null,
+      finishedAtMs: null
+    }
   };
 
   submissions.set(id, submission);
