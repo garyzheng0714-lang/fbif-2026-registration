@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "MOCK_API_SYNC_PROVIDER=mock node --test test/*.test.js"
+    "test": "MOCK_API_SYNC_PROVIDER=mock node --test test/*.test.js",
+    "smoke:feishu": "node scripts/smoke_feishu_attachments.mjs"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "multer": "^2.0.0"
   },
   "devDependencies": {
     "supertest": "^7.1.3"
