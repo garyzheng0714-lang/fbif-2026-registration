@@ -105,6 +105,7 @@ function fieldKey(identity: Exclude<Identity, ''>, field: string) {
 }
 
 type ProofPreview = {
+  id: string;
   name: string;
   size: number;
   type: string;
@@ -125,6 +126,16 @@ function formatBytes(bytes: number) {
 
 function canPreviewImage(file: File) {
   return Boolean(file.type && file.type.startsWith('image/'));
+}
+
+function isPdfFile(file: File) {
+  const name = (file.name || '').toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  return type === 'application/pdf' || name.endsWith('.pdf');
+}
+
+function proofFileKey(file: File) {
+  return `${file.name}::${file.size}::${file.lastModified}`;
 }
 
 function IndustryCardIcon() {
@@ -179,6 +190,32 @@ function UploadIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3v10"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="m8 11 4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 20h14"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState<'identity' | 'form'>('identity');
   const [identity, setIdentity] = useState<Identity>('');
@@ -191,6 +228,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProofDragOver, setIsProofDragOver] = useState(false);
   const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
+  const [proofUploadPercent, setProofUploadPercent] = useState(0);
   const proofPreviewUrlsRef = useRef<string[]>([]);
   const switchTimerRef = useRef<number | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
@@ -315,26 +353,31 @@ export default function App() {
       setConsumerForm((prev) => ({ ...prev, [field]: value }));
     };
 
+  const clearProofFiles = () => {
+    proofUploadsRef.current = [];
+    setProofUploadPercent(0);
+    proofPreviewUrlsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore revoke failures.
+      }
+    });
+    proofPreviewUrlsRef.current = [];
+    setProofPreviews([]);
+    if (proofInputRef.current) {
+      proofInputRef.current.value = '';
+    }
+    setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+  };
+
   const handleIdentitySelect = (next: Exclude<Identity, ''>) => {
     if (switchTimerRef.current) {
       window.clearTimeout(switchTimerRef.current);
     }
 
     if (next !== 'industry') {
-      proofUploadsRef.current = [];
-      proofPreviewUrlsRef.current.forEach((url) => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // Ignore revoke failures.
-        }
-      });
-      proofPreviewUrlsRef.current = [];
-      setProofPreviews([]);
-      if (proofInputRef.current) {
-        proofInputRef.current.value = '';
-      }
-      setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+      clearProofFiles();
     }
 
     setIdentity(next);
@@ -354,20 +397,7 @@ export default function App() {
       window.clearTimeout(switchTimerRef.current);
     }
 
-    proofUploadsRef.current = [];
-    proofPreviewUrlsRef.current.forEach((url) => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // Ignore revoke failures.
-      }
-    });
-    proofPreviewUrlsRef.current = [];
-    setProofPreviews([]);
-    if (proofInputRef.current) {
-      proofInputRef.current.value = '';
-    }
-    setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+    clearProofFiles();
 
     setPage('identity');
     setNotice('');
@@ -377,46 +407,86 @@ export default function App() {
     setIsSwitching(false);
   };
 
-  const updateProofFiles = (files: FileList | null) => {
-    const selected = Array.from(files || []);
-    proofPreviewUrlsRef.current.forEach((url) => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // Ignore revoke failures.
-      }
-    });
-    proofPreviewUrlsRef.current = [];
+  const addProofFiles = (files: FileList | File[] | null) => {
+    const selected = Array.isArray(files) ? files : Array.from(files || []);
 
-    proofUploadsRef.current = selected;
-    const names = selected.map((file) => file.name);
-    setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
-    setProofPreviews(
-      selected.map((file) => {
-        if (canPreviewImage(file)) {
-          const url = URL.createObjectURL(file);
-          proofPreviewUrlsRef.current.push(url);
-          return {
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            previewUrl: url
-          };
-        }
-        return {
-          name: file.name,
-          size: file.size,
-          type: file.type || 'application/octet-stream'
-        };
-      })
-    );
+    if (proofInputRef.current) {
+      // Allow selecting the same file again after removing it.
+      proofInputRef.current.value = '';
+    }
+
+    if (selected.length === 0) return;
+
+    const existingKeys = new Set(proofUploadsRef.current.map((file) => proofFileKey(file)));
+    const nextUploads = [...proofUploadsRef.current];
+    const nextPreviews: ProofPreview[] = [];
+
+    for (const file of selected) {
+      const id = proofFileKey(file);
+      if (existingKeys.has(id)) continue;
+      existingKeys.add(id);
+      nextUploads.push(file);
+
+      let previewUrl: string | undefined;
+      try {
+        previewUrl = URL.createObjectURL(file);
+        proofPreviewUrlsRef.current.push(previewUrl);
+      } catch {
+        previewUrl = undefined;
+      }
+
+      nextPreviews.push({
+        id,
+        name: file.name,
+        size: file.size,
+        type: file.type || (isPdfFile(file) ? 'application/pdf' : 'application/octet-stream'),
+        previewUrl
+      });
+    }
+
+    if (nextPreviews.length === 0) return;
+
+    proofUploadsRef.current = nextUploads;
+    setIndustryForm((prev) => ({ ...prev, proofFiles: nextUploads.map((file) => file.name) }));
+    setProofPreviews((prev) => [...prev, ...nextPreviews]);
     markTouched(fieldKey('industry', 'proofFiles'));
+  };
+
+  const removeProofFile = (id: string) => {
+    const nextUploads = proofUploadsRef.current.filter((file) => proofFileKey(file) !== id);
+    proofUploadsRef.current = nextUploads;
+    setIndustryForm((prev) => ({ ...prev, proofFiles: nextUploads.map((file) => file.name) }));
+    setProofPreviews((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      if (removed?.previewUrl) {
+        try {
+          URL.revokeObjectURL(removed.previewUrl);
+        } catch {
+          // Ignore revoke failures.
+        }
+        proofPreviewUrlsRef.current = proofPreviewUrlsRef.current.filter((url) => url !== removed.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+    markTouched(fieldKey('industry', 'proofFiles'));
+  };
+
+  const downloadProofFile = (preview: ProofPreview) => {
+    if (!preview.previewUrl) return;
+    const link = document.createElement('a');
+    link.href = preview.previewUrl;
+    link.download = preview.name || 'attachment';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   const handleProofDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsProofDragOver(false);
-    updateProofFiles(event.dataTransfer.files);
+    if (isSubmitting) return;
+    addProofFiles(event.dataTransfer.files);
   };
 
   const handleProofZoneKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -484,41 +554,72 @@ export default function App() {
           };
 
       const shouldUploadProofFiles = identity === 'industry' && proofUploadsRef.current.length > 0;
-      const submitResp = shouldUploadProofFiles
-        ? await fetch(`${API_BASE}/api/submissions`, {
-            method: 'POST',
-            headers: {
-              'X-CSRF-Token': csrfData.csrfToken
-            },
-            credentials: 'include',
-            body: (() => {
-              const form = new FormData();
-              Object.entries(payload).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                  form.append(key, JSON.stringify(value));
-                  return;
-                }
-                if (value === undefined || value === null) return;
-                form.append(key, String(value));
-              });
-              proofUploadsRef.current.forEach((file) => {
-                form.append('proofFiles', file, file.name);
-              });
-              return form;
-            })()
-          })
-        : await fetch(`${API_BASE}/api/submissions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': csrfData.csrfToken
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
 
-      const submitData = await parseJsonIfPossible(submitResp);
-      if (!submitResp.ok || !submitData?.id) {
+      const submitResult = shouldUploadProofFiles
+        ? await new Promise<{ ok: boolean; status: number; data: any | null }>((resolve, reject) => {
+            setProofUploadPercent(0);
+
+            const form = new FormData();
+            Object.entries(payload).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                form.append(key, JSON.stringify(value));
+                return;
+              }
+              if (value === undefined || value === null) return;
+              form.append(key, String(value));
+            });
+            proofUploadsRef.current.forEach((file) => {
+              form.append('proofFiles', file, file.name);
+            });
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${API_BASE}/api/submissions`);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('X-CSRF-Token', String(csrfData.csrfToken));
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.onprogress = (event) => {
+              if (!event.lengthComputable || !event.total) return;
+              const next = Math.round((event.loaded / event.total) * 100);
+              setProofUploadPercent(Math.min(99, Math.max(0, next)));
+            };
+
+            xhr.onload = () => {
+              setProofUploadPercent(100);
+              let data: any | null = null;
+              try {
+                data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+              } catch {
+                data = null;
+              }
+              resolve({
+                ok: xhr.status >= 200 && xhr.status < 300,
+                status: xhr.status,
+                data
+              });
+            };
+
+            xhr.onerror = () => reject(new Error('network_error'));
+            xhr.onabort = () => reject(new Error('upload_aborted'));
+
+            xhr.send(form);
+          })
+        : await (async () => {
+            const resp = await fetch(`${API_BASE}/api/submissions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfData.csrfToken
+              },
+              credentials: 'include',
+              body: JSON.stringify(payload)
+            });
+            const data = await parseJsonIfPossible(resp);
+            return { ok: resp.ok, status: resp.status, data };
+          })();
+
+      const submitData = submitResult.data;
+      if (!submitResult.ok || !submitData?.id) {
         throw new Error('submit_failed');
       }
 
@@ -532,19 +633,7 @@ export default function App() {
 
       setIndustryForm(initialIndustryForm);
       setConsumerForm(initialConsumerForm);
-      proofUploadsRef.current = [];
-      proofPreviewUrlsRef.current.forEach((url) => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // Ignore revoke failures.
-        }
-      });
-      proofPreviewUrlsRef.current = [];
-      setProofPreviews([]);
-      if (proofInputRef.current) {
-        proofInputRef.current.value = '';
-      }
+      clearProofFiles();
       setTouched({});
       setSubmitAttempted(false);
       setNotice('');
@@ -569,6 +658,7 @@ export default function App() {
       }));
     } finally {
       setIsSubmitting(false);
+      setProofUploadPercent(0);
     }
   }, 1500);
 
@@ -727,22 +817,42 @@ export default function App() {
                       type="file"
                       accept=".jpg,.jpeg,.png,.pdf"
                       multiple
-                      onChange={(event) => updateProofFiles(event.target.files)}
+                      onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                     />
                     <div
-                      className={`upload-zone ${isProofDragOver ? 'is-drag-over' : ''}`}
+                      className={`upload-zone ${isProofDragOver ? 'is-drag-over' : ''} ${proofPreviews.length ? 'has-files' : ''} ${isSubmitting ? 'is-disabled' : ''}`}
                       role="button"
-                      tabIndex={0}
+                      tabIndex={isSubmitting ? -1 : 0}
                       aria-label="上传专业观众证明文件"
-                      onClick={() => proofInputRef.current?.click()}
-                      onKeyDown={handleProofZoneKeyDown}
+                      aria-disabled={isSubmitting}
+                      onClick={() => {
+                        if (isSubmitting) return;
+                        proofInputRef.current?.click();
+                      }}
+                      onKeyDown={(event) => {
+                        if (isSubmitting) return;
+                        handleProofZoneKeyDown(event);
+                      }}
+                      onPaste={(event) => {
+                        if (isSubmitting) return;
+                        const items = event.clipboardData?.items;
+                        if (!items) return;
+                        const files = Array.from(items)
+                          .map((item) => (item.kind === 'file' ? item.getAsFile() : null))
+                          .filter(Boolean) as File[];
+                        if (files.length === 0) return;
+                        event.preventDefault();
+                        addProofFiles(files);
+                      }}
                       onDragOver={(event) => {
                         event.preventDefault();
+                        if (isSubmitting) return;
                         setIsProofDragOver(true);
                       }}
                       onDragEnter={(event) => {
                         event.preventDefault();
+                        if (isSubmitting) return;
                         setIsProofDragOver(true);
                       }}
                       onDragLeave={(event) => {
@@ -751,42 +861,121 @@ export default function App() {
                       }}
                       onDrop={handleProofDrop}
                     >
-                      <span className="upload-icon" aria-hidden="true">
-                        <UploadIcon />
-                      </span>
-                      <p className="upload-title">拖拽文件到这里上传</p>
-                      <p className="upload-subtitle">或点击选择文件（支持 JPG / PNG / PDF）</p>
+                      <div className="upload-zone-content">
+                        {proofPreviews.length === 0 ? (
+                          <div className="upload-empty">
+                            <div className="upload-drop-surface">粘贴或拖拽至这里上传</div>
+                            <button
+                              type="button"
+                              className="upload-add-button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isSubmitting) return;
+                                proofInputRef.current?.click();
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <span className="upload-add-plus" aria-hidden="true">+</span>
+                              添加本地文件
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="proof-card-list" role="list" aria-label="已选择的证明文件">
+                              {proofPreviews.map((file) => {
+                                const isUploading = isSubmitting && proofUploadsRef.current.length > 0;
+                                const displayPercent = Math.min(100, Math.max(0, proofUploadPercent));
+                                const isImage = (file.type || '').toLowerCase().startsWith('image/');
+                                const isPdf =
+                                  (file.type || '').toLowerCase() === 'application/pdf' ||
+                                  file.name.toLowerCase().endsWith('.pdf');
+
+                                return (
+                                  <div
+                                    key={file.id}
+                                    className={`proof-card ${isUploading ? 'is-uploading' : ''}`}
+                                    role="listitem"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      if (!file.previewUrl) return;
+                                      window.open(file.previewUrl, '_blank', 'noopener');
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="proof-card-remove"
+                                      aria-label={`移除 ${file.name}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        if (isUploading) return;
+                                        removeProofFile(file.id);
+                                      }}
+                                      disabled={isUploading}
+                                    >
+                                      ×
+                                    </button>
+
+                                    <div className="proof-card-thumb" aria-hidden="true">
+                                      {file.previewUrl && isImage ? (
+                                        <img src={file.previewUrl} alt={file.name} loading="lazy" />
+                                      ) : (
+                                        <div className="proof-card-fallback">
+                                          {isPdf ? 'PDF' : 'FILE'}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {isUploading ? (
+                                      <div className="proof-card-overlay proof-card-overlay-uploading" aria-hidden="true">
+                                        <div className="proof-card-progress">
+                                          <div
+                                            className="proof-card-progress-bar"
+                                            style={{ width: `${displayPercent}%` }}
+                                          />
+                                        </div>
+                                        <div className="proof-card-progress-text">{displayPercent}%</div>
+                                      </div>
+                                    ) : (
+                                      <div className="proof-card-overlay" aria-hidden="true">
+                                        <span className="proof-card-name-pill" title={file.name}>
+                                          {file.name}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="proof-card-download"
+                                          aria-label={`下载 ${file.name}`}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            downloadProofFile(file);
+                                          }}
+                                        >
+                                          <DownloadIcon />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="upload-add-button upload-add-button-inline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isSubmitting) return;
+                                proofInputRef.current?.click();
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <span className="upload-add-plus" aria-hidden="true">+</span>
+                              添加本地文件
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <p className="hint">支持名片、工作证、在职证明等材料。刷新后需重新选择文件。</p>
-                    {proofPreviews.length > 0 && (
-                      <div className="proof-preview">
-                        <div className="proof-summary">
-                          <span className="proof-summary-title">已选择 {proofPreviews.length} 个文件</span>
-                          <span className="proof-summary-hint">请确认文件清晰可读</span>
-                        </div>
-                        <div className="proof-grid" role="list">
-                          {proofPreviews.map((file) => (
-                            <div key={file.name} className="proof-item" role="listitem">
-                              <div className="proof-thumb">
-                                {file.previewUrl ? (
-                                  <img src={file.previewUrl} alt={file.name} loading="lazy" />
-                                ) : (
-                                  <div className="proof-thumb-fallback" aria-label={file.type}>
-                                    {file.type.toLowerCase().includes('pdf') ? 'PDF' : 'FILE'}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="proof-meta">
-                                <span className="proof-name" title={file.name}>
-                                  {file.name}
-                                </span>
-                                <span className="proof-size">{formatBytes(file.size)}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
                       <span className="error">{industryErrors.proofFiles}</span>
                     )}

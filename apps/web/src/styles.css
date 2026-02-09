@@ -305,15 +305,14 @@ select:focus {
 }
 
 .upload-zone {
-  border: 2px dashed #b8c7df;
-  border-radius: 12px;
-  min-height: 136px;
-  background: linear-gradient(180deg, #fcfdff, #f4f8ff);
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 6px;
-  padding: 12px;
+  border: 2px solid rgba(18, 64, 143, 0.55);
+  border-radius: 16px;
+  min-height: 160px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
   text-align: center;
   cursor: pointer;
   transition:
@@ -325,18 +324,267 @@ select:focus {
 
 .upload-zone:hover {
   border-color: var(--deep-blue);
+  box-shadow: 0 0 0 4px rgba(18, 64, 143, 0.12);
 }
 
 .upload-zone.is-drag-over {
   border-color: var(--gold);
-  box-shadow: 0 0 0 4px rgba(200, 165, 92, 0.16);
-  background: linear-gradient(180deg, #fffdf7, #fff9ea);
+  box-shadow: 0 0 0 4px rgba(200, 165, 92, 0.18);
+  background: linear-gradient(180deg, #fffdf7, #ffffff);
   transform: translateY(-1px);
 }
 
 .upload-zone:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px rgba(18, 64, 143, 0.16);
+}
+
+.upload-zone.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.upload-zone.is-disabled:hover {
+  border-color: rgba(18, 64, 143, 0.55);
+  box-shadow: none;
+}
+
+.upload-zone-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.upload-empty {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.upload-drop-surface {
+  width: min(680px, 100%);
+  min-height: 86px;
+  border: 2px dashed rgba(31, 35, 41, 0.18);
+  border-radius: 14px;
+  background: #f5f6f8;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: rgba(31, 35, 41, 0.62);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.upload-add-button {
+  border: none;
+  background: transparent;
+  color: var(--deep-blue);
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 999px;
+  transition: background-color var(--motion), transform var(--motion), opacity var(--motion);
+}
+
+.upload-add-button:hover {
+  background: rgba(18, 64, 143, 0.08);
+  transform: translateY(-1px);
+}
+
+.upload-add-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.upload-add-button-inline {
+  margin-inline: auto;
+}
+
+.upload-add-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 64, 143, 0.12);
+  color: var(--deep-blue);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.proof-card-list {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.proof-card {
+  position: relative;
+  width: 260px;
+  height: 150px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f2f4f7;
+  border: 1px solid rgba(18, 64, 143, 0.14);
+  box-shadow: 0 10px 26px rgba(17, 24, 39, 0.1);
+}
+
+.proof-card-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.proof-card-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.proof-card-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--deep-blue);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  background: linear-gradient(135deg, #e9f0ff, #ffffff);
+}
+
+.proof-card-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.75);
+  color: rgba(31, 35, 41, 0.8);
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+  transition: background-color var(--motion), transform var(--motion), opacity var(--motion);
+}
+
+.proof-card-remove:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.02);
+}
+
+.proof-card-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.proof-card-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  background: rgba(31, 35, 41, 0.46);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion);
+  z-index: 2;
+}
+
+.proof-card:hover .proof-card-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.proof-card-overlay-uploading {
+  opacity: 1;
+  pointer-events: none;
+  background: rgba(31, 35, 41, 0.44);
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  grid-template-rows: auto auto;
+}
+
+.proof-card-name-pill {
+  justify-self: start;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proof-card-download {
+  justify-self: center;
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform var(--motion), background-color var(--motion);
+}
+
+.proof-card-download:hover {
+  background: rgba(255, 255, 255, 0.26);
+  transform: translateY(-1px);
+}
+
+.proof-card-download svg {
+  width: 22px;
+  height: 22px;
+}
+
+.proof-card-progress {
+  width: min(200px, 80%);
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.proof-card-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  width: 0%;
+  transition: width 120ms linear;
+}
+
+.proof-card-progress-text {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 900;
+  font-size: 1.05rem;
 }
 
 .upload-icon {
