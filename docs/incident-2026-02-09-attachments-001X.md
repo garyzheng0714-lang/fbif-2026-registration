@@ -2,101 +2,92 @@
 
 ## 结论 / 当前状态
 
-- 已修复并上线：表单的「专业观众证明」附件现在会实际上传，并写入飞书多维表格的附件字段（`上传专业观众证明`）。
-- 历史数据无法补救：在修复前，前端并未上传文件内容，服务端也未接收文件字节，因此 2026-02-09 09:13-10:25（用户反馈窗口）期间“显示提交成功但表格无附件”的提交，其附件无法从服务端或飞书侧找回，只能让用户重新提交。
+- 已修复并上线（2026-02-09）：行业观众的「专业观众证明」附件已支持 `multipart/form-data` 上传，并在后台异步写入飞书多维表格附件字段。
+- 已补齐可观测性：前端提交成功弹窗会返回 `traceId` 与 `submissionId`，服务端链路日志也会带上这两个值，便于精确排查。
+- 已增强可靠性：服务端采用**磁盘持久化队列 + 并发控制 + 指数退避重试**。同步成功后才清理临时文件；失败会保留文件并自动重试，超过最大次数进入 `dead` 目录等待人工处理。
+- 已优化附件上传体验：附件区支持追加文件（不会再覆盖/消失），提交时展示上传进度，上传完成后展示缩略图与 hover 下载入口。
 
 ## 影响范围
 
 - 影响对象：选择「食品行业相关从业者（industry）」且携带附件的提交。
-- 表现形式：
-  - 多维表格记录可能创建成功，但附件字段为空。
-  - 部分视图依赖公式字段 `票种（SKU）`；若 `观展身份` 未写入，会导致 `票种（SKU）` 为空，从而在筛选视图中“看不到记录”，进一步误判为“没有提交成功”。
+- 影响表现：
+  - 表单前端提示“提交成功”（HTTP 202 Accepted），但后台异步写入失败导致多维表格看不到记录或附件缺失。
+  - 若多维表格视图存在筛选条件（例如依赖某些字段或公式字段），也可能造成“记录已创建但视图里看不到”，需要在全表或无筛选视图中确认。
 
 ## 调查结论（根因）
 
-### 根因 1：前端未上传文件字节
+### 根因 1：飞书附件 token 归属不正确，导致 Bitable 回写被拒绝
 
-- `apps/web/src/App.tsx` 旧逻辑仅把 `file.name` 保存并以 JSON 形式提交（例如 `proofFileNames`），没有走 `multipart/form-data`，导致服务端根本收不到文件内容，自然也无法写入多维表格的附件字段。
+生产错误日志中发现明确证据（`/root/.pm2/logs/fbif-mock-api-error.log`）：
 
-### 根因 2：后端缺少附件链路（创建记录后未上传附件并回写）
+```text
+feishu sync failed: [trace=bb257e0e-7a34-46b4-8e1d-80807b316911] [idSuffix=001X] [sub=825f2adc-85cb-4989-98e3-d12e830610f9] update record failed: The attachment does not belong to this bitable.
+```
 
-- `apps/mock-api/src/app.js` 旧逻辑仅接收 JSON；未配置上传中间件（multer）、未落盘临时文件、未上传飞书 Drive Media、未对 Bitable 记录做附件字段更新。
+该错误意味着上传得到的 `file_token` 不属于当前多维表格（上传接口/parent 参数不匹配），从而在更新附件字段时被飞书拒绝，最终表现为“提交受理成功，但附件没有写入表格”。
 
-### 根因 3（修复过程中暴露）：Drive token 归属不正确导致回写失败
+### 根因 2：异步受理导致“成功提示”与“最终落表”存在时间差
 
-- 早期尝试使用 `drive/v1/files/upload_all` + `parent_type=explorer` 生成的 `file_token` 在回写 Bitable 附件字段时会报错：
-  - `The attachment does not belong to this bitable.`
-- 解决方式：改为使用 `drive/v1/medias/*` 上传，并将 `parent_type=bitable_file`、`parent_node=FEISHU_APP_TOKEN`（默认）以确保 token 归属于该 Bitable，可被附件字段接受。
+系统采用 `202 Accepted` 作为受理成功（为了前端快速响应），多维表格写入在后台异步完成。
+
+- 如果后台同步失败且没有可靠的队列/重试，用户会感知为“显示成功但表格没有数据/附件”。
+- 因此需要“可观测性 + 持久化队列 + 重试”来保证最终一致性。
+
+### 根因 3（历史版本）：附件字节未进入服务端，无法补齐
+
+在 `multipart` 支持上线之前，如果前端仅提交文件名/元数据而未上传文件字节，则服务端与飞书侧都不存在可用的附件内容，历史提交无法补齐，只能重新提交。
 
 ## 修复内容（已上线）
 
-### 配置层
+### 后端（`apps/mock-api`）
 
-- 上传限制（后端 multer）：
-  - 单文件上限：50 MB（`MOCK_API_MAX_UPLOAD_MB=50`）
-  - 文件数上限：5（`MOCK_API_MAX_UPLOAD_FILES=5`）
-  - 临时目录：`/tmp/fbif-form-uploads`（可配 `MOCK_API_UPLOAD_DIR`）
+- `POST /api/submissions` 支持 `multipart/form-data`，使用 `multer` 落盘临时文件。
+- 多维表格同步链路（后台队列任务）：
+  1. 创建 Bitable 主记录；
+  2. 使用 Drive Media 上传附件（确保 token 归属该 Bitable）；
+  3. 更新 Bitable 记录的附件字段；
+  4. 成功后清理本地临时文件；失败则保留文件并进入重试。
+- 可靠性机制：
+  - 队列目录（生产）：`/opt/web-fbif-form/shared/mock-api-queue/{pending,processing,dead}`
+  - 失败自动重试：指数退避（exponential backoff），最大次数可配置；超过上限进入 `dead`。
+- 可观测性：
+  - 服务端生成 `traceId` 并通过响应头/响应体返回；
+  - 关键日志包含 `traceId`、证件号后四位、`submissionId`、上传字节数与多维表格同步阶段。
 
-### 代码层
+### 前端（`apps/web`）
 
-- 前端（`apps/web/src/App.tsx`）
-  - 行业观众走 `FormData` 上传：字段 + `proofFiles`（可多文件）。
-  - 不再把附件信息持久化到 `localStorage`（刷新后需重新选择文件，避免“显示成功但实际无文件数据”）。
-
-- 后端（`apps/mock-api`）
-  - `POST /api/submissions` 自动识别 `multipart/form-data`：
-    - 使用 `multer` 落盘临时文件。
-    - 行业观众未上传附件则直接 400（前置校验）。
-  - 异步同步链路（`apps/mock-api/src/store.js`）：
-    1. 先创建 Bitable 主记录；
-    2. 上传附件到 Drive Media：
-       - `<= 20MB` 用 `upload_all`
-       - `> 20MB` 用 `upload_prepare/upload_part/upload_finish` 分片上传
-       - 含 Adler32 checksum；并对 sha256+filename 做 token 缓存，避免同名同内容重复上传
-    3. 更新 Bitable 记录附件字段；
-    4. 若“主记录已创建但附件链路失败”，则回滚删除该记录，保证表一致性；
-    5. 无论成功/失败均清理临时文件。
-  - 重试与退避：对飞书 API 调用加入指数退避重试（最大 3 次）。
-  - 可观测性：
-    - 为每个请求生成 `traceId`（响应头 `X-Trace-Id`，响应体也返回 `traceId`）。
-    - 关键链路日志包含：时间戳、`traceId`、证件号后四位、submissionId、附件上传阶段。
-
-### 权限层
-
-- 当前链路无 API Gateway / Nginx 反代层；后端仅依赖 CSRF（cookie + header）。
-- 未观察到 401/403 或限流导致的失败；tenant_access_token 会自动刷新。
+- 附件组件重构：
+  - 选择文件后显示缩略图卡片；
+  - 再次选择/拖拽/粘贴会**追加**文件，不会覆盖之前已选内容；
+  - 支持单个文件移除（右上角 X）；
+  - 上传完成后 hover 显示文件名与下载按钮。
+- 提交体验：
+  - 行业观众提交走 `XMLHttpRequest + FormData`，可展示上传进度（匹配“上传中”的 UI 状态）；
+  - 服务端返回 `202` 后立即展示“提交成功”弹窗，并展示 `traceId/submissionId` 供排查。
 
 ## 验证结果（生产环境实测）
 
-> 在阿里云服务器本机对 `http://127.0.0.1:8080` 进行 `curl -F proofFiles=@...` 测试；证件号使用非真实值 `TEST001X`（后四位 001X）。
-
-- 小文件（1 MB，单附件）：同步成功，附件字段可预览（proofCount=1）
-- 大文件（11 MB，单附件，`upload_all`）：同步成功，附件字段可预览（proofCount=1）
-- 超 20MB（21 MB，单附件，分片上传）：同步成功（proofCount=1）
-- 多附件（3 x 11 MB）：同步成功（proofCount=3）
-
-示例日志（`/root/.pm2/logs/fbif-mock-api-out.log`，已含时间戳与 traceId）：
+以 `idSuffix=001X` 的一笔提交为例（日志来自 `/root/.pm2/logs/fbif-mock-api-out.log`）：
 
 ```text
-2026-02-09T03:33:04.823Z submission upload accepted: [trace=...] [idSuffix=001X] [sub=...] role=industry files=1 bytes=1048576
-2026-02-09T03:33:06.023Z multitable sync start: [trace=...] [idSuffix=001X] [sub=...] files=1
-2026-02-09T03:33:09.423Z multitable attachment upload ok: [trace=...] [idSuffix=001X] [sub=...] count=1 ms=3401
-2026-02-09T03:33:10.941Z multitable sync ok: [trace=...] [idSuffix=001X] [sub=...] ms=4919
+2026-02-09T06:03:15.032Z submission upload accepted: [trace=22e7ab73-ba0e-401a-a8b7-615bba2b6f93] [idSuffix=001X] [sub=013af68a-f06e-4723-a423-3831df2739fe] role=industry files=1 bytes=52559
+2026-02-09T06:03:15.384Z multitable sync start: [trace=22e7ab73-ba0e-401a-a8b7-615bba2b6f93] [idSuffix=001X] [sub=013af68a-f06e-4723-a423-3831df2739fe] files=1
+2026-02-09T06:03:17.765Z multitable attachment upload ok: [trace=22e7ab73-ba0e-401a-a8b7-615bba2b6f93] [idSuffix=001X] [sub=013af68a-f06e-4723-a423-3831df2739fe] count=1 ms=2381
+2026-02-09T06:03:19.734Z multitable sync ok: [trace=22e7ab73-ba0e-401a-a8b7-615bba2b6f93] [idSuffix=001X] [sub=013af68a-f06e-4723-a423-3831df2739fe] record_id_suffix=mQdWl9 ms=4350
 ```
 
-## 关于“<500ms / 平均<2s”的说明
+说明：日志时间为 UTC（`toISOString()`），若按北京时间（UTC+8）对齐，请将时间 +8 小时。
 
-- 对于 `>10MB` 的附件，**端到端上传 + 飞书侧落盘 + Bitable 回写**在现实网络下很难做到 `<500ms`，也很难稳定 `<2s`。
-- 当前实现能保证正确性与可观测性；若需要进一步压缩耗时，建议改为“浏览器直传 OSS/飞书中转 + 后端仅回写 URL/token”的架构，并在前端增加上传进度提示。
+## 运维与排查指引（后续快速定位）
 
-## 运维与排查指引（面向后续类似问题）
-
-- 服务器日志：
-  - 业务链路日志：`/root/.pm2/logs/fbif-mock-api-out.log`
-  - 错误日志：`/root/.pm2/logs/fbif-mock-api-error.log`
-  - 建议过滤关键字：`multitable|attachment|upload|idSuffix=001X|trace=`
+- 关键日志：
+  - 正常链路：`/root/.pm2/logs/fbif-mock-api-out.log`
+  - 异常链路：`/root/.pm2/logs/fbif-mock-api-error.log`
+- 推荐检索条件：
+  - 证件号后四位：`idSuffix=001X`
+  - 单笔链路：`trace=<traceId>` 或 `sub=<submissionId>`
+  - 关键字：`multitable`、`attachment`、`upload`、`retry`、`dead`
 - 端口路径：
   - Web：PM2 `fbif-web`（`0.0.0.0:3001`）
   - API：PM2 `fbif-mock-api`（`0.0.0.0:8080`）
-  - 当前链路不经过 Nginx；如未来加反代，需同步放开 `client_max_body_size` 与 `proxy_read_timeout`。
 
