@@ -28,6 +28,8 @@ export function validateSubmission(input) {
   const company = trimText(input.company);
   const idNumber = trimText(input.idNumber);
   const role = trimText(input.role);
+  const businessType = trimText(input.businessType);
+  const department = trimText(input.department);
   const idTypeRaw = trimText(input.idType);
   const idType = idTypeRaw ? idTypeRaw : 'cn_id';
 
@@ -73,6 +75,18 @@ export function validateSubmission(input) {
 
   if (allowedIdTypes.has(idType)) {
     payload.idType = idType;
+  }
+
+  if (payload.role === 'industry') {
+    if (!businessType) {
+      return { ok: false, error: '贵司的业务类型不能为空' };
+    }
+    if (!department) {
+      return { ok: false, error: '您所处的部门不能为空' };
+    }
+
+    payload.businessType = businessType.slice(0, 64);
+    payload.department = department.slice(0, 64);
   }
 
   return {

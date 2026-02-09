@@ -8,7 +8,6 @@ import {
 } from './utils/validation';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-const SYNC_TIMEOUT_MS = Number(import.meta.env.VITE_SYNC_TIMEOUT_MS || 30000);
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
@@ -74,14 +73,9 @@ type Notice =
   | ''
   | '请选择观展身份'
   | '请先修正表单错误'
-  | '提交成功'
   | '提交失败，请稍后重试';
 
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function parseJsonIfPossible(response: Response): Promise<any | null> {
   const contentType = response.headers.get('content-type') || '';
@@ -108,6 +102,29 @@ function validateIdNumber(idType: IdType, idNumber: string) {
 
 function fieldKey(identity: Exclude<Identity, ''>, field: string) {
   return `${identity}.${field}`;
+}
+
+type ProofPreview = {
+  name: string;
+  size: number;
+  type: string;
+  previewUrl?: string;
+};
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let idx = 0;
+  let value = bytes;
+  while (value >= 1024 && idx < units.length - 1) {
+    value /= 1024;
+    idx += 1;
+  }
+  return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+}
+
+function canPreviewImage(file: File) {
+  return Boolean(file.type && file.type.startsWith('image/'));
 }
 
 function IndustryCardIcon() {
@@ -173,9 +190,22 @@ export default function App() {
   const [isSwitching, setIsSwitching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProofDragOver, setIsProofDragOver] = useState(false);
+  const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
+  const proofPreviewUrlsRef = useRef<string[]>([]);
   const switchTimerRef = useRef<number | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
   const proofUploadsRef = useRef<File[]>([]);
+  const [submitDialog, setSubmitDialog] = useState<{
+    open: boolean;
+    status: 'submitting' | 'success' | 'error';
+    submissionId: string;
+    traceId: string;
+  }>({
+    open: false,
+    status: 'submitting',
+    submissionId: '',
+    traceId: ''
+  });
 
   useEffect(() => {
     try {
@@ -219,6 +249,14 @@ export default function App() {
       if (switchTimerRef.current) {
         window.clearTimeout(switchTimerRef.current);
       }
+      proofPreviewUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore revoke failures.
+        }
+      });
+      proofPreviewUrlsRef.current = [];
     };
   }, []);
 
@@ -284,6 +322,15 @@ export default function App() {
 
     if (next !== 'industry') {
       proofUploadsRef.current = [];
+      proofPreviewUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore revoke failures.
+        }
+      });
+      proofPreviewUrlsRef.current = [];
+      setProofPreviews([]);
       if (proofInputRef.current) {
         proofInputRef.current.value = '';
       }
@@ -308,6 +355,15 @@ export default function App() {
     }
 
     proofUploadsRef.current = [];
+    proofPreviewUrlsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore revoke failures.
+      }
+    });
+    proofPreviewUrlsRef.current = [];
+    setProofPreviews([]);
     if (proofInputRef.current) {
       proofInputRef.current.value = '';
     }
@@ -323,9 +379,37 @@ export default function App() {
 
   const updateProofFiles = (files: FileList | null) => {
     const selected = Array.from(files || []);
+    proofPreviewUrlsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore revoke failures.
+      }
+    });
+    proofPreviewUrlsRef.current = [];
+
     proofUploadsRef.current = selected;
     const names = selected.map((file) => file.name);
     setIndustryForm((prev) => ({ ...prev, proofFiles: names }));
+    setProofPreviews(
+      selected.map((file) => {
+        if (canPreviewImage(file)) {
+          const url = URL.createObjectURL(file);
+          proofPreviewUrlsRef.current.push(url);
+          return {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            previewUrl: url
+          };
+        }
+        return {
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream'
+        };
+      })
+    );
     markTouched(fieldKey('industry', 'proofFiles'));
   };
 
@@ -340,37 +424,6 @@ export default function App() {
       event.preventDefault();
       proofInputRef.current?.click();
     }
-  };
-
-  const pollStatus = async (id: string): Promise<boolean> => {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt <= SYNC_TIMEOUT_MS) {
-      const resp = await fetch(`${API_BASE}/api/submissions/${id}/status`, {
-        credentials: 'include'
-      });
-
-      if (!resp.ok) {
-        return false;
-      }
-
-      const data = await parseJsonIfPossible(resp);
-      if (!data) {
-        return false;
-      }
-
-      if (data.syncStatus === 'SUCCESS') {
-        return true;
-      }
-
-      if (data.syncStatus === 'FAILED') {
-        return false;
-      }
-
-      // Poll every 1.5s until timeout or terminal state.
-      await sleep(1500);
-    }
-
-    return false;
   };
 
   const submit = useThrottleCallback(async () => {
@@ -389,6 +442,13 @@ export default function App() {
 
     setNotice('');
     setIsSubmitting(true);
+    setSubmitDialog((prev) => ({
+      ...prev,
+      open: true,
+      status: 'submitting',
+      submissionId: '',
+      traceId: ''
+    }));
 
     try {
       const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
@@ -462,20 +522,32 @@ export default function App() {
         throw new Error('submit_failed');
       }
 
-      const ok = await pollStatus(submitData.id);
-      if (!ok) {
-        throw new Error('sync_failed');
-      }
+      setSubmitDialog((prev) => ({
+        ...prev,
+        open: true,
+        status: 'success',
+        submissionId: String(submitData.id || ''),
+        traceId: String(submitData.traceId || '')
+      }));
 
       setIndustryForm(initialIndustryForm);
       setConsumerForm(initialConsumerForm);
       proofUploadsRef.current = [];
+      proofPreviewUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore revoke failures.
+        }
+      });
+      proofPreviewUrlsRef.current = [];
+      setProofPreviews([]);
       if (proofInputRef.current) {
         proofInputRef.current.value = '';
       }
       setTouched({});
       setSubmitAttempted(false);
-      setNotice('提交成功');
+      setNotice('');
       try {
         window.localStorage.setItem(
           FORM_DRAFT_KEY,
@@ -490,6 +562,11 @@ export default function App() {
       }
     } catch {
       setNotice('提交失败，请稍后重试');
+      setSubmitDialog((prev) => ({
+        ...prev,
+        open: true,
+        status: 'error'
+      }));
     } finally {
       setIsSubmitting(false);
     }
@@ -508,11 +585,9 @@ export default function App() {
         <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
 
         {page === 'identity' && (
-          <section className="card role-card">
-            <h2>
-              <span className="step">*1</span>
-              请选择您的观展身份
-            </h2>
+          <>
+            <section className="card role-card">
+              <h2>请选择您的观展身份</h2>
             <p className="tips">
               我们将为您发放对应观展票，权益说明如下：
               <br />
@@ -553,7 +628,10 @@ export default function App() {
                 </span>
               </button>
             </div>
-          </section>
+            </section>
+
+            <img className="intro-image" src={INTRO_IMAGE_URL} alt="活动介绍" />
+          </>
         )}
 
         {page === 'form' && (
@@ -680,8 +758,34 @@ export default function App() {
                       <p className="upload-subtitle">或点击选择文件（支持 JPG / PNG / PDF）</p>
                     </div>
                     <p className="hint">支持名片、工作证、在职证明等材料。刷新后需重新选择文件。</p>
-                    {industryForm.proofFiles.length > 0 && (
-                      <p className="selected-files">{industryForm.proofFiles.join('、')}</p>
+                    {proofPreviews.length > 0 && (
+                      <div className="proof-preview">
+                        <div className="proof-summary">
+                          <span className="proof-summary-title">已选择 {proofPreviews.length} 个文件</span>
+                          <span className="proof-summary-hint">请确认文件清晰可读</span>
+                        </div>
+                        <div className="proof-grid" role="list">
+                          {proofPreviews.map((file) => (
+                            <div key={file.name} className="proof-item" role="listitem">
+                              <div className="proof-thumb">
+                                {file.previewUrl ? (
+                                  <img src={file.previewUrl} alt={file.name} loading="lazy" />
+                                ) : (
+                                  <div className="proof-thumb-fallback" aria-label={file.type}>
+                                    {file.type.toLowerCase().includes('pdf') ? 'PDF' : 'FILE'}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="proof-meta">
+                                <span className="proof-name" title={file.name}>
+                                  {file.name}
+                                </span>
+                                <span className="proof-size">{formatBytes(file.size)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
                       <span className="error">{industryErrors.proofFiles}</span>
@@ -762,9 +866,7 @@ export default function App() {
 
                   <div className="form-actions">
                     {notice && (
-                      <p className={`notice ${notice === '提交成功' ? 'notice-ok' : 'notice-error'}`}>
-                        {notice}
-                      </p>
+                      <p className="notice notice-error">{notice}</p>
                     )}
                     <button className="submit-button" type="submit" disabled={!identity || isSubmitting}>
                       {isSubmitting ? '提交中...' : '领取观展票'}
@@ -847,9 +949,7 @@ export default function App() {
 
                   <div className="form-actions">
                     {notice && (
-                      <p className={`notice ${notice === '提交成功' ? 'notice-ok' : 'notice-error'}`}>
-                        {notice}
-                      </p>
+                      <p className="notice notice-error">{notice}</p>
                     )}
                     <button className="submit-button" type="submit" disabled={!identity || isSubmitting}>
                       {isSubmitting ? '提交中...' : '领取观展票'}
@@ -858,11 +958,62 @@ export default function App() {
                 </form>
               )}
             </section>
-
-            <img className="intro-image" src={INTRO_IMAGE_URL} alt="活动介绍" />
           </>
         )}
       </div>
+
+      {submitDialog.open && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="提交状态">
+          <div className="modal">
+            {submitDialog.status === 'submitting' && (
+              <>
+                <h3 className="modal-title">正在提交</h3>
+                <p className="modal-body">我们正在接收您的信息，请勿关闭页面。</p>
+              </>
+            )}
+            {submitDialog.status === 'success' && (
+              <>
+                <h3 className="modal-title modal-title-ok">提交成功</h3>
+                <p className="modal-body">
+                  您的提交已成功受理，系统将后台异步写入多维表格。
+                  <br />
+                  如需人工排查，请提供 Trace ID。
+                </p>
+                {(submitDialog.traceId || submitDialog.submissionId) && (
+                  <div className="modal-meta">
+                    {submitDialog.traceId && (
+                      <p className="modal-meta-line">
+                        Trace ID: <code>{submitDialog.traceId}</code>
+                      </p>
+                    )}
+                    {submitDialog.submissionId && (
+                      <p className="modal-meta-line">
+                        Submission ID: <code>{submitDialog.submissionId}</code>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {submitDialog.status === 'error' && (
+              <>
+                <h3 className="modal-title modal-title-error">提交失败</h3>
+                <p className="modal-body">请稍后重试。如持续失败，请联系工作人员。</p>
+              </>
+            )}
+            <div className="modal-actions">
+              <button
+                className={`modal-button ${submitDialog.status === 'submitting' ? '' : 'modal-button-primary'}`}
+                type="button"
+                onClick={() => setSubmitDialog((prev) => ({ ...prev, open: false }))}
+                disabled={submitDialog.status === 'submitting' && isSubmitting}
+              >
+                {submitDialog.status === 'submitting' ? '隐藏' : '确定'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

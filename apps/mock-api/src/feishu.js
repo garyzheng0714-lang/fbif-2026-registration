@@ -19,6 +19,8 @@ const fieldMap = {
   idNumber: process.env.FEISHU_FIELD_ID || '证件号码（问卷题）',
   identity: process.env.FEISHU_FIELD_IDENTITY || '',
   idType: process.env.FEISHU_FIELD_ID_TYPE || '',
+  businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
+  department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proof: process.env.FEISHU_FIELD_PROOF || '',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || ''
@@ -181,6 +183,14 @@ function mapFields(submission) {
     if (idTypeValue) {
       fields[fieldMap.idType] = idTypeValue;
     }
+  }
+
+  if (fieldMap.businessType && submission.businessType) {
+    fields[fieldMap.businessType] = submission.businessType;
+  }
+
+  if (fieldMap.department && submission.department) {
+    fields[fieldMap.department] = submission.department;
   }
 
   if (fieldMap.submittedAt) {
