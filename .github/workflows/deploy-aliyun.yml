@@ -15,6 +15,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fbif_form
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fbif_form"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +51,7 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             apps/mock-api/package-lock.json
+            apps/api/package-lock.json
 
       - name: Build And Test
         env:
@@ -34,6 +59,12 @@ jobs:
         run: |
           set -euo pipefail
           API_URL="${VITE_API_URL:-http://112.124.103.65:8080}"
+
+          npm ci --prefix apps/api
+          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
+          npm test --prefix apps/api
+          npm run build --prefix apps/api
+
           npm ci --prefix apps/mock-api
           npm test --prefix apps/mock-api
           npm ci --prefix apps/web
@@ -150,10 +181,24 @@ jobs:
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
           APP_DIR: ${{ secrets.APP_DIR }}
           WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          DATA_KEY: ${{ secrets.DATA_KEY }}
+          DATA_HASH_SALT: ${{ secrets.DATA_HASH_SALT }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
           FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
+          OSS_REGION: ${{ secrets.OSS_REGION }}
+          OSS_HOST: ${{ secrets.OSS_HOST }}
+          OSS_PUBLIC_BASE_URL: ${{ secrets.OSS_PUBLIC_BASE_URL }}
+          OSS_UPLOAD_PREFIX: ${{ secrets.OSS_UPLOAD_PREFIX }}
+          OSS_MAX_UPLOAD_MB: ${{ secrets.OSS_MAX_UPLOAD_MB }}
+          OSS_POLICY_EXPIRE_SECONDS: ${{ secrets.OSS_POLICY_EXPIRE_SECONDS }}
+          OSS_OBJECT_ACL: ${{ secrets.OSS_OBJECT_ACL }}
           GH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -174,25 +219,33 @@ jobs:
 
             tar -xzf /tmp/release.tgz -C "${RELEASE_DIR}"
 
-            npm ci --omit=dev --prefix "${RELEASE_DIR}/apps/mock-api"
+            npm ci --prefix "${RELEASE_DIR}/apps/api"
 
             SOURCE_ENV=""
-            if [ -f "${CURRENT_LINK}/apps/mock-api/.env" ]; then
-              SOURCE_ENV="${CURRENT_LINK}/apps/mock-api/.env"
-            elif [ -f "${APP_ROOT}/apps/mock-api/.env" ]; then
-              SOURCE_ENV="${APP_ROOT}/apps/mock-api/.env"
+            if [ -f "${CURRENT_LINK}/apps/api/.env" ]; then
+              SOURCE_ENV="${CURRENT_LINK}/apps/api/.env"
+            elif [ -f "${APP_ROOT}/apps/api/.env" ]; then
+              SOURCE_ENV="${APP_ROOT}/apps/api/.env"
             fi
 
             if [ -n "${SOURCE_ENV}" ]; then
-              cp "${SOURCE_ENV}" "${RELEASE_DIR}/apps/mock-api/.env"
+              cp "${SOURCE_ENV}" "${RELEASE_DIR}/apps/api/.env"
             else
+              : "${DATABASE_URL:?Missing DATABASE_URL secret (or existing server apps/api/.env)}"
+              : "${REDIS_URL:?Missing REDIS_URL secret (or existing server apps/api/.env)}"
+              : "${DATA_KEY:?Missing DATA_KEY secret (or existing server apps/api/.env)}"
+              : "${DATA_HASH_SALT:?Missing DATA_HASH_SALT secret (or existing server apps/api/.env)}"
               : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret (or existing server .env)}"
               : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret (or existing server .env)}"
 
               {
-                echo "MOCK_API_PORT=8080"
+                echo "NODE_ENV=production"
+                echo "PORT=8080"
                 echo "WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}"
-                echo "MOCK_API_SYNC_PROVIDER=feishu"
+                echo "DATABASE_URL=${DATABASE_URL}"
+                echo "REDIS_URL=${REDIS_URL}"
+                echo "DATA_KEY=${DATA_KEY}"
+                echo "DATA_HASH_SALT=${DATA_HASH_SALT}"
                 echo "FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}"
                 echo "FEISHU_APP_SECRET=${FEISHU_APP_SECRET}"
                 echo "FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}"
@@ -202,16 +255,26 @@ jobs:
                 echo "FEISHU_FIELD_TITLE=职位（问卷题）"
                 echo "FEISHU_FIELD_COMPANY=公司（问卷题）"
                 echo "FEISHU_FIELD_ID=证件号码（问卷题）"
+                echo "FEISHU_FIELD_BUSINESS_TYPE=贵司的业务类型"
+                echo "FEISHU_FIELD_DEPARTMENT=您所处的部门（问卷题）"
+                echo "FEISHU_FIELD_PROOF_URL=专业观众证明（附件链接）"
                 echo "FEISHU_FIELD_SUBMITTED_AT="
                 echo "FEISHU_FIELD_SYNC_STATUS="
-              } > "${RELEASE_DIR}/apps/mock-api/.env"
+
+                if [ -n "${OSS_ACCESS_KEY_ID:-}" ]; then echo "OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}"; fi
+                if [ -n "${OSS_ACCESS_KEY_SECRET:-}" ]; then echo "OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}"; fi
+                if [ -n "${OSS_BUCKET:-}" ]; then echo "OSS_BUCKET=${OSS_BUCKET}"; fi
+                if [ -n "${OSS_REGION:-}" ]; then echo "OSS_REGION=${OSS_REGION}"; fi
+                if [ -n "${OSS_HOST:-}" ]; then echo "OSS_HOST=${OSS_HOST}"; fi
+                if [ -n "${OSS_PUBLIC_BASE_URL:-}" ]; then echo "OSS_PUBLIC_BASE_URL=${OSS_PUBLIC_BASE_URL}"; fi
+                if [ -n "${OSS_UPLOAD_PREFIX:-}" ]; then echo "OSS_UPLOAD_PREFIX=${OSS_UPLOAD_PREFIX}"; fi
+                if [ -n "${OSS_MAX_UPLOAD_MB:-}" ]; then echo "OSS_MAX_UPLOAD_MB=${OSS_MAX_UPLOAD_MB}"; fi
+                if [ -n "${OSS_POLICY_EXPIRE_SECONDS:-}" ]; then echo "OSS_POLICY_EXPIRE_SECONDS=${OSS_POLICY_EXPIRE_SECONDS}"; fi
+                if [ -n "${OSS_OBJECT_ACL:-}" ]; then echo "OSS_OBJECT_ACL=${OSS_OBJECT_ACL}"; fi
+              } > "${RELEASE_DIR}/apps/api/.env"
             fi
 
-            # Avoid exporting empty FEISHU_* env to pm2 process.
-            unset WEB_ORIGIN MOCK_API_SYNC_PROVIDER
-            unset FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN FEISHU_TABLE_ID
-            unset FEISHU_FIELD_NAME FEISHU_FIELD_PHONE FEISHU_FIELD_TITLE FEISHU_FIELD_COMPANY FEISHU_FIELD_ID
-            unset FEISHU_FIELD_SUBMITTED_AT FEISHU_FIELD_SYNC_STATUS
+            (cd "${RELEASE_DIR}/apps/api" && npm run prisma:migrate)
 
             ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
@@ -220,7 +283,12 @@ jobs:
             fi
 
             pm2 delete fbif-mock-api >/dev/null 2>&1 || true
-            pm2 start "${CURRENT_LINK}/apps/mock-api/src/server.js" --name fbif-mock-api --cwd "${CURRENT_LINK}/apps/mock-api" --update-env
+
+            pm2 delete fbif-api >/dev/null 2>&1 || true
+            pm2 start "${CURRENT_LINK}/apps/api/dist/index.js" --name fbif-api --cwd "${CURRENT_LINK}/apps/api" --update-env
+
+            pm2 delete fbif-worker >/dev/null 2>&1 || true
+            pm2 start "${CURRENT_LINK}/apps/api/dist/worker.js" --name fbif-worker --cwd "${CURRENT_LINK}/apps/api" --update-env
 
             pm2 delete fbif-web >/dev/null 2>&1 || true
             pm2 serve "${CURRENT_LINK}/apps/web/dist" 3001 --name fbif-web --spa
@@ -235,8 +303,8 @@ jobs:
           REMOTE_SCRIPT
 
           REMOTE_ENV="$(printf \
-            "APP_DIR=%q WEB_ORIGIN=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q GH_SHA=%q" \
-            "${APP_DIR:-}" "${WEB_ORIGIN:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${GH_SHA}")"
+            "APP_DIR=%q WEB_ORIGIN=%q DATABASE_URL=%q REDIS_URL=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q GH_SHA=%q" \
+            "${APP_DIR:-}" "${WEB_ORIGIN:-}" "${DATABASE_URL:-}" "${REDIS_URL:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${GH_SHA}")"
 
           ssh \
             -i ~/.ssh/id_aliyun \
