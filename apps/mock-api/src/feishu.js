@@ -266,6 +266,13 @@ function normalizeDepartmentOptionText(value) {
   return text;
 }
 
+function normalizeSelectOptionText(value) {
+  // Remove invisible characters that can sneak into copied labels and break exact matching.
+  return String(value || '')
+    .trim()
+    .replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+}
+
 function resolveSingleSelectOptionId(meta, rawValue) {
   const value = String(rawValue || '').trim();
   if (!meta || !value) return null;
@@ -278,6 +285,19 @@ function resolveSingleSelectOptionId(meta, rawValue) {
 
   const exact = meta.optionsByName.get(value);
   if (exact) return exact;
+
+  // Try exact match after stripping common invisible chars/whitespace.
+  const normalizedValue = normalizeSelectOptionText(value);
+  if (normalizedValue && normalizedValue !== value) {
+    const normalizedExactMatches = [];
+    for (const [name, id] of meta.optionsByName.entries()) {
+      if (normalizeSelectOptionText(name) === normalizedValue) {
+        normalizedExactMatches.push(id);
+        if (normalizedExactMatches.length > 1) break;
+      }
+    }
+    if (normalizedExactMatches.length === 1) return normalizedExactMatches[0];
+  }
 
   const matches = [];
   for (const [name, id] of meta.optionsByName.entries()) {
