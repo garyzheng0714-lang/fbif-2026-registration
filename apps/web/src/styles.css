@@ -524,6 +524,30 @@ select:focus {
   grid-template-rows: auto auto;
 }
 
+.proof-card-overlay-error {
+  opacity: 1;
+  pointer-events: none;
+  background: rgba(139, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  grid-template-rows: auto auto;
+  text-align: center;
+}
+
+.proof-card-error-title {
+  color: rgba(255, 255, 255, 0.96);
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+.proof-card-error-body {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0 10px;
+}
+
 .proof-card-name-pill {
   justify-self: start;
   max-width: 100%;

@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import { createSubmission, getSubmission } from './store.js';
 import { validateSubmission } from './validation.js';
+import { buildOssUploadPolicy, isOssEnabled } from './oss.js';
 
 const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:4173';
 const latencyMs = Number(process.env.MOCK_API_LATENCY_MS || 120);
@@ -95,6 +96,41 @@ export function createApp() {
     res.json({ csrfToken: token });
   });
 
+  app.post('/api/oss/policy', (req, res) => {
+    const csrfHeader = req.headers['x-csrf-token'];
+    const csrfCookie = req.cookies.mock_csrf;
+    if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
+      return res.status(403).json({ error: 'Invalid CSRF token' });
+    }
+
+    if (!isOssEnabled()) {
+      return res.status(503).json({
+        error: 'OSSUnavailable',
+        message: 'OSS 上传未配置'
+      });
+    }
+
+    const filename = String(req.body?.filename || '').trim();
+    const sizeBytes = Number(req.body?.size || 0);
+    if (!filename) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'filename 不能为空'
+      });
+    }
+
+    try {
+      const policy = buildOssUploadPolicy({ filename, sizeBytes });
+      return res.json(policy);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '生成上传签名失败';
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: msg
+      });
+    }
+  });
+
   app.post(
     '/api/submissions',
     (req, res, next) => {
@@ -151,10 +187,11 @@ export function createApp() {
         }))
       : [];
 
-    if (result.data.role === 'industry' && files.length === 0) {
+    const proofUrls = Array.isArray(result.data.proofUrls) ? result.data.proofUrls : [];
+    if (result.data.role === 'industry' && files.length === 0 && proofUrls.length === 0) {
       return res.status(400).json({
         error: 'ValidationError',
-        message: '请上传专业观众证明材料'
+        message: '请上传专业观众证明材料或提供附件链接'
       });
     }
 
@@ -163,6 +200,7 @@ export function createApp() {
       submission = createSubmission({
         ...result.data,
         proofUploads: files,
+        proofUrls,
         traceId: res.locals.traceId
       });
     } catch (error) {
@@ -183,6 +221,7 @@ export function createApp() {
       `[trace=${submission.traceId}] [idSuffix=${idSuffix}] [sub=${submission.id}]`,
       `role=${submission.role || ''}`,
       `files=${files.length}`,
+      `urls=${proofUrls.length}`,
       `bytes=${totalBytes}`
     );
 

@@ -1,6 +1,7 @@
 const phoneRegex = /^1[3-9]\d{9}$/;
 const idRegex = /^\d{17}[\dXx]$/;
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
+const maxProofUrls = Math.max(1, Number(process.env.MOCK_API_MAX_PROOF_URLS || 10));
 
 const allowedRoles = new Set(['industry', 'consumer']);
 const allowedIdTypes = new Set(['cn_id', 'passport', 'other']);
@@ -19,6 +20,54 @@ export function isValidChineseId(id) {
 
 function trimText(value) {
   return String(value || '').replace(/[<>]/g, '').trim();
+}
+
+function normalizeUrl(value) {
+  const text = trimText(value);
+  if (!text) return '';
+  if (text.length > 2048) return '';
+
+  try {
+    const u = new URL(text);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.toString();
+  } catch {
+    return '';
+  }
+}
+
+export function normalizeProofUrls(value) {
+  let items = [];
+
+  if (Array.isArray(value)) {
+    items = value;
+  } else if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      items = [];
+    } else if (text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text);
+        items = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        items = text.split(',');
+      }
+    } else {
+      items = text.split(',');
+    }
+  }
+
+  const dedup = new Set();
+  const urls = [];
+  for (const item of items) {
+    if (urls.length >= maxProofUrls) break;
+    const url = normalizeUrl(item);
+    if (!url || dedup.has(url)) continue;
+    dedup.add(url);
+    urls.push(url);
+  }
+
+  return urls;
 }
 
 export function validateSubmission(input) {
@@ -87,6 +136,7 @@ export function validateSubmission(input) {
 
     payload.businessType = businessType.slice(0, 64);
     payload.department = department.slice(0, 64);
+    payload.proofUrls = normalizeProofUrls(input.proofUrls);
   }
 
   return {

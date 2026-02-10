@@ -87,6 +87,80 @@ async function parseJsonIfPossible(response: Response): Promise<any | null> {
   }
 }
 
+type OssPolicy = {
+  host: string;
+  key: string;
+  publicUrl: string;
+  fields: Record<string, string>;
+};
+
+async function createOssPolicy(file: File, csrfToken: string): Promise<OssPolicy> {
+  const resp = await fetch(`${API_BASE}/api/oss/policy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      filename: file.name,
+      size: file.size
+    })
+  });
+
+  const data = await parseJsonIfPossible(resp);
+  if (!resp.ok || !data?.host || !data?.publicUrl || !data?.fields) {
+    throw new Error('oss_policy_failed');
+  }
+
+  return {
+    host: String(data.host),
+    key: String(data.key || ''),
+    publicUrl: String(data.publicUrl),
+    fields: data.fields as Record<string, string>
+  };
+}
+
+function uploadFileToOss(
+  file: File,
+  policy: OssPolicy,
+  onProgress: (loadedBytes: number) => void,
+  onXhrReady?: (xhr: XMLHttpRequest) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    Object.entries(policy.fields || {}).forEach(([k, v]) => {
+      form.append(k, String(v));
+    });
+    if (!policy.fields?.key && policy.key) {
+      form.append('key', policy.key);
+    }
+    form.append('file', file, file.name);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', policy.host);
+    onXhrReady?.(xhr);
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.max(0, Math.min(file.size, Number(event.loaded || 0))));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(file.size);
+        resolve(policy.publicUrl);
+        return;
+      }
+      reject(new Error(`oss_upload_failed_${xhr.status}`));
+    };
+
+    xhr.onerror = () => reject(new Error('oss_upload_network_error'));
+    xhr.onabort = () => reject(new Error('oss_upload_aborted'));
+    xhr.send(form);
+  });
+}
+
 function validateIdNumber(idType: IdType, idNumber: string) {
   const normalized = idNumber.trim();
   if (!idType) return '请选择证件类型';
@@ -108,6 +182,10 @@ type ProofPreview = {
   size: number;
   type: string;
   previewUrl?: string;
+  status: 'uploading' | 'success' | 'error';
+  progress: number;
+  ossUrl: string;
+  error?: string;
 };
 
 function formatBytes(bytes: number) {
@@ -226,8 +304,12 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProofDragOver, setIsProofDragOver] = useState(false);
   const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
-  const [proofUploadPercent, setProofUploadPercent] = useState(0);
   const proofPreviewUrlsRef = useRef<string[]>([]);
+  const proofUploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
+  const csrfTokenCacheRef = useRef<{ token: string; expiresAt: number }>({
+    token: '',
+    expiresAt: 0
+  });
   const switchTimerRef = useRef<number | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
   const proofUploadsRef = useRef<File[]>([]);
@@ -285,6 +367,14 @@ export default function App() {
       if (switchTimerRef.current) {
         window.clearTimeout(switchTimerRef.current);
       }
+      proofUploadXhrsRef.current.forEach((xhr) => {
+        try {
+          xhr.abort();
+        } catch {
+          // Ignore abort failures.
+        }
+      });
+      proofUploadXhrsRef.current.clear();
       proofPreviewUrlsRef.current.forEach((url) => {
         try {
           URL.revokeObjectURL(url);
@@ -297,6 +387,22 @@ export default function App() {
   }, []);
 
   const industryErrors: IndustryErrors = useMemo(() => {
+    const hasProofFiles = proofPreviews.length > 0;
+    const hasUploadingProof = proofPreviews.some((item) => item.status === 'uploading');
+    const hasFailedProof = proofPreviews.some((item) => item.status === 'error');
+    const successProofCount = proofPreviews.filter((item) => item.status === 'success' && item.ossUrl).length;
+
+    let proofError = '';
+    if (!hasProofFiles) {
+      proofError = '请上传专业观众证明材料';
+    } else if (hasUploadingProof) {
+      proofError = '附件转换中，请等待上传完成';
+    } else if (hasFailedProof) {
+      proofError = '有附件转换失败，请删除后重传';
+    } else if (successProofCount <= 0) {
+      proofError = '请上传专业观众证明材料';
+    }
+
     return {
       name: validateRequired(industryForm.name, '姓名', 2, 32),
       idType: industryForm.idType ? '' : '请选择证件类型',
@@ -306,9 +412,9 @@ export default function App() {
       title: validateRequired(industryForm.title, '职位', 2, 32),
       businessType: industryForm.businessType ? '' : '请选择业务类型',
       department: industryForm.department ? '' : '请选择所在部门',
-      proofFiles: industryForm.proofFiles.length ? '' : '请上传专业观众证明材料'
+      proofFiles: proofError
     };
-  }, [industryForm]);
+  }, [industryForm, proofPreviews]);
 
   const consumerErrors: ConsumerErrors = useMemo(() => {
     return {
@@ -353,7 +459,14 @@ export default function App() {
 
   const clearProofFiles = () => {
     proofUploadsRef.current = [];
-    setProofUploadPercent(0);
+    proofUploadXhrsRef.current.forEach((xhr) => {
+      try {
+        xhr.abort();
+      } catch {
+        // Ignore abort failures.
+      }
+    });
+    proofUploadXhrsRef.current.clear();
     proofPreviewUrlsRef.current.forEach((url) => {
       try {
         URL.revokeObjectURL(url);
@@ -367,6 +480,87 @@ export default function App() {
       proofInputRef.current.value = '';
     }
     setIndustryForm((prev) => ({ ...prev, proofFiles: [] }));
+  };
+
+  const fetchCsrfToken = async (force = false) => {
+    if (!force && csrfTokenCacheRef.current.token && csrfTokenCacheRef.current.expiresAt > Date.now()) {
+      return csrfTokenCacheRef.current.token;
+    }
+
+    const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
+      credentials: 'include'
+    });
+
+    const csrfData = await parseJsonIfPossible(csrfResp);
+    if (!csrfResp.ok || !csrfData?.csrfToken) {
+      throw new Error('csrf_failed');
+    }
+
+    const token = String(csrfData.csrfToken);
+    csrfTokenCacheRef.current = {
+      token,
+      expiresAt: Date.now() + 3 * 60 * 1000
+    };
+    return token;
+  };
+
+  const updateProofPreview = (id: string, patch: Partial<ProofPreview>) => {
+    setProofPreviews((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    );
+  };
+
+  const uploadProofFile = async (id: string, file: File) => {
+    updateProofPreview(id, { status: 'uploading', progress: 0, error: '', ossUrl: '' });
+
+    try {
+      const csrfToken = await fetchCsrfToken();
+      const policy = await createOssPolicy(file, csrfToken);
+      const ossUrl = await uploadFileToOss(
+        file,
+        policy,
+        (loadedBytes) => {
+          const progress = Math.max(1, Math.min(99, Math.round((loadedBytes / Math.max(1, file.size)) * 100)));
+          updateProofPreview(id, { status: 'uploading', progress });
+        },
+        (xhr) => {
+          proofUploadXhrsRef.current.set(id, xhr);
+        }
+      );
+
+      proofUploadXhrsRef.current.delete(id);
+      setProofPreviews((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: 'success',
+                progress: 100,
+                ossUrl,
+                error: ''
+              }
+            : item
+        )
+      );
+    } catch (error) {
+      proofUploadXhrsRef.current.delete(id);
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('aborted')) return;
+
+      setProofPreviews((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: 'error',
+                progress: 0,
+                ossUrl: '',
+                error: '转换失败，请删除后重传'
+              }
+            : item
+        )
+      );
+    }
   };
 
   const handleIdentitySelect = (next: Exclude<Identity, ''>) => {
@@ -418,6 +612,7 @@ export default function App() {
     const existingKeys = new Set(proofUploadsRef.current.map((file) => proofFileKey(file)));
     const nextUploads = [...proofUploadsRef.current];
     const nextPreviews: ProofPreview[] = [];
+    const uploadQueue: Array<{ id: string; file: File }> = [];
 
     for (const file of selected) {
       const id = proofFileKey(file);
@@ -438,8 +633,12 @@ export default function App() {
         name: file.name,
         size: file.size,
         type: file.type || (isPdfFile(file) ? 'application/pdf' : 'application/octet-stream'),
-        previewUrl
+        previewUrl,
+        status: 'uploading',
+        progress: 0,
+        ossUrl: ''
       });
+      uploadQueue.push({ id, file });
     }
 
     if (nextPreviews.length === 0) return;
@@ -448,9 +647,23 @@ export default function App() {
     setIndustryForm((prev) => ({ ...prev, proofFiles: nextUploads.map((file) => file.name) }));
     setProofPreviews((prev) => [...prev, ...nextPreviews]);
     markTouched(fieldKey('industry', 'proofFiles'));
+
+    uploadQueue.forEach((item) => {
+      void uploadProofFile(item.id, item.file);
+    });
   };
 
   const removeProofFile = (id: string) => {
+    const active = proofUploadXhrsRef.current.get(id);
+    if (active) {
+      try {
+        active.abort();
+      } catch {
+        // Ignore abort failures.
+      }
+      proofUploadXhrsRef.current.delete(id);
+    }
+
     const nextUploads = proofUploadsRef.current.filter((file) => proofFileKey(file) !== id);
     proofUploadsRef.current = nextUploads;
     setIndustryForm((prev) => ({ ...prev, proofFiles: nextUploads.map((file) => file.name) }));
@@ -519,19 +732,12 @@ export default function App() {
     }));
 
     try {
-      const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
-        credentials: 'include'
-      });
-
-      const csrfData = await parseJsonIfPossible(csrfResp);
-      if (!csrfResp.ok || !csrfData?.csrfToken) {
-        throw new Error('csrf_failed');
-      }
+      const csrfToken = await fetchCsrfToken(true);
 
       const payload = identity === 'industry'
         ? {
-            phone: industryForm.phone.trim(),
-            name: industryForm.name.trim(),
+          phone: industryForm.phone.trim(),
+          name: industryForm.name.trim(),
             title: industryForm.title.trim(),
             company: industryForm.company.trim(),
             idNumber: industryForm.idNumber.trim(),
@@ -539,7 +745,7 @@ export default function App() {
             idType: industryForm.idType,
             businessType: industryForm.businessType,
             department: industryForm.department,
-            proofFileNames: industryForm.proofFiles
+            proofUrls: [] as string[]
           }
         : {
             phone: consumerForm.phone.trim(),
@@ -551,73 +757,25 @@ export default function App() {
             idType: consumerForm.idType
           };
 
-      const shouldUploadProofFiles = identity === 'industry' && proofUploadsRef.current.length > 0;
+      if (identity === 'industry') {
+        const urls = proofPreviews
+          .filter((item) => item.status === 'success' && item.ossUrl)
+          .map((item) => item.ossUrl);
+        payload.proofUrls = urls;
+      }
 
-      const submitResult = shouldUploadProofFiles
-        ? await new Promise<{ ok: boolean; status: number; data: any | null }>((resolve, reject) => {
-            setProofUploadPercent(0);
+      const resp = await fetch(`${API_BASE}/api/submissions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const submitData = await parseJsonIfPossible(resp);
 
-            const form = new FormData();
-            Object.entries(payload).forEach(([key, value]) => {
-              if (Array.isArray(value)) {
-                form.append(key, JSON.stringify(value));
-                return;
-              }
-              if (value === undefined || value === null) return;
-              form.append(key, String(value));
-            });
-            proofUploadsRef.current.forEach((file) => {
-              form.append('proofFiles', file, file.name);
-            });
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `${API_BASE}/api/submissions`);
-            xhr.withCredentials = true;
-            xhr.setRequestHeader('X-CSRF-Token', String(csrfData.csrfToken));
-            xhr.setRequestHeader('Accept', 'application/json');
-
-            xhr.upload.onprogress = (event) => {
-              if (!event.lengthComputable || !event.total) return;
-              const next = Math.round((event.loaded / event.total) * 100);
-              setProofUploadPercent(Math.min(99, Math.max(0, next)));
-            };
-
-            xhr.onload = () => {
-              setProofUploadPercent(100);
-              let data: any | null = null;
-              try {
-                data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
-              } catch {
-                data = null;
-              }
-              resolve({
-                ok: xhr.status >= 200 && xhr.status < 300,
-                status: xhr.status,
-                data
-              });
-            };
-
-            xhr.onerror = () => reject(new Error('network_error'));
-            xhr.onabort = () => reject(new Error('upload_aborted'));
-
-            xhr.send(form);
-          })
-        : await (async () => {
-            const resp = await fetch(`${API_BASE}/api/submissions`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfData.csrfToken
-              },
-              credentials: 'include',
-              body: JSON.stringify(payload)
-            });
-            const data = await parseJsonIfPossible(resp);
-            return { ok: resp.ok, status: resp.status, data };
-          })();
-
-      const submitData = submitResult.data;
-      if (!submitResult.ok || !submitData?.id) {
+      if (!resp.ok || !submitData?.id) {
         throw new Error('submit_failed');
       }
 
@@ -656,7 +814,6 @@ export default function App() {
       }));
     } finally {
       setIsSubmitting(false);
-      setProofUploadPercent(0);
     }
   }, 1500);
 
@@ -879,8 +1036,9 @@ export default function App() {
                           <>
                             <div className="proof-card-list" role="list" aria-label="已选择的证明文件">
                               {proofPreviews.map((file) => {
-                                const isUploading = isSubmitting && proofUploadsRef.current.length > 0;
-                                const displayPercent = Math.min(100, Math.max(0, proofUploadPercent));
+                                const isUploading = file.status === 'uploading';
+                                const isFailed = file.status === 'error';
+                                const displayPercent = Math.min(100, Math.max(0, Math.round(file.progress || 0)));
                                 const isImage = (file.type || '').toLowerCase().startsWith('image/');
                                 const isPdf =
                                   (file.type || '').toLowerCase() === 'application/pdf' ||
@@ -889,7 +1047,7 @@ export default function App() {
                                 return (
                                   <div
                                     key={file.id}
-                                    className={`proof-card ${isUploading ? 'is-uploading' : ''}`}
+                                    className={`proof-card ${isUploading ? 'is-uploading' : ''} ${isFailed ? 'is-error' : ''}`}
                                     role="listitem"
                                     onClick={(event) => {
                                       event.stopPropagation();
@@ -903,10 +1061,9 @@ export default function App() {
                                       aria-label={`移除 ${file.name}`}
                                       onClick={(event) => {
                                         event.stopPropagation();
-                                        if (isUploading) return;
                                         removeProofFile(file.id);
                                       }}
-                                      disabled={isUploading}
+                                      disabled={isSubmitting}
                                     >
                                       ×
                                     </button>
@@ -930,6 +1087,13 @@ export default function App() {
                                           />
                                         </div>
                                         <div className="proof-card-progress-text">{displayPercent}%</div>
+                                      </div>
+                                    ) : isFailed ? (
+                                      <div className="proof-card-overlay proof-card-overlay-error" aria-hidden="true">
+                                        <div className="proof-card-error-title">转换失败</div>
+                                        <div className="proof-card-error-body">
+                                          {file.error || '请删除后重传'}
+                                        </div>
                                       </div>
                                     ) : (
                                       <div className="proof-card-overlay" aria-hidden="true">
