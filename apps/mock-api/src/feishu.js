@@ -224,6 +224,9 @@ function normalizeBusinessTypeOptionText(value) {
   const text = String(value || '').trim();
   if (!text) return '';
 
+  if (text === '食品相关品牌方') {
+    return '食品饮料品牌方（包括传统的食品加工企业';
+  }
   if (text === '食品制造商') {
     return '食品饮料品牌方（包括传统的食品加工企业';
   }
@@ -236,6 +239,10 @@ function normalizeBusinessTypeOptionText(value) {
   if (text === '新兴渠道') {
     return '新零售（前置仓到家';
   }
+  if (text === '其他') {
+    // Avoid ambiguous substring matching ("其他" appears in multiple options).
+    return '其他（包含政府机构、协会、高校、媒体等等）';
+  }
 
   return text;
 }
@@ -244,6 +251,9 @@ function normalizeDepartmentOptionText(value) {
   const text = String(value || '').trim();
   if (!text) return '';
 
+  if (text === '高管/战略') {
+    return '高管、战略部门';
+  }
   if (text === '研发/生产/品控') {
     return '研发、产品、包装';
   }

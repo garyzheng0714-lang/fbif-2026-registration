@@ -11,7 +11,7 @@
 
 ## 测试方法
 - 工具：k6
-- 脚本：`/Library/vibecoding_home/fbif_form/tests/k6/form-submit.js`
+- 脚本：`tests/k6/form-submit.js`
 - 并发梯度：100 / 500 / 1000
 
 ## 结果摘要

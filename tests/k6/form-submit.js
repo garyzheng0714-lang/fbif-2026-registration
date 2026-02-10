@@ -29,11 +29,13 @@ export default function () {
 
   const base17 = `11010119900307${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
   const payload = {
+    role: 'consumer',
+    idType: 'cn_id',
+    idNumber: makeId(base17),
     phone: randomPhone(),
-    name: '测试用户',
-    title: '运营负责人',
-    company: '测试公司',
-    idNumber: makeId(base17)
+    name: '压测用户',
+    title: '消费者',
+    company: '个人消费者'
   };
 
   const res = http.post(`${BASE_URL}/api/submissions`, JSON.stringify(payload), {
