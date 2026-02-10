@@ -12,7 +12,7 @@ curl -i http://localhost:8080/api/csrf
 ```
 
 ## 2. 新增本地模拟后端
-路径：`/Library/vibecoding_home/fbif_form/apps/mock-api`
+路径：`apps/mock-api`
 
 功能覆盖：
 - `GET /api/csrf`：下发 CSRF token 并写 cookie。
@@ -24,11 +24,10 @@ curl -i http://localhost:8080/api/csrf
 - 内置网络模拟：延迟、随机失败、强制失败
 
 ## 3. 一键联调栈脚本
-路径：`/Library/vibecoding_home/fbif_form/scripts/local-stack.mjs`
+路径：`scripts/local-stack.mjs`
 
 命令：
 ```bash
-cd /Library/vibecoding_home/fbif_form
 node scripts/local-stack.mjs start
 node scripts/local-stack.mjs status
 node scripts/local-stack.mjs logs
@@ -41,7 +40,7 @@ node scripts/local-stack.mjs stop
 
 ## 4. 环境变量配置
 ### 4.1 前端（Vite）
-文件：`/Library/vibecoding_home/fbif_form/apps/web/.env`
+文件：`apps/web/.env`
 
 ```env
 VITE_API_URL=http://localhost:8080
@@ -62,11 +61,11 @@ VITE_SYNC_TIMEOUT_MS=30000
 - `MOCK_API_HTTP_500_RATE`：随机 HTTP 500 概率（0~1），默认 `0`
 
 ## 5. 自动化测试用例
-测试文件：`/Library/vibecoding_home/fbif_form/apps/mock-api/test/api.test.js`
+测试文件：`apps/mock-api/test/api.test.js`
 
 执行：
 ```bash
-cd /Library/vibecoding_home/fbif_form/apps/mock-api
+cd apps/mock-api
 npm test
 ```
 
