@@ -22,13 +22,6 @@ export async function createSubmission(input: SubmissionInput, meta: { clientIp?
     proofUrls: Array.isArray(input.proofUrls) ? input.proofUrls : []
   };
 
-  const existing = await prisma.submission.findUnique({
-    where: { clientRequestId: clean.clientRequestId }
-  });
-  if (existing) {
-    return { submission: existing, isNew: false };
-  }
-
   try {
     const created = await prisma.submission.create({
       data: {

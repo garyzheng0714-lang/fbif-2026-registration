@@ -1,6 +1,14 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// NOTE (2026-02-10):
+// Production flow has migrated to `apps/api` + OSS direct upload.
+// Attachments are uploaded by browser directly to OSS and then submitted as `proofUrls` (JSON),
+// so this k6 script (multipart upload to /api/submissions) is kept only for the legacy mock-api path.
+// Use:
+// - Accept-only: tests/k6/form-submit.js
+// - Real OSS upload: tests/load/mixed_oss_100.sh
+
 export const options = {
   scenarios: {
     one_shot_100: {
@@ -85,4 +93,3 @@ export default function () {
   check(res, { 'consumer submit accepted': (r) => r.status === 202 });
   sleep(0.1);
 }
-
