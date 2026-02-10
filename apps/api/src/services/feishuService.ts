@@ -1,5 +1,8 @@
 import { env } from '../config/env.js';
 import type { Submission } from '@prisma/client';
+import { logger } from '../utils/logger.js';
+import { applySingleSelectMappings } from './bitableSelect.js';
+import type { BitableFieldMeta } from './bitableSelect.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -20,14 +23,6 @@ const fieldMap = {
 
 type TokenCache = { value: string; expiresAt: number };
 let tokenCache: TokenCache = { value: '', expiresAt: 0 };
-
-type BitableFieldMeta = {
-  name: string;
-  type: unknown;
-  uiType: string;
-  optionsByName: Map<string, string>;
-  optionsById: Set<string>;
-};
 
 let bitableFieldMetaCache: {
   value: Map<string, BitableFieldMeta> | null;
@@ -276,76 +271,6 @@ function normalizeDepartmentOptionText(value: unknown) {
   return text;
 }
 
-function normalizeSelectOptionText(value: unknown) {
-  return trim(value).replace(/[\s\u200B-\u200D\uFEFF]/g, '');
-}
-
-function resolveSingleSelectOptionId(meta: BitableFieldMeta, rawValue: unknown) {
-  const value = trim(rawValue);
-  if (!value) return null;
-  if (meta.uiType !== 'SingleSelect' && meta.type !== 3) return null;
-
-  if (value.startsWith('opt') && meta.optionsById.has(value)) {
-    return value;
-  }
-
-  const exact = meta.optionsByName.get(value);
-  if (exact) return exact;
-
-  const normalizedValue = normalizeSelectOptionText(value);
-  if (normalizedValue && normalizedValue !== value) {
-    const normalizedExactMatches: string[] = [];
-    for (const [name, id] of meta.optionsByName.entries()) {
-      if (normalizeSelectOptionText(name) === normalizedValue) {
-        normalizedExactMatches.push(id);
-        if (normalizedExactMatches.length > 1) break;
-      }
-    }
-    if (normalizedExactMatches.length === 1) return normalizedExactMatches[0];
-  }
-
-  const matches: string[] = [];
-  for (const [name, id] of meta.optionsByName.entries()) {
-    if (name.includes(value)) {
-      matches.push(id);
-      if (matches.length > 1) break;
-    }
-  }
-
-  return matches.length === 1 ? matches[0] : null;
-}
-
-async function applySingleSelectMappings(fields: Record<string, string>, ctx: { traceId: string; idSuffix: string }) {
-  const metaByName = await getBitableFieldMetaByName();
-
-  for (const [fieldName, value] of Object.entries(fields)) {
-    if (typeof value !== 'string' || !value) continue;
-    const meta = metaByName.get(fieldName);
-    if (!meta) continue;
-    if (meta.uiType !== 'SingleSelect' && meta.type !== 3) continue;
-
-    const optionId = resolveSingleSelectOptionId(meta, value);
-    if (!optionId) {
-      // Keep original value so the request remains best-effort, but log for troubleshooting.
-      // NOTE: no PII in logs, only id suffix and trace id.
-      // eslint-disable-next-line no-console
-      console.warn(
-        new Date().toISOString(),
-        'bitable select option not found:',
-        `[trace=${ctx.traceId}]`,
-        `[idSuffix=${ctx.idSuffix}]`,
-        `field=${fieldName}`,
-        `value=${value}`
-      );
-      continue;
-    }
-
-    fields[fieldName] = optionId;
-  }
-
-  return fields;
-}
-
 export async function mapSubmissionToBitableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
@@ -399,7 +324,8 @@ export async function mapSubmissionToBitableFields(input: {
   }
 
   const idSuffix = sensitive.idNumber.slice(-4);
-  return applySingleSelectMappings(fields, { traceId: submission.traceId, idSuffix });
+  const metaByName = await getBitableFieldMetaByName();
+  return applySingleSelectMappings(fields, metaByName, { traceId: submission.traceId, idSuffix }, logger);
 }
 
 export async function createBitableRecord(fields: Record<string, string>): Promise<string> {

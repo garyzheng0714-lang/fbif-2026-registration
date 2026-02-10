@@ -2,7 +2,7 @@
 
 ## 测试环境
 - 测试日期：2026-02-10
-- 目标 API：生产 `http://112.124.103.65:8080`（当前为 `apps/mock-api`，但链路与 `apps/api` 目标一致：`/api/oss/policy` + `/api/submissions`）
+- 目标 API：生产 `http://112.124.103.65:8080`（`apps/api`：`/api/oss/policy` + `/api/submissions`）
 - 压测机：本地（Mac mini，出口带宽未知）
 
 ## 测试方法
