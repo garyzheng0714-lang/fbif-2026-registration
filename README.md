@@ -11,40 +11,37 @@
 ## 本地开发
 1. 启动依赖
 ```bash
-cd /Library/vibecoding_home/fbif_form
-docker-compose up -d
+docker compose up -d
 ```
 
 2. 后端
 ```bash
-cd /Library/vibecoding_home/fbif_form/apps/api
+cd apps/api
 cp .env.example .env
-npm install
-npm run prisma:generate
-npx prisma migrate dev --name init
+npm ci
+npm run prisma:migrate
 npm run dev
 ```
 
 3. 前端
 ```bash
-cd /Library/vibecoding_home/fbif_form/apps/web
+cd ../web
 cp .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
 ## 稳定预览（推荐）
 ```bash
-cd /Library/vibecoding_home/fbif_form/apps/web
+cd apps/web
 npm run preview:start
 npm run preview:status
 ```
 
-详细流程见 `/Library/vibecoding_home/fbif_form/docs/preview-spec.md`。
+详细流程见 `docs/preview-spec.md`。
 
 ## 本地前后端联调（推荐）
 ```bash
-cd /Library/vibecoding_home/fbif_form
 node scripts/local-stack.mjs start
 node scripts/local-stack.mjs status
 ```
@@ -53,7 +50,7 @@ node scripts/local-stack.mjs status
 - 前端预览：`http://localhost:4173`
 - 模拟后端：`http://localhost:8080`
 
-完整说明与测试用例见 `/Library/vibecoding_home/fbif_form/docs/local-dev-environment.md`。
+完整说明与测试用例见 `docs/local-dev-environment.md`。
 
 ## 重要配置
 - `FEISHU_APP_SECRET` 必须从环境变量注入
@@ -65,4 +62,4 @@ node scripts/local-stack.mjs status
 ## CI/CD 自动部署
 已支持 GitHub Actions 自动部署到阿里云（推送 `main` 自动触发）。
 
-说明文档：`/Library/vibecoding_home/fbif_form/docs/github-actions-deploy.md`
+说明文档：`docs/github-actions-deploy.md`

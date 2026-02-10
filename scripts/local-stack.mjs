@@ -3,9 +3,10 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = '/Library/vibecoding_home/fbif_form';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const metaDir = resolve(root, '.local-stack');
 const apiPidFile = resolve(metaDir, 'mock-api.pid');
 const apiLogFile = resolve(metaDir, 'mock-api.log');

@@ -11,9 +11,21 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
+const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
 type Identity = '' | 'industry' | 'consumer';
 type IdType = '' | 'cn_id' | 'passport' | 'other';
+
+function createClientRequestId() {
+  try {
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    // Ignore crypto errors and fallback.
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 const industryBusinessOptions = [
   '食品相关品牌方',
@@ -297,6 +309,7 @@ export default function App() {
   const [identity, setIdentity] = useState<Identity>('');
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
   const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
+  const [clientRequestId, setClientRequestId] = useState(() => createClientRequestId());
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [notice, setNotice] = useState<Notice>('');
@@ -306,6 +319,8 @@ export default function App() {
   const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
   const proofPreviewUrlsRef = useRef<string[]>([]);
   const proofUploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
+  const proofUploadQueueRef = useRef<Array<{ id: string; file: File }>>([]);
+  const proofUploadActiveRef = useRef(0);
   const csrfTokenCacheRef = useRef<{ token: string; expiresAt: number }>({
     token: '',
     expiresAt: 0
@@ -330,6 +345,9 @@ export default function App() {
       const raw = window.localStorage.getItem(FORM_DRAFT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
+      if (typeof parsed.clientRequestId === 'string' && parsed.clientRequestId.trim()) {
+        setClientRequestId(parsed.clientRequestId.trim());
+      }
       if (parsed.identity === 'industry' || parsed.identity === 'consumer') {
         setIdentity(parsed.identity);
       }
@@ -349,6 +367,7 @@ export default function App() {
     const timer = window.setTimeout(() => {
       try {
         const draft = {
+          clientRequestId,
           identity,
           industryForm: { ...industryForm, proofFiles: [] },
           consumerForm
@@ -360,7 +379,7 @@ export default function App() {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [identity, industryForm, consumerForm]);
+  }, [clientRequestId, identity, industryForm, consumerForm]);
 
   useEffect(() => {
     return () => {
@@ -459,6 +478,8 @@ export default function App() {
 
   const clearProofFiles = () => {
     proofUploadsRef.current = [];
+    proofUploadQueueRef.current = [];
+    proofUploadActiveRef.current = 0;
     proofUploadXhrsRef.current.forEach((xhr) => {
       try {
         xhr.abort();
@@ -563,6 +584,26 @@ export default function App() {
     }
   };
 
+  const drainProofUploadQueue = () => {
+    while (
+      proofUploadActiveRef.current < MAX_PROOF_UPLOAD_CONCURRENCY &&
+      proofUploadQueueRef.current.length > 0
+    ) {
+      const next = proofUploadQueueRef.current.shift();
+      if (!next) break;
+
+      proofUploadActiveRef.current += 1;
+      void uploadProofFile(next.id, next.file)
+        .catch(() => {
+          // uploadProofFile already updates UI state.
+        })
+        .finally(() => {
+          proofUploadActiveRef.current = Math.max(0, proofUploadActiveRef.current - 1);
+          drainProofUploadQueue();
+        });
+    }
+  };
+
   const handleIdentitySelect = (next: Exclude<Identity, ''>) => {
     if (switchTimerRef.current) {
       window.clearTimeout(switchTimerRef.current);
@@ -612,7 +653,6 @@ export default function App() {
     const existingKeys = new Set(proofUploadsRef.current.map((file) => proofFileKey(file)));
     const nextUploads = [...proofUploadsRef.current];
     const nextPreviews: ProofPreview[] = [];
-    const uploadQueue: Array<{ id: string; file: File }> = [];
 
     for (const file of selected) {
       const id = proofFileKey(file);
@@ -638,7 +678,7 @@ export default function App() {
         progress: 0,
         ossUrl: ''
       });
-      uploadQueue.push({ id, file });
+      proofUploadQueueRef.current.push({ id, file });
     }
 
     if (nextPreviews.length === 0) return;
@@ -648,12 +688,12 @@ export default function App() {
     setProofPreviews((prev) => [...prev, ...nextPreviews]);
     markTouched(fieldKey('industry', 'proofFiles'));
 
-    uploadQueue.forEach((item) => {
-      void uploadProofFile(item.id, item.file);
-    });
+    drainProofUploadQueue();
   };
 
   const removeProofFile = (id: string) => {
+    proofUploadQueueRef.current = proofUploadQueueRef.current.filter((item) => item.id !== id);
+
     const active = proofUploadXhrsRef.current.get(id);
     if (active) {
       try {
@@ -736,6 +776,7 @@ export default function App() {
 
       const payload = identity === 'industry'
         ? {
+          clientRequestId,
           phone: industryForm.phone.trim(),
           name: industryForm.name.trim(),
             title: industryForm.title.trim(),
@@ -748,6 +789,7 @@ export default function App() {
             proofUrls: [] as string[]
           }
         : {
+            clientRequestId,
             phone: consumerForm.phone.trim(),
             name: consumerForm.name.trim(),
             title: '消费者',
@@ -789,6 +831,8 @@ export default function App() {
 
       setIndustryForm(initialIndustryForm);
       setConsumerForm(initialConsumerForm);
+      const nextClientRequestId = createClientRequestId();
+      setClientRequestId(nextClientRequestId);
       clearProofFiles();
       setTouched({});
       setSubmitAttempted(false);
@@ -797,6 +841,7 @@ export default function App() {
         window.localStorage.setItem(
           FORM_DRAFT_KEY,
           JSON.stringify({
+            clientRequestId: nextClientRequestId,
             identity,
             industryForm: initialIndustryForm,
             consumerForm: initialConsumerForm

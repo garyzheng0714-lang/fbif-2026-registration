@@ -1,11 +1,11 @@
 # 预览规范（避免 `ERR_CONNECTION_REFUSED`）
 
-适用目录：`/Library/vibecoding_home/fbif_form/apps/web`
+适用目录：`apps/web`
 
 ## 标准流程
 1. 启动预览（自动构建 + 守护进程 + 健康检查）
 ```bash
-cd /Library/vibecoding_home/fbif_form/apps/web
+cd apps/web
 npm run preview:start
 ```
 
@@ -33,7 +33,7 @@ npm run preview:stop
 3. 若显示 `health check failed`，查看日志路径
 ```bash
 npm run preview:logs
-cat /Library/vibecoding_home/fbif_form/apps/web/.preview.log
+cat apps/web/.preview.log
 ```
 4. 若端口被占用，先 `npm run preview:stop` 再 `npm run preview:start`
 
