@@ -18,7 +18,27 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
   RATE_LIMIT_MAX: z.coerce.number().default(120),
   RATE_LIMIT_BURST: z.coerce.number().default(20),
-  SYNC_POLL_TIMEOUT_MS: z.coerce.number().default(30000)
+  SYNC_POLL_TIMEOUT_MS: z.coerce.number().default(30000),
+
+  FEISHU_SYNC_ATTEMPTS: z.coerce.number().default(8),
+  FEISHU_SYNC_BACKOFF_MS: z.coerce.number().default(1000),
+  FEISHU_SYNC_BACKOFF_MAX_MS: z.coerce.number().default(120000),
+  FEISHU_WORKER_CONCURRENCY: z.coerce.number().default(10),
+  FEISHU_WORKER_QPS: z.coerce.number().default(10),
+
+  MAX_PROOF_URLS: z.coerce.number().default(5),
+  MAX_PROOF_URL_LENGTH: z.coerce.number().default(2048),
+
+  OSS_ACCESS_KEY_ID: z.string().optional(),
+  OSS_ACCESS_KEY_SECRET: z.string().optional(),
+  OSS_BUCKET: z.string().optional(),
+  OSS_REGION: z.string().optional(),
+  OSS_HOST: z.string().optional(),
+  OSS_PUBLIC_BASE_URL: z.string().optional(),
+  OSS_UPLOAD_PREFIX: z.string().optional(),
+  OSS_MAX_UPLOAD_MB: z.coerce.number().default(50),
+  OSS_POLICY_EXPIRE_SECONDS: z.coerce.number().default(600),
+  OSS_OBJECT_ACL: z.string().optional()
 });
 
 export const env = envSchema.parse({
@@ -36,7 +56,27 @@ export const env = envSchema.parse({
   RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
   RATE_LIMIT_BURST: process.env.RATE_LIMIT_BURST,
-  SYNC_POLL_TIMEOUT_MS: process.env.SYNC_POLL_TIMEOUT_MS
+  SYNC_POLL_TIMEOUT_MS: process.env.SYNC_POLL_TIMEOUT_MS,
+
+  FEISHU_SYNC_ATTEMPTS: process.env.FEISHU_SYNC_ATTEMPTS,
+  FEISHU_SYNC_BACKOFF_MS: process.env.FEISHU_SYNC_BACKOFF_MS,
+  FEISHU_SYNC_BACKOFF_MAX_MS: process.env.FEISHU_SYNC_BACKOFF_MAX_MS,
+  FEISHU_WORKER_CONCURRENCY: process.env.FEISHU_WORKER_CONCURRENCY,
+  FEISHU_WORKER_QPS: process.env.FEISHU_WORKER_QPS,
+
+  MAX_PROOF_URLS: process.env.MAX_PROOF_URLS,
+  MAX_PROOF_URL_LENGTH: process.env.MAX_PROOF_URL_LENGTH,
+
+  OSS_ACCESS_KEY_ID: process.env.OSS_ACCESS_KEY_ID,
+  OSS_ACCESS_KEY_SECRET: process.env.OSS_ACCESS_KEY_SECRET,
+  OSS_BUCKET: process.env.OSS_BUCKET,
+  OSS_REGION: process.env.OSS_REGION,
+  OSS_HOST: process.env.OSS_HOST,
+  OSS_PUBLIC_BASE_URL: process.env.OSS_PUBLIC_BASE_URL,
+  OSS_UPLOAD_PREFIX: process.env.OSS_UPLOAD_PREFIX,
+  OSS_MAX_UPLOAD_MB: process.env.OSS_MAX_UPLOAD_MB,
+  OSS_POLICY_EXPIRE_SECONDS: process.env.OSS_POLICY_EXPIRE_SECONDS,
+  OSS_OBJECT_ACL: process.env.OSS_OBJECT_ACL
 });
 
 export const isProd = env.NODE_ENV === 'production';

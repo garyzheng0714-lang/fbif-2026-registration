@@ -9,12 +9,29 @@ datasource db {
 
 enum SyncStatus {
   PENDING
+  PROCESSING
+  RETRYING
   SUCCESS
   FAILED
 }
 
+enum Role {
+  industry
+  consumer
+}
+
+enum IdType {
+  cn_id
+  passport
+  other
+}
+
 model Submission {
   id            String     @id @default(uuid())
+  clientRequestId String   @unique @db.VarChar(64)
+  traceId       String     @db.VarChar(64)
+  role          Role
+  idType        IdType
   name          String     @db.VarChar(64)
   title         String     @db.VarChar(64)
   company       String     @db.VarChar(128)
@@ -22,8 +39,14 @@ model Submission {
   phoneHash     String     @db.VarChar(64)
   idEnc         String     @db.Text
   idHash        String     @db.VarChar(64)
+  businessType  String?    @db.VarChar(64)
+  department    String?    @db.VarChar(64)
+  proofUrls     Json?      @db.JsonB
   syncStatus    SyncStatus @default(PENDING)
   syncError     String?    @db.Text
+  syncAttempts  Int        @default(0)
+  lastAttemptAt DateTime?
+  nextAttemptAt DateTime?
   feishuRecordId String?   @db.VarChar(64)
   clientIp      String?    @db.VarChar(64)
   userAgent     String?    @db.VarChar(256)
@@ -32,5 +55,6 @@ model Submission {
 
   @@index([phoneHash])
   @@index([idHash])
-  @@index([syncStatus])
+  @@index([syncStatus, createdAt])
+  @@index([nextAttemptAt])
 }
