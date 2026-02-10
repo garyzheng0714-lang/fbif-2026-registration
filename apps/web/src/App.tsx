@@ -7,7 +7,18 @@ import {
   validateRequired
 } from './utils/validation';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+function defaultApiBase() {
+  // In production we usually host web on :3001 and API on :8080 on the same hostname.
+  // This runtime fallback prevents "localhost" mistakes when VITE_API_URL is not set at build time.
+  if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol || 'http:';
+    const hostname = window.location.hostname || 'localhost';
+    return `${protocol}//${hostname}:8080`;
+  }
+  return 'http://localhost:8080';
+}
+
+const API_BASE = import.meta.env.VITE_API_URL || defaultApiBase();
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
@@ -121,8 +132,12 @@ async function createOssPolicy(file: File, csrfToken: string): Promise<OssPolicy
   });
 
   const data = await parseJsonIfPossible(resp);
-  if (!resp.ok || !data?.host || !data?.publicUrl || !data?.fields) {
-    throw new Error('oss_policy_failed');
+  if (!resp.ok) {
+    const msg = String(data?.message || data?.error || '').trim();
+    throw new Error(msg ? `oss_policy_failed:${resp.status}:${msg}` : `oss_policy_failed:${resp.status}`);
+  }
+  if (!data?.host || !data?.publicUrl || !data?.fields) {
+    throw new Error('oss_policy_failed:bad_response');
   }
 
   return {
@@ -164,13 +179,45 @@ function uploadFileToOss(
         resolve(policy.publicUrl);
         return;
       }
-      reject(new Error(`oss_upload_failed_${xhr.status}`));
+      reject(new Error(`oss_upload_failed:${xhr.status}`));
     };
 
     xhr.onerror = () => reject(new Error('oss_upload_network_error'));
     xhr.onabort = () => reject(new Error('oss_upload_aborted'));
     xhr.send(form);
   });
+}
+
+function formatUploadError(message: string) {
+  const raw = String(message || '').trim();
+
+  if (!raw) return '转换失败，请删除后重传';
+
+  if (raw === 'csrf_failed') {
+    return '授权失败，请刷新页面后重试';
+  }
+
+  if (raw.startsWith('oss_policy_failed')) {
+    // Common case: oversize / OSS not configured / CSRF failure.
+    if (raw.includes('too large') || raw.includes('max=')) {
+      return '文件过大（单个文件最大 50MB），请压缩后重试';
+    }
+    return '获取上传签名失败，请刷新页面后重试';
+  }
+
+  if (raw.startsWith('oss_upload_failed:')) {
+    const code = raw.split(':')[1] || '';
+    if (code === '403') return 'OSS 拒绝上传（403），请稍后重试';
+    if (code === '400') return 'OSS 上传参数错误（400），请重试';
+    if (code) return `OSS 上传失败（${code}），请重试`;
+    return 'OSS 上传失败，请重试';
+  }
+
+  if (raw === 'oss_upload_network_error') {
+    return '网络错误或 OSS 跨域失败，请更换网络后重试';
+  }
+
+  return '转换失败，请删除后重传';
 }
 
 function validateIdNumber(idType: IdType, idNumber: string) {
@@ -194,7 +241,7 @@ type ProofPreview = {
   size: number;
   type: string;
   previewUrl?: string;
-  status: 'uploading' | 'success' | 'error';
+  status: 'pending' | 'uploading' | 'success' | 'error';
   progress: number;
   ossUrl: string;
   error?: string;
@@ -319,8 +366,6 @@ export default function App() {
   const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
   const proofPreviewUrlsRef = useRef<string[]>([]);
   const proofUploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
-  const proofUploadQueueRef = useRef<Array<{ id: string; file: File }>>([]);
-  const proofUploadActiveRef = useRef(0);
   const csrfTokenCacheRef = useRef<{ token: string; expiresAt: number }>({
     token: '',
     expiresAt: 0
@@ -407,19 +452,13 @@ export default function App() {
 
   const industryErrors: IndustryErrors = useMemo(() => {
     const hasProofFiles = proofPreviews.length > 0;
-    const hasUploadingProof = proofPreviews.some((item) => item.status === 'uploading');
     const hasFailedProof = proofPreviews.some((item) => item.status === 'error');
-    const successProofCount = proofPreviews.filter((item) => item.status === 'success' && item.ossUrl).length;
 
     let proofError = '';
     if (!hasProofFiles) {
       proofError = '请上传专业观众证明材料';
-    } else if (hasUploadingProof) {
-      proofError = '附件转换中，请等待上传完成';
     } else if (hasFailedProof) {
       proofError = '有附件转换失败，请删除后重传';
-    } else if (successProofCount <= 0) {
-      proofError = '请上传专业观众证明材料';
     }
 
     return {
@@ -478,8 +517,6 @@ export default function App() {
 
   const clearProofFiles = () => {
     proofUploadsRef.current = [];
-    proofUploadQueueRef.current = [];
-    proofUploadActiveRef.current = 0;
     proofUploadXhrsRef.current.forEach((xhr) => {
       try {
         xhr.abort();
@@ -563,10 +600,14 @@ export default function App() {
             : item
         )
       );
+      return ossUrl;
     } catch (error) {
       proofUploadXhrsRef.current.delete(id);
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('aborted')) return;
+      if (message.includes('aborted')) {
+        updateProofPreview(id, { status: 'pending', progress: 0 });
+        throw new Error('oss_upload_aborted');
+      }
 
       setProofPreviews((prev) =>
         prev.map((item) =>
@@ -576,32 +617,69 @@ export default function App() {
                 status: 'error',
                 progress: 0,
                 ossUrl: '',
-                error: '转换失败，请删除后重传'
+                error: formatUploadError(message)
               }
             : item
         )
       );
+      throw new Error(message);
     }
   };
 
-  const drainProofUploadQueue = () => {
-    while (
-      proofUploadActiveRef.current < MAX_PROOF_UPLOAD_CONCURRENCY &&
-      proofUploadQueueRef.current.length > 0
-    ) {
-      const next = proofUploadQueueRef.current.shift();
-      if (!next) break;
-
-      proofUploadActiveRef.current += 1;
-      void uploadProofFile(next.id, next.file)
-        .catch(() => {
-          // uploadProofFile already updates UI state.
-        })
-        .finally(() => {
-          proofUploadActiveRef.current = Math.max(0, proofUploadActiveRef.current - 1);
-          drainProofUploadQueue();
-        });
+  const uploadProofFilesBeforeSubmit = async () => {
+    const urlById = new Map<string, string>();
+    for (const item of proofPreviews) {
+      if (item.status === 'success' && item.ossUrl) {
+        urlById.set(item.id, item.ossUrl);
+      }
     }
+
+    const fileById = new Map<string, File>();
+    for (const file of proofUploadsRef.current) {
+      fileById.set(proofFileKey(file), file);
+    }
+
+    const toUpload = proofPreviews
+      .filter((item) => !(item.status === 'success' && item.ossUrl))
+      .map((item) => ({ id: item.id, file: fileById.get(item.id) }))
+      .filter((item): item is { id: string; file: File } => Boolean(item.file));
+
+    if (toUpload.length === 0) {
+      return proofPreviews
+        .map((item) => urlById.get(item.id))
+        .filter((value): value is string => Boolean(value));
+    }
+
+    let cursor = 0;
+    const workerCount = Math.max(1, Math.min(MAX_PROOF_UPLOAD_CONCURRENCY, toUpload.length));
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (cursor < toUpload.length) {
+        const idx = cursor;
+        cursor += 1;
+        const { id, file } = toUpload[idx];
+        const url = await uploadProofFile(id, file);
+        urlById.set(id, url);
+      }
+    });
+
+    try {
+      await Promise.all(workers);
+    } catch (error) {
+      // Abort other in-flight uploads ASAP to reduce wasted bandwidth.
+      proofUploadXhrsRef.current.forEach((xhr) => {
+        try {
+          xhr.abort();
+        } catch {
+          // Ignore abort failures.
+        }
+      });
+      proofUploadXhrsRef.current.clear();
+      throw error;
+    }
+
+    return proofPreviews
+      .map((item) => urlById.get(item.id))
+      .filter((value): value is string => Boolean(value));
   };
 
   const handleIdentitySelect = (next: Exclude<Identity, ''>) => {
@@ -674,11 +752,10 @@ export default function App() {
         size: file.size,
         type: file.type || (isPdfFile(file) ? 'application/pdf' : 'application/octet-stream'),
         previewUrl,
-        status: 'uploading',
+        status: 'pending',
         progress: 0,
         ossUrl: ''
       });
-      proofUploadQueueRef.current.push({ id, file });
     }
 
     if (nextPreviews.length === 0) return;
@@ -687,13 +764,9 @@ export default function App() {
     setIndustryForm((prev) => ({ ...prev, proofFiles: nextUploads.map((file) => file.name) }));
     setProofPreviews((prev) => [...prev, ...nextPreviews]);
     markTouched(fieldKey('industry', 'proofFiles'));
-
-    drainProofUploadQueue();
   };
 
   const removeProofFile = (id: string) => {
-    proofUploadQueueRef.current = proofUploadQueueRef.current.filter((item) => item.id !== id);
-
     const active = proofUploadXhrsRef.current.get(id);
     if (active) {
       try {
@@ -774,35 +847,38 @@ export default function App() {
     try {
       const csrfToken = await fetchCsrfToken(true);
 
-      const payload = identity === 'industry'
-        ? {
-          clientRequestId,
-          phone: industryForm.phone.trim(),
-          name: industryForm.name.trim(),
-            title: industryForm.title.trim(),
-            company: industryForm.company.trim(),
-            idNumber: industryForm.idNumber.trim(),
-            role: 'industry',
-            idType: industryForm.idType,
-            businessType: industryForm.businessType,
-            department: industryForm.department,
-            proofUrls: [] as string[]
-          }
-        : {
-            clientRequestId,
-            phone: consumerForm.phone.trim(),
-            name: consumerForm.name.trim(),
-            title: '消费者',
-            company: '个人消费者',
-            idNumber: consumerForm.idNumber.trim(),
-            role: 'consumer',
-            idType: consumerForm.idType
-          };
+      const payload =
+        identity === 'industry'
+          ? {
+              clientRequestId,
+              phone: industryForm.phone.trim(),
+              name: industryForm.name.trim(),
+              title: industryForm.title.trim(),
+              company: industryForm.company.trim(),
+              idNumber: industryForm.idNumber.trim(),
+              role: 'industry' as const,
+              idType: industryForm.idType,
+              businessType: industryForm.businessType,
+              department: industryForm.department,
+              proofUrls: [] as string[]
+            }
+          : {
+              clientRequestId,
+              phone: consumerForm.phone.trim(),
+              name: consumerForm.name.trim(),
+              title: '消费者',
+              company: '个人消费者',
+              idNumber: consumerForm.idNumber.trim(),
+              role: 'consumer' as const,
+              idType: consumerForm.idType
+            };
 
       if (identity === 'industry') {
-        const urls = proofPreviews
-          .filter((item) => item.status === 'success' && item.ossUrl)
-          .map((item) => item.ossUrl);
+        // Upload attachments only when user clicks submit.
+        const urls = await uploadProofFilesBeforeSubmit();
+        if (urls.length === 0) {
+          throw new Error('proof_upload_failed');
+        }
         payload.proofUrls = urls;
       }
 
@@ -850,8 +926,20 @@ export default function App() {
       } catch {
         // Ignore temporary storage write failure.
       }
-    } catch {
-      setNotice('提交失败，请稍后重试');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        identity === 'industry' &&
+        (message === 'proof_upload_failed' ||
+          message === 'csrf_failed' ||
+          message.startsWith('oss_policy_failed') ||
+          message.startsWith('oss_upload_') ||
+          message.startsWith('oss_upload_failed'))
+      ) {
+        setNotice('有附件转换失败，请删除失败的附件后重试');
+      } else {
+        setNotice('提交失败，请稍后重试');
+      }
       setSubmitDialog((prev) => ({
         ...prev,
         open: true,
@@ -1180,7 +1268,7 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                    <p className="hint">支持名片、工作证、在职证明等材料。刷新后需重新选择文件。</p>
+                    <p className="hint">支持名片、工作证、在职证明等材料。点击提交后才会开始上传。刷新后需重新选择文件。</p>
                     {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
                       <span className="error">{industryErrors.proofFiles}</span>
                     )}
@@ -1362,7 +1450,23 @@ export default function App() {
             {submitDialog.status === 'submitting' && (
               <>
                 <h3 className="modal-title">正在提交</h3>
-                <p className="modal-body">我们正在接收您的信息，请勿关闭页面。</p>
+                {identity === 'industry' && proofPreviews.length > 0 ? (
+                  <p className="modal-body">
+                    正在上传附件（
+                    {proofPreviews.filter((item) => item.status === 'success').length}/{proofPreviews.length}
+                    ，
+                    {Math.round(
+                      proofPreviews.reduce((sum, item) => {
+                        if (item.status === 'success') return sum + 100;
+                        if (item.status === 'uploading') return sum + Math.max(0, Math.min(99, item.progress || 0));
+                        return sum;
+                      }, 0) / Math.max(1, proofPreviews.length)
+                    )}
+                    %），请勿关闭页面。
+                  </p>
+                ) : (
+                  <p className="modal-body">我们正在接收您的信息，请勿关闭页面。</p>
+                )}
               </>
             )}
             {submitDialog.status === 'success' && (
