@@ -22,6 +22,7 @@ const fieldMap = {
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proof: process.env.FEISHU_FIELD_PROOF || '',
+  proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || ''
 };
@@ -33,6 +34,11 @@ let tokenCache = {
 
 let driveRootFolderCache = {
   value: '',
+  expiresAt: 0
+};
+
+let bitableFieldMetaCache = {
+  value: null,
   expiresAt: 0
 };
 
@@ -158,7 +164,164 @@ async function getDriveRootFolderToken() {
   return driveRootFolderCache.value;
 }
 
-function mapFields(submission) {
+async function getBitableFieldMetaByName() {
+  const now = Date.now();
+  if (bitableFieldMetaCache.value && bitableFieldMetaCache.expiresAt > now + 30 * 1000) {
+    return bitableFieldMetaCache.value;
+  }
+
+  const token = await getTenantAccessToken();
+  const response = await fetch(
+    `${FEISHU_BASE}/bitable/v1/apps/${appToken}/tables/${tableId}/fields?page_size=200`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok || data.code !== 0) {
+    throw new Error(`list fields failed: ${data.msg || response.statusText}`);
+  }
+
+  const items = Array.isArray(data?.data?.items) ? data.data.items : [];
+  const byName = new Map();
+
+  for (const raw of items) {
+    const name = String(raw?.field_name || raw?.name || '').trim();
+    if (!name) continue;
+
+    const meta = {
+      name,
+      type: raw?.type ?? raw?.field_type ?? null,
+      uiType: String(raw?.ui_type || ''),
+      optionsByName: new Map(),
+      optionsById: new Set()
+    };
+
+    const options = Array.isArray(raw?.property?.options) ? raw.property.options : [];
+    for (const opt of options) {
+      const optName = String(opt?.name || opt?.option_name || '').trim();
+      const optId = String(opt?.id || opt?.option_id || '').trim();
+      if (!optName || !optId) continue;
+      meta.optionsByName.set(optName, optId);
+      meta.optionsById.add(optId);
+    }
+
+    byName.set(name, meta);
+  }
+
+  bitableFieldMetaCache = {
+    value: byName,
+    expiresAt: now + 10 * 60 * 1000
+  };
+
+  return byName;
+}
+
+function normalizeBusinessTypeOptionText(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  if (text === '食品制造商') {
+    return '食品饮料品牌方（包括传统的食品加工企业';
+  }
+  if (text === '供应链服务商') {
+    return '原材料供应商（提供各种食品配料和原材料的企业';
+  }
+  if (text === '咨询/营销/服务机构') {
+    return '设计营销与咨询策划服务提供商';
+  }
+  if (text === '新兴渠道') {
+    return '新零售（前置仓到家';
+  }
+
+  return text;
+}
+
+function normalizeDepartmentOptionText(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  if (text === '研发/生产/品控') {
+    return '研发、产品、包装';
+  }
+  if (text === '采购/物流/仓储') {
+    return '采购、供应链、生产';
+  }
+  if (text === '采购/市场/生产') {
+    return '采购、供应链、生产';
+  }
+  if (text === '市场/销售/电商') {
+    return '渠道、销售、电商';
+  }
+  if (text === '行政') {
+    return '其他（如财务、行政等）';
+  }
+  if (text === '其他') {
+    return '其他（如财务、行政等）';
+  }
+
+  return text;
+}
+
+function resolveSingleSelectOptionId(meta, rawValue) {
+  const value = String(rawValue || '').trim();
+  if (!meta || !value) return null;
+  if (meta.uiType !== 'SingleSelect' && meta.type !== 3) return null;
+
+  // If caller already passed an option id, accept it if it belongs to this field.
+  if (value.startsWith('opt') && meta.optionsById.has(value)) {
+    return value;
+  }
+
+  const exact = meta.optionsByName.get(value);
+  if (exact) return exact;
+
+  const matches = [];
+  for (const [name, id] of meta.optionsByName.entries()) {
+    if (name.includes(value)) {
+      matches.push(id);
+      if (matches.length > 1) break;
+    }
+  }
+
+  return matches.length === 1 ? matches[0] : null;
+}
+
+async function applySingleSelectMappings(fields, submission) {
+  const metaByName = await getBitableFieldMetaByName();
+  const traceId = submission?.traceId ? String(submission.traceId) : '';
+  const idSuffix = String(submission?.idNumber || '').slice(-4);
+  const logPrefix = traceId ? `[trace=${traceId}] [idSuffix=${idSuffix}]` : '';
+
+  for (const [fieldName, value] of Object.entries(fields)) {
+    if (typeof value !== 'string' || !value) continue;
+    const meta = metaByName.get(fieldName);
+    if (!meta) continue;
+    if (meta.uiType !== 'SingleSelect' && meta.type !== 3) continue;
+
+    const optionId = resolveSingleSelectOptionId(meta, value);
+    if (!optionId) {
+      // Keep original value so the request remains best-effort, but log for troubleshooting.
+      console.warn(
+        new Date().toISOString(),
+        'bitable select option not found:',
+        logPrefix,
+        `field=${fieldName}`,
+        `value=${value}`
+      );
+      continue;
+    }
+
+    fields[fieldName] = optionId;
+  }
+
+  return fields;
+}
+
+async function mapFields(submission) {
   const fields = {
     [fieldMap.name]: submission.name,
     [fieldMap.phone]: submission.phone,
@@ -186,11 +349,15 @@ function mapFields(submission) {
   }
 
   if (fieldMap.businessType && submission.businessType) {
-    fields[fieldMap.businessType] = submission.businessType;
+    fields[fieldMap.businessType] = normalizeBusinessTypeOptionText(submission.businessType);
   }
 
   if (fieldMap.department && submission.department) {
-    fields[fieldMap.department] = submission.department;
+    fields[fieldMap.department] = normalizeDepartmentOptionText(submission.department);
+  }
+
+  if (fieldMap.proofUrl && Array.isArray(submission.proofUrls) && submission.proofUrls.length > 0) {
+    fields[fieldMap.proofUrl] = submission.proofUrls.join(',');
   }
 
   if (fieldMap.submittedAt) {
@@ -201,7 +368,7 @@ function mapFields(submission) {
     fields[fieldMap.syncStatus] = '已同步';
   }
 
-  return fields;
+  return applySingleSelectMappings(fields, submission);
 }
 
 export async function createBitableRecord(submission) {
@@ -219,7 +386,7 @@ export async function createBitableRecord(submission) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ fields: mapFields(submission) })
+        body: JSON.stringify({ fields: await mapFields(submission) })
       }
     );
 
@@ -475,6 +642,14 @@ export function buildBitableProofFieldValue(fileTokens) {
   return {
     fieldName: fieldMap.proof,
     value: fileTokens.map((token) => ({ file_token: token }))
+  };
+}
+
+export function buildBitableProofUrlFieldValue(proofUrls) {
+  if (!fieldMap.proofUrl || !Array.isArray(proofUrls) || proofUrls.length === 0) return null;
+  return {
+    fieldName: fieldMap.proofUrl,
+    value: proofUrls.join(',')
   };
 }
 

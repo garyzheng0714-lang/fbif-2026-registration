@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   buildBitableProofFieldValue,
+  buildBitableProofUrlFieldValue,
   createBitableRecord,
   isFeishuEnabled,
   updateBitableRecord,
@@ -60,9 +61,15 @@ async function runFeishuSync(latest) {
   const logPrefix = `[trace=${traceId}] [idSuffix=${idSuffix}] [sub=${latest.id}]`;
   const startedAtMs = Date.now();
   let recordId = latest.feishuRecordId || null;
+  let createdNow = false;
 
   try {
-    log('multitable sync start:', logPrefix, `files=${Array.isArray(latest.proofUploads) ? latest.proofUploads.length : 0}`);
+    log(
+      'multitable sync start:',
+      logPrefix,
+      `files=${Array.isArray(latest.proofUploads) ? latest.proofUploads.length : 0}`,
+      `urls=${Array.isArray(latest.proofUrls) ? latest.proofUrls.length : 0}`
+    );
 
     latest.syncTimings = {
       ...latest.syncTimings,
@@ -72,6 +79,7 @@ async function runFeishuSync(latest) {
 
     if (!recordId) {
       recordId = await createBitableRecord(latest);
+      createdNow = true;
       latest.syncTimings = {
         ...latest.syncTimings,
         recordCreatedAtMs: Date.now()
@@ -80,7 +88,27 @@ async function runFeishuSync(latest) {
       log('multitable record created:', logPrefix, `record_id_suffix=${String(recordId).slice(-6)}`, `ms=${Date.now() - startedAtMs}`);
     }
 
-    if (recordId && Array.isArray(latest.proofUploads) && latest.proofUploads.length > 0) {
+    if (recordId && Array.isArray(latest.proofUrls) && latest.proofUrls.length > 0) {
+      if (createdNow) {
+        latest.syncTimings = {
+          ...latest.syncTimings,
+          attachmentsUploadedAtMs: Date.now()
+        };
+        log('multitable proof url set on create:', logPrefix, `count=${latest.proofUrls.length}`, `ms=${Date.now() - startedAtMs}`);
+      } else {
+        const proofUrlField = buildBitableProofUrlFieldValue(latest.proofUrls);
+        if (proofUrlField) {
+          await updateBitableRecord(recordId, {
+            [proofUrlField.fieldName]: proofUrlField.value
+          });
+          latest.syncTimings = {
+            ...latest.syncTimings,
+            attachmentsUploadedAtMs: Date.now()
+          };
+          log('multitable proof url updated:', logPrefix, `count=${latest.proofUrls.length}`, `ms=${Date.now() - startedAtMs}`);
+        }
+      }
+    } else if (recordId && Array.isArray(latest.proofUploads) && latest.proofUploads.length > 0) {
       const existingTokens = Array.isArray(latest.proofFileTokens) ? latest.proofFileTokens : [];
       const fileTokens = existingTokens.length === latest.proofUploads.length
         ? existingTokens
@@ -193,6 +221,7 @@ export function createSubmission(record) {
     syncError: null,
     feishuRecordId: null,
     proofFileTokens: [],
+    proofUrls: Array.isArray(record?.proofUrls) ? record.proofUrls : [],
     createdAt: now,
     updatedAt: now,
     syncTimings: {
