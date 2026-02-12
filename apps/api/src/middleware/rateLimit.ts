@@ -3,6 +3,16 @@ import RedisStore from 'rate-limit-redis';
 import { env } from '../config/env.js';
 import { redis } from '../queue/redis.js';
 
+// Dedicated limiter for CSRF bootstrap endpoint.
+// We intentionally keep it in-process (memory) to avoid Redis round-trips
+// when many new sessions request tokens concurrently.
+export const csrfLimiter = rateLimit({
+  windowMs: env.CSRF_RATE_LIMIT_WINDOW_MS,
+  limit: env.CSRF_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+});
+
 export const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   limit: env.RATE_LIMIT_MAX,

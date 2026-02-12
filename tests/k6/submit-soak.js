@@ -1,19 +1,21 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { getCachedCsrfToken } from './lib/csrf.js';
 
 // Soak test: steady load for a longer time window.
 //
 // Default is 10 minutes at 20 req/s. Override:
 //   SOAK_RPS=10 SOAK_MINUTES=30 BASE_URL=... k6 run tests/k6/submit-soak.js
 export const options = {
+  noCookiesReset: true,
   scenarios: {
     soak: {
       executor: 'constant-arrival-rate',
       timeUnit: '1s',
       rate: Number(__ENV.SOAK_RPS || 20),
       duration: `${Number(__ENV.SOAK_MINUTES || 10)}m`,
-      preAllocatedVUs: 200,
-      maxVUs: 3000
+      preAllocatedVUs: Number(__ENV.PREALLOCATED_VUS || 200),
+      maxVUs: Number(__ENV.MAX_VUS || 1000)
     }
   },
   thresholds: {
@@ -29,9 +31,7 @@ function randomPhone() {
 }
 
 export default function () {
-  const csrfRes = http.get(`${BASE_URL}/api/csrf`, { tags: { name: 'csrf' } });
-  const csrfToken = csrfRes.json('csrfToken');
-  check(csrfRes, { 'csrf 200': (r) => r.status === 200 });
+  const csrfToken = getCachedCsrfToken(BASE_URL, { timeout: __ENV.HTTP_TIMEOUT || '2s' });
   if (!csrfToken) return;
 
   const payload = {
@@ -50,10 +50,10 @@ export default function () {
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken
     },
-    tags: { name: 'submit' }
+    tags: { name: 'submit' },
+    timeout: __ENV.HTTP_TIMEOUT || '2s'
   });
 
   check(res, { 'submit 202': (r) => r.status === 202 });
   sleep(0.01);
 }
-

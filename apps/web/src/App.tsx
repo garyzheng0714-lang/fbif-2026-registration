@@ -90,11 +90,27 @@ type IndustryForm = typeof initialIndustryForm;
 type ConsumerForm = typeof initialConsumerForm;
 type IndustryErrors = Record<keyof IndustryForm, string>;
 type ConsumerErrors = Record<keyof ConsumerForm, string>;
+type IdVerifyState = {
+  status: 'idle' | 'verifying' | 'passed' | 'failed';
+  message: string;
+  token: string;
+  verifiedName: string;
+  verifiedIdNumber: string;
+};
 type Notice =
   | ''
   | '请选择观展身份'
   | '请先修正表单错误'
+  | '请先完成身份证实名验证'
   | '提交失败，请稍后重试';
+
+const initialIdVerifyState: IdVerifyState = {
+  status: 'idle',
+  message: '',
+  token: '',
+  verifiedName: '',
+  verifiedIdNumber: ''
+};
 
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
 
@@ -224,11 +240,63 @@ function validateIdNumber(idType: IdType, idNumber: string) {
   const normalized = idNumber.trim();
   if (!idType) return '请选择证件类型';
   if (!normalized) return '请输入证件号码';
-  if (idType === 'cn_id') return validateChineseId(normalized);
+  if (idType === 'cn_id') {
+    const idError = validateChineseId(normalized);
+    return idError ? '请输入正确的身份证号' : '';
+  }
   if (!otherIdRegex.test(normalized)) {
     return '证件号格式不正确（6-20位字母/数字/短横线）';
   }
   return '';
+}
+
+function getAgeFromChineseId(idNumber: string) {
+  const normalized = String(idNumber || '').trim().toUpperCase();
+  if (validateChineseId(normalized)) return null;
+  const raw = normalized.slice(6, 14);
+  if (!/^\d{8}$/.test(raw)) return null;
+
+  const year = Number(raw.slice(0, 4));
+  const month = Number(raw.slice(4, 6));
+  const day = Number(raw.slice(6, 8));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+
+  const birthday = new Date(year, month - 1, day);
+  if (
+    birthday.getFullYear() !== year ||
+    birthday.getMonth() !== month - 1 ||
+    birthday.getDate() !== day
+  ) {
+    return null;
+  }
+
+  const now = new Date();
+  let age = now.getFullYear() - year;
+  const beforeBirthday =
+    now.getMonth() + 1 < month ||
+    (now.getMonth() + 1 === month && now.getDate() < day);
+  if (beforeBirthday) age -= 1;
+  return age;
+}
+
+function checkAgeLimit(role: 'industry' | 'consumer', idType: IdType, idNumber: string) {
+  if (idType !== 'cn_id') {
+    return { ok: true as const };
+  }
+  const age = getAgeFromChineseId(idNumber);
+  if (age == null) {
+    return { ok: true as const };
+  }
+  if (age < 16) {
+    return { ok: false as const, message: '年龄过小' };
+  }
+  if (role === 'consumer' && age > 50) {
+    return { ok: false as const, message: '年龄过大' };
+  }
+  if (role === 'industry' && age > 99) {
+    return { ok: false as const, message: '年龄过大' };
+  }
+  return { ok: true as const };
 }
 
 function fieldKey(identity: Exclude<Identity, ''>, field: string) {
@@ -356,6 +424,8 @@ export default function App() {
   const [identity, setIdentity] = useState<Identity>('');
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
   const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
+  const [industryIdVerify, setIndustryIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
+  const [consumerIdVerify, setConsumerIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
   const [clientRequestId, setClientRequestId] = useState(() => createClientRequestId());
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -370,9 +440,15 @@ export default function App() {
     token: '',
     expiresAt: 0
   });
+  const csrfTokenRequestRef = useRef<Promise<string> | null>(null);
   const switchTimerRef = useRef<number | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
   const proofUploadsRef = useRef<File[]>([]);
+  const toastTimerRef = useRef<number | null>(null);
+  const [toast, setToast] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: ''
+  });
   const [submitDialog, setSubmitDialog] = useState<{
     open: boolean;
     status: 'submitting' | 'success' | 'error';
@@ -431,6 +507,9 @@ export default function App() {
       if (switchTimerRef.current) {
         window.clearTimeout(switchTimerRef.current);
       }
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
       proofUploadXhrsRef.current.forEach((xhr) => {
         try {
           xhr.abort();
@@ -449,6 +528,28 @@ export default function App() {
       proofPreviewUrlsRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (page !== 'form') return;
+
+    // Warm up CSRF token on form entry and keep it fresh in background.
+    // This cuts submit-time token fetch latency under peak traffic.
+    void fetchCsrfToken().catch(() => {
+      // Ignore warmup failure; submit path still retries.
+    });
+
+    const renewTimer = window.setInterval(() => {
+      const ttlLeftMs = csrfTokenCacheRef.current.expiresAt - Date.now();
+      if (ttlLeftMs > 90_000) return;
+      void fetchCsrfToken().catch(() => {
+        // Ignore renewal failure; submit path still retries.
+      });
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(renewTimer);
+    };
+  }, [page]);
 
   const industryErrors: IndustryErrors = useMemo(() => {
     const hasProofFiles = proofPreviews.length > 0;
@@ -489,7 +590,24 @@ export default function App() {
       ? consumerErrors
       : null;
 
-  const hasError = activeErrors ? Object.values(activeErrors).some(Boolean) : true;
+  const industryNeedsIdVerify = industryForm.idType === 'cn_id';
+  const consumerNeedsIdVerify = consumerForm.idType === 'cn_id';
+  const needsIdVerify = identity === 'industry'
+    ? industryNeedsIdVerify
+    : identity === 'consumer'
+      ? consumerNeedsIdVerify
+      : false;
+  const activeIdVerifyState = identity === 'industry'
+    ? industryIdVerify
+    : identity === 'consumer'
+      ? consumerIdVerify
+      : initialIdVerifyState;
+  const isIdVerifyPassed = identity === 'industry'
+    ? industryIdVerify.status === 'passed'
+    : identity === 'consumer'
+      ? consumerIdVerify.status === 'passed'
+      : false;
+  const hasFieldError = Boolean(activeErrors ? Object.values(activeErrors).some(Boolean) : true);
 
   const markTouched = (key: string) => {
     setTouched((prev) => ({ ...prev, [key]: true }));
@@ -504,6 +622,9 @@ export default function App() {
     ) => {
       const value = event.target.value;
       setIndustryForm((prev) => ({ ...prev, [field]: value }));
+      if (field === 'name' || field === 'idType' || field === 'idNumber') {
+        setIndustryIdVerify(initialIdVerifyState);
+      }
     };
 
   const handleConsumerChange =
@@ -513,6 +634,9 @@ export default function App() {
     ) => {
       const value = event.target.value;
       setConsumerForm((prev) => ({ ...prev, [field]: value }));
+      if (field === 'name' || field === 'idType' || field === 'idNumber') {
+        setConsumerIdVerify(initialIdVerifyState);
+      }
     };
 
   const clearProofFiles = () => {
@@ -545,21 +669,157 @@ export default function App() {
       return csrfTokenCacheRef.current.token;
     }
 
-    const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
-      credentials: 'include'
-    });
-
-    const csrfData = await parseJsonIfPossible(csrfResp);
-    if (!csrfResp.ok || !csrfData?.csrfToken) {
-      throw new Error('csrf_failed');
+    if (!force && csrfTokenRequestRef.current) {
+      return csrfTokenRequestRef.current;
     }
 
-    const token = String(csrfData.csrfToken);
-    csrfTokenCacheRef.current = {
-      token,
-      expiresAt: Date.now() + 3 * 60 * 1000
-    };
-    return token;
+    const requestPromise = (async () => {
+      const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
+        credentials: 'include'
+      });
+
+      const csrfData = await parseJsonIfPossible(csrfResp);
+      if (!csrfResp.ok || !csrfData?.csrfToken) {
+        throw new Error('csrf_failed');
+      }
+
+      const token = String(csrfData.csrfToken);
+      csrfTokenCacheRef.current = {
+        token,
+        expiresAt: Date.now() + 3 * 60 * 1000
+      };
+      return token;
+    })();
+
+    csrfTokenRequestRef.current = requestPromise;
+    try {
+      return await requestPromise;
+    } finally {
+      if (csrfTokenRequestRef.current === requestPromise) {
+        csrfTokenRequestRef.current = null;
+      }
+    }
+  };
+
+  const showToast = (message: string) => {
+    if (!message) return;
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToast({ open: true, message });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast({ open: false, message: '' });
+      toastTimerRef.current = null;
+    }, 2200);
+  };
+
+  const verifyCnIdFor = async (
+    role: 'industry' | 'consumer'
+  ): Promise<{ ok: boolean; message?: string; token?: string }> => {
+    const form = role === 'industry' ? industryForm : consumerForm;
+    const name = form.name.trim();
+    const idType = form.idType;
+    const idNumber = form.idNumber.trim().toUpperCase();
+    const setState = role === 'industry' ? setIndustryIdVerify : setConsumerIdVerify;
+
+    if (idType !== 'cn_id') {
+      setState(initialIdVerifyState);
+      return { ok: true };
+    }
+
+    const nameError = validateRequired(name, '姓名', 2, 32);
+    const idError = validateChineseId(idNumber);
+    if (nameError || idError) {
+      setState({
+        ...initialIdVerifyState,
+        status: 'failed',
+        message: nameError || '请输入正确的身份证号'
+      });
+      return { ok: false, message: nameError || '请输入正确的身份证号' };
+    }
+
+    setState((prev) => ({
+      ...prev,
+      status: 'verifying',
+      message: '正在验证，请稍候...'
+    }));
+
+    try {
+      let csrfToken = await fetchCsrfToken();
+      let verifyData: any = null;
+      let completed = false;
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const resp = await fetch(`${API_BASE}/api/id-verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            name,
+            idType: 'cn_id',
+            idNumber
+          })
+        });
+
+        verifyData = await parseJsonIfPossible(resp);
+        if (resp.ok) {
+          completed = true;
+          break;
+        }
+
+        if (resp.status === 403 && attempt === 0) {
+          csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+          csrfToken = await fetchCsrfToken(true);
+          continue;
+        }
+
+        const message = String(verifyData?.message || verifyData?.error || '').trim();
+        if (resp.status === 429) {
+          throw new Error(message || '验证过于频繁，请稍后再试');
+        }
+        throw new Error(message || '身份证与姓名不匹配');
+      }
+
+      if (!completed) {
+        throw new Error('身份证与姓名不匹配');
+      }
+
+      const verified = Boolean(verifyData?.verified);
+      if (!verified || !verifyData?.verificationToken) {
+        setState({
+          ...initialIdVerifyState,
+          status: 'failed',
+          message: '身份证与姓名不匹配'
+        });
+        return { ok: false, message: '身份证与姓名不匹配' };
+      }
+
+      setState({
+        status: 'passed',
+        message: '实名验证通过',
+        token: String(verifyData.verificationToken),
+        verifiedName: name,
+        verifiedIdNumber: idNumber
+      });
+      setNotice('');
+      return { ok: true, token: String(verifyData.verificationToken) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '身份证与姓名不匹配';
+      const normalizedMessage = message.includes('请输入正确的身份证号')
+        ? '请输入正确的身份证号'
+        : message.includes('验证过于频繁')
+          ? '验证过于频繁，请稍后再试'
+          : '身份证与姓名不匹配';
+      setState({
+        ...initialIdVerifyState,
+        status: 'failed',
+        message: normalizedMessage
+      });
+      return { ok: false, message: normalizedMessage };
+    }
   };
 
   const updateProofPreview = (id: string, patch: Partial<ProofPreview>) => {
@@ -572,8 +832,19 @@ export default function App() {
     updateProofPreview(id, { status: 'uploading', progress: 0, error: '', ossUrl: '' });
 
     try {
-      const csrfToken = await fetchCsrfToken();
-      const policy = await createOssPolicy(file, csrfToken);
+      let csrfToken = await fetchCsrfToken();
+      let policy: OssPolicy;
+      try {
+        policy = await createOssPolicy(file, csrfToken);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.startsWith('oss_policy_failed:403')) {
+          throw error;
+        }
+        csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+        csrfToken = await fetchCsrfToken(true);
+        policy = await createOssPolicy(file, csrfToken);
+      }
       const ossUrl = await uploadFileToOss(
         file,
         policy,
@@ -829,9 +1100,51 @@ export default function App() {
 
     setSubmitAttempted(true);
 
-    if (hasError) {
+    if (hasFieldError) {
       setNotice('请先修正表单错误');
       return;
+    }
+
+    const role = identity === 'industry' ? 'industry' : 'consumer';
+    const currentIdType = identity === 'industry' ? industryForm.idType : consumerForm.idType;
+    const currentIdNumber = (identity === 'industry' ? industryForm.idNumber : consumerForm.idNumber).trim().toUpperCase();
+    const ageLimitCheck = checkAgeLimit(role, currentIdType, currentIdNumber);
+    if (!ageLimitCheck.ok) {
+      setNotice('');
+      showToast(ageLimitCheck.message);
+      return;
+    }
+
+    let idVerifyTokenForSubmit = identity === 'industry' ? industryIdVerify.token : consumerIdVerify.token;
+    if (needsIdVerify) {
+      const currentName = (identity === 'industry' ? industryForm.name : consumerForm.name).trim();
+      let verifiedToken = idVerifyTokenForSubmit;
+      const canReuseVerifiedToken = Boolean(
+        activeIdVerifyState.status === 'passed' &&
+        verifiedToken &&
+        activeIdVerifyState.verifiedName === currentName &&
+        activeIdVerifyState.verifiedIdNumber === currentIdNumber
+      );
+
+      if (!canReuseVerifiedToken) {
+        const verifyResult = await verifyCnIdFor(role);
+        if (!verifyResult.ok) {
+          setNotice(verifyResult.message || '身份证与姓名不匹配');
+          return;
+        }
+        verifiedToken = String(verifyResult.token || '').trim();
+        if (!verifiedToken) {
+          setNotice('身份证与姓名不匹配');
+          return;
+        }
+      }
+
+      if (identity === 'industry') {
+        setIndustryIdVerify((prev) => ({ ...prev, token: verifiedToken }));
+      } else {
+        setConsumerIdVerify((prev) => ({ ...prev, token: verifiedToken }));
+      }
+      idVerifyTokenForSubmit = verifiedToken;
     }
 
     setNotice('');
@@ -845,7 +1158,7 @@ export default function App() {
     }));
 
     try {
-      const csrfToken = await fetchCsrfToken(true);
+      let csrfToken = await fetchCsrfToken();
 
       const payload =
         identity === 'industry'
@@ -855,11 +1168,14 @@ export default function App() {
               name: industryForm.name.trim(),
               title: industryForm.title.trim(),
               company: industryForm.company.trim(),
-              idNumber: industryForm.idNumber.trim(),
+              idNumber: industryForm.idNumber.trim().toUpperCase(),
               role: 'industry' as const,
               idType: industryForm.idType,
               businessType: industryForm.businessType,
               department: industryForm.department,
+              idVerifyToken: industryForm.idType === 'cn_id'
+                ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
+                : undefined,
               proofUrls: [] as string[]
             }
           : {
@@ -868,9 +1184,12 @@ export default function App() {
               name: consumerForm.name.trim(),
               title: '消费者',
               company: '个人消费者',
-              idNumber: consumerForm.idNumber.trim(),
+              idNumber: consumerForm.idNumber.trim().toUpperCase(),
               role: 'consumer' as const,
-              idType: consumerForm.idType
+              idType: consumerForm.idType,
+              idVerifyToken: consumerForm.idType === 'cn_id'
+                ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
+                : undefined
             };
 
       if (identity === 'industry') {
@@ -882,18 +1201,42 @@ export default function App() {
         payload.proofUrls = urls;
       }
 
-      const resp = await fetch(`${API_BASE}/api/submissions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
-      const submitData = await parseJsonIfPossible(resp);
+      let submitData: any = null;
+      let accepted = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const resp = await fetch(`${API_BASE}/api/submissions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        submitData = await parseJsonIfPossible(resp);
 
-      if (!resp.ok || !submitData?.id) {
+        if (resp.ok && submitData?.id) {
+          accepted = true;
+          break;
+        }
+
+        // Token may be stale if cookie rotated. Refresh token once and retry.
+        if (resp.status === 403 && attempt === 0) {
+          csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+          csrfToken = await fetchCsrfToken(true);
+          continue;
+        }
+
+        const errMsg = String(
+          submitData?.message ||
+            submitData?.details?.fieldErrors?.idVerifyToken?.[0] ||
+            submitData?.error ||
+            ''
+        ).trim();
+        throw new Error(errMsg ? `submit_failed:${errMsg}` : 'submit_failed');
+      }
+
+      if (!accepted || !submitData?.id) {
         throw new Error('submit_failed');
       }
 
@@ -907,6 +1250,8 @@ export default function App() {
 
       setIndustryForm(initialIndustryForm);
       setConsumerForm(initialConsumerForm);
+      setIndustryIdVerify(initialIdVerifyState);
+      setConsumerIdVerify(initialIdVerifyState);
       const nextClientRequestId = createClientRequestId();
       setClientRequestId(nextClientRequestId);
       clearProofFiles();
@@ -928,6 +1273,9 @@ export default function App() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const submitErrorMessage = message.startsWith('submit_failed:')
+        ? message.slice('submit_failed:'.length).trim()
+        : '';
       if (
         identity === 'industry' &&
         (message === 'proof_upload_failed' ||
@@ -937,6 +1285,18 @@ export default function App() {
           message.startsWith('oss_upload_failed'))
       ) {
         setNotice('有附件转换失败，请删除失败的附件后重试');
+      } else if (submitErrorMessage.includes('年龄过小')) {
+        setNotice('');
+        showToast('年龄过小');
+      } else if (submitErrorMessage.includes('年龄过大')) {
+        setNotice('');
+        showToast('年龄过大');
+      } else if (
+        submitErrorMessage.includes('身份证实名验证') ||
+        submitErrorMessage.includes('姓名与身份证') ||
+        submitErrorMessage.includes('身份证与姓名')
+      ) {
+        setNotice('身份证与姓名不匹配');
       } else {
         setNotice('提交失败，请稍后重试');
       }
@@ -1076,6 +1436,31 @@ export default function App() {
                       <span className="error">{industryErrors.idNumber}</span>
                     )}
                   </div>
+                  {industryNeedsIdVerify && industryIdVerify.status !== 'idle' && (
+                    <div className="field">
+                      <div className="id-verify-row">
+                        <span
+                          className={`id-verify-status ${
+                            industryIdVerify.status === 'passed'
+                              ? 'is-ok'
+                              : industryIdVerify.status === 'failed'
+                                ? 'is-error'
+                                : ''
+                          }`}
+                          aria-live="polite"
+                        >
+                  {industryIdVerify.status === 'passed'
+                            ? (industryIdVerify.message || '实名验证通过')
+                            : industryIdVerify.status === 'failed'
+                              ? (industryIdVerify.message || '身份证与姓名不匹配')
+                              : industryIdVerify.status === 'verifying'
+                                ? (industryIdVerify.message || '正在验证身份证信息，请稍候...')
+                                : ''}
+                        </span>
+                      </div>
+                      {industryIdVerify.status === 'failed' && <span className="error">{industryIdVerify.message}</span>}
+                    </div>
+                  )}
 
                   <div className="field">
                     <label htmlFor="industry-phone">手机号</label>
@@ -1268,7 +1653,33 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                    <p className="hint">支持名片、工作证、在职证明等材料。点击提交后才会开始上传。刷新后需重新选择文件。</p>
+                    <ul className="proof-guidelines" aria-label="专业观众证明上传说明">
+                      <li className="proof-guideline proof-guideline-accept">
+                        <strong>请提交：</strong>
+                        能够体现您为食品行业从业人员的证明材料，包含“姓名公司职位”，包括但不限于：名片、工作软件截图（如钉钉、飞书、企微）、工作证、企业邮箱截图等
+                        {' '}
+                        <a
+                          href="https://www.foodtalks.cn/news/55602"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          查看示例
+                        </a>
+                      </li>
+                      <li className="proof-guideline proof-guideline-reject">
+                        <strong>请勿提交：</strong>
+                        证件照片、自拍、形象照、产品图、工厂图、聊天截图等为无效证明，将无法通过审核
+                      </li>
+                      <li className="proof-guideline">
+                        审核需要 1-3 个工作日，审核通过的出席人员方可入场
+                      </li>
+                      <li className="proof-guideline">
+                        如有任何问题，请联系工作人员 Carrie（微信：lovelyFBIFer1）
+                      </li>
+                      <li className="proof-guideline proof-guideline-warn">
+                        如在现场发现为非专业观众，我们有权请您离开现场
+                      </li>
+                    </ul>
                     {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
                       <span className="error">{industryErrors.proofFiles}</span>
                     )}
@@ -1411,6 +1822,31 @@ export default function App() {
                       <span className="error">{consumerErrors.idNumber}</span>
                     )}
                   </div>
+                  {consumerNeedsIdVerify && consumerIdVerify.status !== 'idle' && (
+                    <div className="field">
+                      <div className="id-verify-row">
+                        <span
+                          className={`id-verify-status ${
+                            consumerIdVerify.status === 'passed'
+                              ? 'is-ok'
+                              : consumerIdVerify.status === 'failed'
+                                ? 'is-error'
+                                : ''
+                          }`}
+                          aria-live="polite"
+                        >
+                          {consumerIdVerify.status === 'passed'
+                            ? (consumerIdVerify.message || '实名验证通过')
+                            : consumerIdVerify.status === 'failed'
+                              ? (consumerIdVerify.message || '身份证与姓名不匹配')
+                              : consumerIdVerify.status === 'verifying'
+                                ? (consumerIdVerify.message || '正在验证身份证信息，请稍候...')
+                                : ''}
+                        </span>
+                      </div>
+                      {consumerIdVerify.status === 'failed' && <span className="error">{consumerIdVerify.message}</span>}
+                    </div>
+                  )}
 
                   <div className="field">
                     <label htmlFor="consumer-phone">手机号</label>
@@ -1471,26 +1907,15 @@ export default function App() {
             )}
             {submitDialog.status === 'success' && (
               <>
+                <div className="modal-success-icon" aria-hidden="true">
+                  <span>✓</span>
+                </div>
                 <h3 className="modal-title modal-title-ok">提交成功</h3>
                 <p className="modal-body">
-                  您的提交已成功受理，系统将后台异步写入多维表格。
+                  {identity === 'industry' ? '您已提交成功，专业观众将进入人工审核流程（1-3个工作日）。' : '您已提交成功。'}
                   <br />
-                  如需人工排查，请提供 Trace ID。
+                  【入场方式】凭大陆身份证原件+电子门票免签到入场（电子门票会在展前3天通过短信/邮件统一发放）
                 </p>
-                {(submitDialog.traceId || submitDialog.submissionId) && (
-                  <div className="modal-meta">
-                    {submitDialog.traceId && (
-                      <p className="modal-meta-line">
-                        Trace ID: <code>{submitDialog.traceId}</code>
-                      </p>
-                    )}
-                    {submitDialog.submissionId && (
-                      <p className="modal-meta-line">
-                        Submission ID: <code>{submitDialog.submissionId}</code>
-                      </p>
-                    )}
-                  </div>
-                )}
               </>
             )}
             {submitDialog.status === 'error' && (
@@ -1510,6 +1935,12 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast.open && (
+        <div className="toast" role="status" aria-live="assertive">
+          {toast.message}
         </div>
       )}
     </div>

@@ -1,8 +1,10 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { getCachedCsrfToken } from './lib/csrf.js';
 
 // OSS policy signing stress test (no actual file upload).
 export const options = {
+  noCookiesReset: true,
   scenarios: {
     ramp: {
       executor: 'ramping-arrival-rate',
@@ -31,9 +33,7 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://112.124.103.65:8080';
 
 export default function () {
-  const csrfRes = http.get(`${BASE_URL}/api/csrf`, { tags: { name: 'csrf' } });
-  const csrfToken = csrfRes.json('csrfToken');
-  check(csrfRes, { 'csrf 200': (r) => r.status === 200 });
+  const csrfToken = getCachedCsrfToken(BASE_URL, { timeout: __ENV.HTTP_TIMEOUT || '2s' });
   if (!csrfToken) return;
 
   const body = JSON.stringify({
@@ -46,10 +46,10 @@ export default function () {
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken
     },
-    tags: { name: 'oss_policy' }
+    tags: { name: 'oss_policy' },
+    timeout: __ENV.HTTP_TIMEOUT || '2s'
   });
 
   check(res, { 'policy 200': (r) => r.status === 200 });
   sleep(0.005);
 }
-

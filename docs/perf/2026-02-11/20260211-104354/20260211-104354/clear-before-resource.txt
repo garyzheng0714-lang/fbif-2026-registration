@@ -1,0 +1,3 @@
+before_dbsize=36005
+after_dbsize=0
+used_memory:2326176

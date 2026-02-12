@@ -1,20 +1,27 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { getCachedCsrfToken } from './lib/csrf.js';
 
 // Spike test: sudden burst of submission requests.
+const SPIKE_RATE = Number(__ENV.SPIKE_RATE || 300);
+const SPIKE_RISE = String(__ENV.SPIKE_RISE || '10s');
+const SPIKE_HOLD = String(__ENV.SPIKE_HOLD || '50s');
+const SPIKE_COOL = String(__ENV.SPIKE_COOL || '20s');
+
 export const options = {
+  noCookiesReset: true,
   scenarios: {
     spike: {
       executor: 'ramping-arrival-rate',
       timeUnit: '1s',
       startRate: 0,
       preAllocatedVUs: 200,
-      maxVUs: 3000,
+      maxVUs: 1000,
       stages: [
         { target: 0, duration: '10s' },
-        { target: 300, duration: '10s' }, // spike up fast
-        { target: 300, duration: '50s' }, // hold
-        { target: 0, duration: '20s' }
+        { target: SPIKE_RATE, duration: SPIKE_RISE }, // spike up fast
+        { target: SPIKE_RATE, duration: SPIKE_HOLD }, // hold
+        { target: 0, duration: SPIKE_COOL }
       ]
     }
   },
@@ -31,9 +38,7 @@ function randomPhone() {
 }
 
 export default function () {
-  const csrfRes = http.get(`${BASE_URL}/api/csrf`, { tags: { name: 'csrf' } });
-  const csrfToken = csrfRes.json('csrfToken');
-  check(csrfRes, { 'csrf 200': (r) => r.status === 200 });
+  const csrfToken = getCachedCsrfToken(BASE_URL, { timeout: __ENV.HTTP_TIMEOUT || '2s' });
   if (!csrfToken) return;
 
   const payload = {
@@ -52,10 +57,10 @@ export default function () {
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken
     },
-    tags: { name: 'submit' }
+    tags: { name: 'submit' },
+    timeout: __ENV.HTTP_TIMEOUT || '2s'
   });
 
   check(res, { 'submit 202': (r) => r.status === 202 || r.status === 429 });
   sleep(0.01);
 }
-

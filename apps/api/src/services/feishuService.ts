@@ -271,10 +271,15 @@ function normalizeDepartmentOptionText(value: unknown) {
   return text;
 }
 
-export async function mapSubmissionToBitableFields(input: {
+export type BitableWriteFields = {
+  readableFields: Record<string, string>;
+  optionIdFields: Record<string, string>;
+};
+
+function buildReadableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
-}): Promise<Record<string, string>> {
+}): Record<string, string> {
   const submission = input.submission;
   const sensitive = input.sensitive;
 
@@ -323,19 +328,90 @@ export async function mapSubmissionToBitableFields(input: {
     fields[fieldMap.syncStatus] = '已同步';
   }
 
-  const idSuffix = sensitive.idNumber.slice(-4);
-  const metaByName = await getBitableFieldMetaByName();
-  return applySingleSelectMappings(fields, metaByName, { traceId: submission.traceId, idSuffix }, logger);
+  return fields;
 }
 
-export async function createBitableRecord(fields: Record<string, string>): Promise<string> {
-  const data = await feishuRequest(
-    `/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}/records`,
-    {
-      method: 'POST',
+function fieldsAreDifferent(a: Record<string, string>, b: Record<string, string>) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return true;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return true;
+  }
+  return false;
+}
+
+function isFieldTypeMismatchError(err: unknown) {
+  if (!(err instanceof FeishuApiError)) return false;
+  const msg = String(err.message || '').toLowerCase();
+  return (
+    msg.includes('field type') ||
+    msg.includes('single select') ||
+    msg.includes('option') ||
+    msg.includes('字段类型') ||
+    msg.includes('单选') ||
+    msg.includes('选项')
+  );
+}
+
+async function writeFieldsWithFallback(path: string, method: 'POST' | 'PUT', fields: BitableWriteFields) {
+  const preferOptionId = env.FEISHU_SELECT_WRITE_MODE === 'option_id';
+  const hasFallback = fieldsAreDifferent(fields.readableFields, fields.optionIdFields);
+  const primaryFields = preferOptionId ? fields.optionIdFields : fields.readableFields;
+  const fallbackFields = hasFallback ? (preferOptionId ? fields.readableFields : fields.optionIdFields) : null;
+
+  try {
+    return await feishuRequest(path, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
+      body: JSON.stringify({ fields: primaryFields })
+    });
+  } catch (err) {
+    if (!fallbackFields || !isFieldTypeMismatchError(err)) {
+      throw err;
     }
+    logger.warn(
+      {
+        path,
+        method,
+        mode: env.FEISHU_SELECT_WRITE_MODE
+      },
+      'feishu write fallback: retrying with alternate field format'
+    );
+    return feishuRequest(path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: fallbackFields })
+    });
+  }
+}
+
+export async function mapSubmissionToBitableFields(input: {
+  submission: Submission;
+  sensitive: { phone: string; idNumber: string };
+}): Promise<BitableWriteFields> {
+  const readableFields = buildReadableFields(input);
+  const submission = input.submission;
+  const sensitive = input.sensitive;
+  const idSuffix = sensitive.idNumber.slice(-4);
+  const metaByName = await getBitableFieldMetaByName();
+  const optionIdFields = applySingleSelectMappings(
+    { ...readableFields },
+    metaByName,
+    { traceId: submission.traceId, idSuffix },
+    logger
+  );
+  return {
+    readableFields,
+    optionIdFields
+  };
+}
+
+export async function createBitableRecord(fields: BitableWriteFields): Promise<string> {
+  const data = await writeFieldsWithFallback(
+    `/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}/records`,
+    'POST',
+    fields
   );
 
   const recordId = trim(data?.data?.record?.record_id);
@@ -346,14 +422,11 @@ export async function createBitableRecord(fields: Record<string, string>): Promi
   return recordId;
 }
 
-export async function updateBitableRecord(recordId: string, fields: Record<string, string>) {
-  await feishuRequest(
+export async function updateBitableRecord(recordId: string, fields: BitableWriteFields) {
+  await writeFieldsWithFallback(
     `/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}/records/${recordId}`,
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
-    }
+    'PUT',
+    fields
   );
 }
 

@@ -19,6 +19,16 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return res.status(403).json({ error: 'Invalid CSRF token', traceId: res.locals.traceId });
   }
 
+  // Prisma connection pool exhausted.
+  // Surface as 503 so clients can retry instead of treating it as a permanent failure.
+  if (err?.code === 'P2024') {
+    return res.status(503).json({
+      error: 'DatabaseBusy',
+      message: 'Database connection pool exhausted. Please retry.',
+      traceId: res.locals.traceId
+    });
+  }
+
   logger.error({ err, traceId: res.locals.traceId }, 'Unhandled error');
   res.status(500).json({ error: 'Internal Server Error', traceId: res.locals.traceId });
 };

@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { env } from './config/env.js';
 import { redis } from './queue/redis.js';
 import { feishuSyncQueue } from './queue/index.js';
+import { getQueuePressure, retryBackoffMultiplier } from './queue/backpressure.js';
 import { prisma } from './utils/db.js';
 import { logger } from './utils/logger.js';
 import {
@@ -19,10 +20,10 @@ import {
 } from './services/submissionService.js';
 import { feishuApiErrorsTotal, feishuSyncJobsTotal } from './metrics.js';
 
-function computeExponentialBackoffMs(attempt: number) {
+function computeExponentialBackoffMs(attempt: number, multiplier = 1) {
   const base = Math.max(50, Number(env.FEISHU_SYNC_BACKOFF_MS || 1000));
   const max = Math.max(base, Number(env.FEISHU_SYNC_BACKOFF_MAX_MS || 120000));
-  const delay = Math.min(max, base * Math.pow(2, Math.max(0, attempt - 1)));
+  const delay = Math.min(max, base * Math.pow(2, Math.max(0, attempt - 1)) * Math.max(1, multiplier));
   const jitter = Math.floor(Math.random() * 200);
   return delay + jitter;
 }
@@ -78,8 +79,21 @@ const worker = new Worker(
       const willRetry = retryable && attempt < maxAttempts;
 
       if (willRetry) {
-        const backoffMs = computeExponentialBackoffMs(attempt);
+        const pressure = await getQueuePressure(feishuSyncQueue);
+        const backoffMs = computeExponentialBackoffMs(attempt, retryBackoffMultiplier(pressure.level));
         await markSubmissionRetrying(submission.id, attempt, new Date(Date.now() + backoffMs), msg);
+        if (pressure.level !== 'normal') {
+          logger.warn(
+            {
+              submissionId: submission.id,
+              traceId: submission.traceId,
+              queueLevel: pressure.level,
+              queueBacklog: pressure.backlog,
+              backoffMs
+            },
+            'worker retry under queue backpressure'
+          );
+        }
         feishuSyncJobsTotal.inc({ result: 'retry' });
       } else {
         await markSubmissionFailed(submission.id, msg);

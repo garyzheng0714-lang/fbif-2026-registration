@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { env } from '../config/env.js';
+import { verifyIdVerifyToken } from '../utils/idVerifyToken.js';
 
 const phoneRegex = /^1[3-9]\d{9}$/;
 const idRegex = /^\d{17}[\dXx]$/;
@@ -16,6 +17,35 @@ export function isValidChineseId(id: string): boolean {
   const sum = weights.reduce((acc, weight, idx) => acc + weight * Number(chars[idx]), 0);
   const check = codes[sum % 11];
   return check === chars[17];
+}
+
+function getAgeFromChineseId(id: string) {
+  const normalized = String(id || '').trim().toUpperCase();
+  if (!isValidChineseId(normalized)) return null;
+  const raw = normalized.slice(6, 14);
+  if (!/^\d{8}$/.test(raw)) return null;
+
+  const year = Number(raw.slice(0, 4));
+  const month = Number(raw.slice(4, 6));
+  const day = Number(raw.slice(6, 8));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+
+  const birthday = new Date(year, month - 1, day);
+  if (
+    birthday.getFullYear() !== year ||
+    birthday.getMonth() !== month - 1 ||
+    birthday.getDate() !== day
+  ) {
+    return null;
+  }
+
+  const now = new Date();
+  let age = now.getFullYear() - year;
+  const beforeBirthday =
+    now.getMonth() + 1 < month ||
+    (now.getMonth() + 1 === month && now.getDate() < day);
+  if (beforeBirthday) age -= 1;
+  return age;
 }
 
 export function sanitizeText(value: string): string {
@@ -75,6 +105,7 @@ const idTypeSchema = z.enum(['cn_id', 'passport', 'other']);
 
 export const submissionSchema = z.object({
   clientRequestId: z.string().min(8).max(64).optional(),
+  idVerifyToken: z.string().max(1024).optional(),
   role: roleSchema,
   idType: idTypeSchema,
   idNumber: z.string().min(1).max(64),
@@ -96,6 +127,49 @@ export const submissionSchema = z.object({
         path: ['idNumber'],
         message: '身份证号校验失败'
       });
+    }
+
+    if (env.ID_VERIFY_ENABLED) {
+      const token = String(data.idVerifyToken || '').trim();
+      if (!token) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['idVerifyToken'],
+          message: '请先完成身份证实名验证'
+        });
+      } else {
+        const verify = verifyIdVerifyToken(token, sanitizeText(data.name), idNumber);
+        if (!verify.ok) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['idVerifyToken'],
+            message: '身份证实名验证已失效，请重新验证'
+          });
+        }
+      }
+    }
+
+    const age = getAgeFromChineseId(idNumber);
+    if (age != null) {
+      if (age < 16) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['idNumber'],
+          message: '年龄过小'
+        });
+      } else if (data.role === 'consumer' && age > 50) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['idNumber'],
+          message: '年龄过大'
+        });
+      } else if (data.role === 'industry' && age > 99) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['idNumber'],
+          message: '年龄过大'
+        });
+      }
     }
   } else if (!otherIdRegex.test(idNumber)) {
     ctx.addIssue({
@@ -133,4 +207,3 @@ export const submissionSchema = z.object({
 });
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;
-
