@@ -1,55 +1,36 @@
-# 稳定性评估（目标：99.9% “受理即可靠”）
+# 稳定性评估（2026-02-11）
 
-## 1. 目标口径（SLO）
-- **受理成功率**：`POST /api/submissions` 返回 `202` 的比例 ≥ 99.9%（7 天窗口）
-- **受理时延**：`POST /api/submissions` P95 < 2s（不含附件上传；附件直传 OSS）
-- **最终一致**：99% 的 submission 在 10 分钟内同步到飞书多维表格
+## 评估口径
+- `受理成功`：`POST /api/submissions` 返回 `202`，且数据已落库并入队。
+- `最终一致`：Worker 异步写入飞书可延迟，不计入前台受理 SLA。
 
-## 2. 当前架构满足点
-- 大文件不经过应用服务器：浏览器直传 OSS，API 只签名（降低 OOM/带宽瓶颈）
-- API 与飞书写入解耦：API 受理后落库 + 入队，worker 异步写飞书
-- 失败可重试：BullMQ attempts + exponential backoff
-- 可观测：`traceId` 贯穿日志，`/metrics` 提供核心计数与系统指标
+## 当前结论（2GB 单机）
+- 在 `60 req/s`、10 分钟持续负载下，受理链路稳定（`http_req_failed=0%`，`submit 202` 全通过）。
+- 在突发/高并发 (`~100+ req/s`) 时，系统进入“部分可用”状态：
+  - 主要失败点在 `/api/csrf` 获取阶段超时；
+  - 已拿到 token 的提交通常仍可返回 `202`。
+- 已上线 CSRF 优化（CSRF 独立限流 + 前端 token 去重/自动刷新重试）后，`spike 180` 场景总失败率从 `35.69%` 下降到 `24.01%`（同为 `HTTP_TIMEOUT=5s` 口径）。
+- 开启 Worker 的端到端回归（`2 rps, 1m`）结果：
+  - `submit 202`: `121/121`
+  - 异步同步状态：`SUCCESS=121`, `FAILED=0`
+  - 同步耗时：平均 `1233ms`，p95 `1834ms`
+- 综合评估：
+  - 可达到“中等并发稳定受理”；
+  - 尚未达到“高突发场景下 99.9% 稳定受理”的目标。
 
-## 3. 主要风险（现实约束）
-即使代码层面实现“受理即可靠”，**单机单点**仍然限制真实可用性上限：
-- ECS/磁盘/网络异常会造成整体不可用
-- Redis/PostgreSQL 若同机部署，仍是单点
+## 风险项
+1. 单点风险：API 单实例，进程故障即服务抖动。
+2. 资源风险：存在历史 OOM（2026-02-10）记录，2GB 冗余不足。
+3. 入口风险：CSRF 端点在高会话 churn 下成为首个瓶颈。
 
-若目标为“接近平台级 99.9%”，建议：
-- RDS PostgreSQL（托管）
-- 云 Redis（托管）
-- API/Worker 分离（至少 2 实例）+ 负载均衡
-- 静态资源上 CDN/OSS
+## 达成 99.9% 的最小改造
+1. API 至少双实例 + 负载均衡。
+2. 预取并缓存 CSRF，减少高峰期 token 新建压力。
+3. 持续监控并告警：`/api/csrf` p95、`submit 202` 成功率、可用内存、队列堆积。
+4. Worker 与 API 分离部署，防止资源竞争放大抖动。
 
-## 4. 观测与告警（最小可用）
-### 4.1 指标
-从 `/metrics` 关注：
-- `fbif_submissions_accepted_total`：受理计数（按 role）
-- `fbif_feishu_sync_jobs_total{result="success|retry|failed"}`：飞书同步结果
-- `fbif_feishu_api_errors_total{retryable="true|false"}`：飞书错误分类
-- 默认系统指标：进程内存、CPU、event loop
-
-### 4.2 建议告警
-- 受理成功率（202）< 99.9%（5 分钟窗口）
-- `result="failed"` 持续增长
-- `result="retry"` 突增且持续（飞书限流风险）
-- 进程内存持续上升（泄漏/堆积）
-
-## 5. 容量压测建议（分层）
-### 5.1 API 受理压测（不含附件）
-- 只压 `GET /api/csrf` + `POST /api/submissions`
-- 目标：验证 DB/Redis/入口限流的吞吐上限与 P95
-
-### 5.2 附件真实压测（含 20-50MB）
-- 重点验证：OSS policy、直传成功率、用户端超时/重试体验
-- 注意：单台压测机出口带宽可能成为瓶颈，报告需标注压测机带宽
-
-## 6. 验收清单（上线前）
-- [ ] API/Worker 都能启动并通过 `/health`
-- [ ] `POST /api/oss/policy` 正常签名，OSS CORS/ACL 配置正确
-- [ ] 行业用户提交后，飞书表格字段（业务类型/部门/附件链接）正确落库
-- [ ] Worker 重试与状态机正确：`PENDING -> PROCESSING -> (RETRYING)* -> SUCCESS/FAILED`
-- [ ] `/metrics` 可访问并持续上报
-- [ ] 压测报告与稳定性评估报告已填入真实数据（见 `docs/performance-report.md`）
-
+## 本轮数据来源
+- 报告：`/Users/simba/local_vibecoding/web-fbif-form/docs/extreme-performance-report-2026-02-11.md`
+- 原始压测产物：`/Users/simba/local_vibecoding/web-fbif-form/docs/perf/2026-02-11/20260211-104354/20260211-104354`
+- 跟进压测产物：`/Users/simba/local_vibecoding/web-fbif-form/docs/perf/2026-02-11/csrf-worker-followup/20260211-122631`
+- 跟进压测产物：`/Users/simba/local_vibecoding/web-fbif-form/docs/perf/2026-02-11/csrf-worker-followup/20260211-123731`

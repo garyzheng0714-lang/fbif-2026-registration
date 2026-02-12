@@ -21,6 +21,10 @@ function ensureTestEnv() {
   process.env.RATE_LIMIT_WINDOW_MS = process.env.RATE_LIMIT_WINDOW_MS || '60000';
   process.env.RATE_LIMIT_MAX = process.env.RATE_LIMIT_MAX || '9999';
   process.env.RATE_LIMIT_BURST = process.env.RATE_LIMIT_BURST || '9999';
+
+  // Disabled by default in tests unless a case explicitly enables it.
+  process.env.ID_VERIFY_ENABLED = process.env.ID_VERIFY_ENABLED || 'false';
+  process.env.ID_VERIFY_APPCODE = process.env.ID_VERIFY_APPCODE || '';
 }
 
 let server: any = null;
@@ -100,6 +104,25 @@ test('POST /api/submissions rejects request without csrf', async () => {
     });
 
   assert.equal(res.status, 403);
+});
+
+test('POST /api/id-verify returns 503 when ID verify is disabled', async () => {
+  const csrfRes = await request(server).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const res = await request(server)
+    .post('/api/id-verify')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .send({
+      name: '张三',
+      idType: 'cn_id',
+      idNumber: '11010519491231002X'
+    });
+
+  assert.equal(res.status, 503);
+  assert.equal(res.body.error, 'ID_VERIFY_DISABLED');
 });
 
 test('consumer submission is accepted and returns id + traceId', async () => {

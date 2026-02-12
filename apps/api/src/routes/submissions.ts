@@ -7,6 +7,7 @@ import { csrfGuard } from './csrf.js';
 import { env } from '../config/env.js';
 import { submissionsAcceptedTotal } from '../metrics.js';
 import { logger } from '../utils/logger.js';
+import { computeEnqueueDelayMs, getQueuePressure } from '../queue/backpressure.js';
 
 export const submissionsRouter = Router();
 
@@ -33,17 +34,38 @@ submissionsRouter.post('/', burstLimiter, csrfGuard, async (req, res, next) => {
 
     if (submission.syncStatus !== 'SUCCESS') {
       // Do not block the response on Redis/queue health.
-      void feishuSyncQueue.add('sync', { submissionId: submission.id }, {
-        jobId: submission.id,
-        attempts: env.FEISHU_SYNC_ATTEMPTS,
-        backoff: { type: 'exponential', delay: env.FEISHU_SYNC_BACKOFF_MS }
-      }).catch((err) => {
-        if (isJobAlreadyExistsError(err)) return;
-        logger.error(
-          { err, submissionId: submission.id, traceId: submission.traceId },
-          'enqueue feishu sync job failed'
-        );
-      });
+      void (async () => {
+        try {
+          const pressure = await getQueuePressure(feishuSyncQueue);
+          const delayMs = computeEnqueueDelayMs(pressure.level);
+
+          if (pressure.level !== 'normal') {
+            logger.warn(
+              {
+                submissionId: submission.id,
+                traceId: submission.traceId,
+                queueLevel: pressure.level,
+                backlog: pressure.backlog,
+                enqueueDelayMs: delayMs
+              },
+              'enqueue with queue backpressure'
+            );
+          }
+
+          await feishuSyncQueue.add('sync', { submissionId: submission.id }, {
+            jobId: submission.id,
+            attempts: env.FEISHU_SYNC_ATTEMPTS,
+            backoff: { type: 'exponential', delay: env.FEISHU_SYNC_BACKOFF_MS },
+            delay: delayMs
+          });
+        } catch (err) {
+          if (isJobAlreadyExistsError(err)) return;
+          logger.error(
+            { err, submissionId: submission.id, traceId: submission.traceId },
+            'enqueue feishu sync job failed'
+          );
+        }
+      })();
     }
   } catch (err) {
     next(err);

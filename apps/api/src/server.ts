@@ -5,11 +5,12 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import pinoHttp from 'pino-http';
 import { env } from './config/env.js';
-import { apiLimiter } from './middleware/rateLimit.js';
+import { apiLimiter, csrfLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { csrfRouter } from './routes/csrf.js';
 import { ossRouter } from './routes/oss.js';
 import { submissionsRouter } from './routes/submissions.js';
+import { idVerifyRouter } from './routes/idVerify.js';
 import { feishuSyncQueue } from './queue/index.js';
 import { logger } from './utils/logger.js';
 import {
@@ -24,6 +25,7 @@ function normalizeMetricsPath(rawUrl: string) {
   const path = rawUrl.split('?')[0] || '/';
   if (path === '/api/csrf') return '/api/csrf';
   if (path === '/api/oss/policy') return '/api/oss/policy';
+  if (path === '/api/id-verify') return '/api/id-verify';
   if (path === '/api/submissions') return '/api/submissions';
   if (/^\/api\/submissions\/[^/]+\/status$/.test(path)) return '/api/submissions/:id/status';
   if (path === '/health') return '/health';
@@ -86,9 +88,10 @@ export function createServer() {
     }
   });
 
+  app.use('/api/csrf', csrfLimiter, csrfRouter);
   app.use('/api', apiLimiter);
-  app.use('/api/csrf', csrfRouter);
   app.use('/api/oss', ossRouter);
+  app.use('/api/id-verify', idVerifyRouter);
   app.use('/api/submissions', submissionsRouter);
 
   app.use(notFound);

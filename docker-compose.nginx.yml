@@ -1,0 +1,16 @@
+name: fbif-form-web-nginx
+
+services:
+  fbif-web-nginx:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    image: fbif-form-web-nginx:latest
+    container_name: fbif-form-web-nginx
+    restart: unless-stopped
+    ports:
+      - "${FBIF_WEB_PORT:-3001}:80"
+    mem_limit: 128m
+    cpus: "0.50"

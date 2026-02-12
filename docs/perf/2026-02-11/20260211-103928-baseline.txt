@@ -1,0 +1,164 @@
+== date ==
+Wed Feb 11 10:40:30 CST 2026
+== uptime ==
+ 10:40:30 up 10 days, 14:00,  2 users,  load average: 0.23, 1.03, 5.51
+== free -m ==
+               total        used        free      shared  buff/cache   available
+Mem:            1613         829         269          39         715         784
+Swap:           2047           0        2047
+== df -h ==
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           162M  1.4M  160M   1% /run
+efivarfs        256K  7.1K  244K   3% /sys/firmware/efi/efivars
+/dev/vda3        40G  9.7G   28G  26% /
+tmpfs           807M     0  807M   0% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+/dev/vda2       197M  6.2M  191M   4% /boot/efi
+overlay          40G  9.7G   28G  26% /var/lib/docker/overlay2/f2c166e2f2681ac5bd81bf70c289f61da62e79a3e4ece5935b64312adad0be5b/merged
+tmpfs           162M   12K  162M   1% /run/user/0
+overlay          40G  9.7G   28G  26% /var/lib/docker/overlay2/aa76f428ab69108dff27d4c530039cc0be0c4fc8a9ea67aa3d35a532c32350e2/merged
+overlay          40G  9.7G   28G  26% /var/lib/docker/overlay2/ef649732f519220e768fb1dc7d3de7de0e51cef84070318e4129561a9213d3c8/merged
+== ss -s ==
+Total: 258
+TCP:   34 (estab 7, closed 14, orphaned 0, timewait 4)
+
+Transport Total     IP        IPv6
+RAW	  1         0         1        
+UDP	  4         2         2        
+TCP	  20        15        5        
+INET	  25        17        8        
+FRAG	  0         0         0        
+
+== pm2 ls ==
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 22 │ fbif-api       │ default     │ 0.1.0   │ fork    │ 832313   │ 87s    │ 4    │ online    │ 0%       │ 80.5mb   │ root     │ disabled │
+│ 24 │ fbif-web       │ default     │ 6.0.14  │ fork    │ 582600   │ 15h    │ 3    │ online    │ 0%       │ 25.2mb   │ root     │ disabled │
+│ 23 │ fbif-worker    │ default     │ 0.1.0   │ fork    │ 0        │ 0      │ 1    │ stopped   │ 0%       │ 0b       │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+== docker ps ==
+NAMES                                   STATUS                  PORTS
+api-db-postgres-1                       Up 17 hours (healthy)   127.0.0.1:5432->5432/tcp
+api-db-redis-1                          Up 17 hours (healthy)   127.0.0.1:6379->6379/tcp
+docxtemplater-docx-template-service-1   Up 5 days (unhealthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+== docker stats ==
+NAME                                    CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O         PIDS
+api-db-postgres-1                       0.00%     93.76MiB / 1.575GiB   18.6MB / 16.6MB   6.87GB / 317MB    6
+api-db-redis-1                          0.38%     39.26MiB / 1.575GiB   38MB / 10.3MB     1.31GB / 84.8MB   6
+docxtemplater-docx-template-service-1   0.00%     52.03MiB / 1.575GiB   4.58MB / 730kB    5.28GB / 0B       11
+== top rss ==
+    PID CMD                         %CPU %MEM   RSS
+   1183 /usr/bin/dockerd -H fd:// -  0.2 11.9 197296
+ 832313 node /opt/web-fbif-form/cur  2.5  4.9 82468
+ 322349 PM2 v6.0.14: God Daemon (/r  0.3  2.8 46336
+ 249431 /usr/bin/containerd          0.2  2.3 39020
+   1756 /usr/local/aegis/aegis_clie  1.1  1.8 31164
+ 556774 postgres: checkpointer       0.0  1.8 30276
+ 249437 /usr/lib/systemd/systemd-jo  0.0  1.6 27776
+ 249427 /sbin/multipathd -d -s       0.0  1.6 27136
+ 266093 node dist/app.js             0.0  1.6 26764
+ 582600 node /usr/lib/node_modules/  0.1  1.5 26044
+ 556582 redis-server *:6379          0.4  1.5 24960
+ 514749 /opt/alibabacloud/hbrclient  0.0  1.4 23412
+ 363684 /usr/bin/python3 -Es /usr/s  0.1  1.2 20096
+ 249414 /usr/bin/caddy run --enviro  0.1  1.1 19432
+   1031 /usr/local/aegis/aegis_clie  0.6  1.1 19336
+ 249642 /usr/local/cloudmonitor/bin  2.3  1.0 17864
+ 556589 postgres -c shared_buffers=  0.0  0.9 15360
+ 395990 /usr/bin/fwupdmgr refresh    0.1  0.8 14200
+ 556538 /usr/bin/containerd-shim-ru  0.1  0.8 13364
+== pg connections ==
+ connections 
+-------------
+           6
+(1 row)
+
+== redis memory ==
+# Memory
+used_memory:19959512
+used_memory_human:19.03M
+used_memory_rss:25559040
+used_memory_rss_human:24.38M
+used_memory_peak:20032768
+used_memory_peak_human:19.10M
+used_memory_peak_perc:99.63%
+used_memory_overhead:2162680
+used_memory_startup:948496
+used_memory_dataset:17796832
+used_memory_dataset_perc:93.61%
+allocator_allocated:21036016
+allocator_active:21639168
+allocator_resident:27013120
+allocator_muzzy:0
+total_system_memory:1691447296
+total_system_memory_human:1.58G
+used_memory_lua:117760
+used_memory_vm_eval:117760
+used_memory_lua_human:115.00K
+used_memory_scripts_eval:73016
+number_of_cached_scripts:7
+number_of_functions:0
+number_of_libraries:0
+used_memory_vm_functions:33792
+used_memory_vm_total:151552
+used_memory_vm_total_human:148.00K
+used_memory_functions:192
+used_memory_scripts:73208
+used_memory_scripts_human:71.49K
+maxmemory:0
+maxmemory_human:0B
+maxmemory_policy:noeviction
+allocator_frag_ratio:1.02
+allocator_frag_bytes:381424
+allocator_rss_ratio:1.25
+allocator_rss_bytes:5373952
+rss_overhead_ratio:0.95
+rss_overhead_bytes:-1454080
+mem_fragmentation_ratio:1.28
+mem_fragmentation_bytes:5637968
+mem_not_counted_for_evict:3072
+mem_replication_backlog:0
+mem_total_replication_buffers:0
+mem_clients_slaves:0
+mem_clients_normal:1928
+mem_cluster_links:0
+mem_aof_buffer:3072
+mem_allocator:jemalloc-5.3.0
+mem_overhead_db_hashtable_rehashing:0
+active_defrag_running:0
+lazyfree_pending_objects:0
+lazyfreed_objects:0
+== redis dbsize ==
+21831
+== redis bull keys sample ==
+bull:feishu-sync:2bbd798f-1219-4d88-9e93-bb8ce281b748
+bull:feishu-sync:3f2bee12-7bfc-4192-9be7-6b146c6b6297
+bull:feishu-sync:a703f21a-8bcc-4b46-be77-c84fb44e3d9b
+bull:feishu-sync:ff280912-c9f1-45fa-8b8c-b891f7a65437
+bull:feishu-sync:22905e3a-088d-46c7-92a6-6fda966c47ce
+bull:feishu-sync:d6cc1131-e80f-4de0-89a2-52eb49fd37ea
+bull:feishu-sync:f877f49f-2575-41a1-a32c-c5dadb089aa7
+bull:feishu-sync:ce51fe46-ec11-4b61-b6cd-d8e4e4980971
+bull:feishu-sync:5eb29645-4f6b-4c01-8b4a-5e7362d33691
+bull:feishu-sync:edcf2c2e-bc2e-429f-9a47-aa4f1228bb2c
+bull:feishu-sync:e0b1520b-7a41-4ad2-8e57-7712f5675ef7
+bull:feishu-sync:f924a10f-1ebb-48e3-a954-5e1737b0570d
+bull:feishu-sync:cd20daab-2b26-489c-a74e-86b127e3ef49
+bull:feishu-sync:141f86bb-d501-4752-8208-235081ff03bb
+bull:feishu-sync:d56320f4-f5bb-4962-ad72-5bcf574c16b4
+bull:feishu-sync:73aaa4f1-7802-4b0b-b15f-a92ab5c7759b
+bull:feishu-sync:e73beef0-9ad9-4a95-b65f-cc4c004f181d
+bull:feishu-sync:c9b97834-e008-4c80-be1d-88383261c705
+bull:feishu-sync:1309f432-b4e6-4b26-a763-605c87cee528
+bull:feishu-sync:2b477689-d5e4-4fde-9ac1-0123ef6c7e7b
+bull:feishu-sync:08e5f33d-c9b8-4c77-95ca-28f141c4b7c6
+bull:feishu-sync:09fa25c0-a1bb-4865-b109-db43f4efe711
+bull:feishu-sync:dd3bac36-4797-4720-bcc4-14d892be5ecc
+bull:feishu-sync:bf365cff-e8d9-4d54-a817-c8e46b4661a2
+bull:feishu-sync:47f823dc-1006-4b0e-9f7b-0a53cb68d9ff
+bull:feishu-sync:8f965377-e623-4297-9c3c-6c6245a2b261
+bull:feishu-sync:e7eb154b-3166-4f0d-ac9c-d88c3f0a1b41
+bull:feishu-sync:be13cbb1-ca93-4f3c-bf96-08abb214aca4
+bull:feishu-sync:c59db913-a787-4327-8724-d55adab2be78
+bull:feishu-sync:b9d82211-bfb4-4556-942b-d13c47d52d6b
