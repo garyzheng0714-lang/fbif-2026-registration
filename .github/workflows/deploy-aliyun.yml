@@ -408,13 +408,6 @@ jobs:
               exit 1
             fi
 
-            (
-              cd "${RELEASE_DIR}"
-              docker compose --env-file "${BACKEND_ENV_FILE}" -f docker-compose.backend.yml up -d --build --remove-orphans
-            )
-
-            docker rm -f fbif-form-web-nginx >/dev/null 2>&1 || true
-
             if command -v pm2 >/dev/null 2>&1; then
               pm2 delete fbif-web >/dev/null 2>&1 || true
               pm2 delete fbif-api >/dev/null 2>&1 || true
@@ -422,6 +415,13 @@ jobs:
               pm2 delete fbif-mock-api >/dev/null 2>&1 || true
               pm2 save >/dev/null 2>&1 || true
             fi
+
+            docker rm -f fbif-form-web-nginx >/dev/null 2>&1 || true
+
+            (
+              cd "${RELEASE_DIR}"
+              docker compose --env-file "${BACKEND_ENV_FILE}" -f docker-compose.backend.yml up -d --build --remove-orphans
+            )
 
             if ! command -v nginx >/dev/null 2>&1; then
               echo "NGINX is not installed on server." >&2
