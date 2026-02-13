@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:20-bookworm-slim AS base
+FROM node:20-bookworm AS base
 WORKDIR /app
 
 ENV npm_config_update_notifier=false \
@@ -15,7 +15,7 @@ COPY apps/api/ ./
 RUN npm run prisma:generate
 RUN npm run build
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:20-bookworm AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
