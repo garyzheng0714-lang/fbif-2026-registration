@@ -2,6 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent, KeyboardEvent } from 'react';
 import { useThrottleCallback } from './hooks/useThrottleCallback';
 import {
+  FeishuButton,
+  FeishuCard,
+  FeishuDialog,
+  FeishuField,
+  FeishuInput,
+  FeishuLoading,
+  FeishuSelect
+} from './components/feishu/FeishuPrimitives';
+import {
   validateChineseId,
   validatePhone,
   validateRequired
@@ -97,12 +106,7 @@ type IdVerifyState = {
   verifiedName: string;
   verifiedIdNumber: string;
 };
-type Notice =
-  | ''
-  | '请选择观展身份'
-  | '请先修正表单错误'
-  | '请先完成身份证实名验证'
-  | '提交失败，请稍后重试';
+type Notice = string;
 
 const initialIdVerifyState: IdVerifyState = {
   status: 'idle',
@@ -1316,6 +1320,11 @@ export default function App() {
   };
 
   const identityLabel = identity === 'industry' ? '食品行业相关从业者' : '消费者';
+  const canCloseSubmitDialog = !(submitDialog.status === 'submitting' && isSubmitting);
+  const closeSubmitDialog = () => {
+    if (!canCloseSubmitDialog) return;
+    setSubmitDialog((prev) => ({ ...prev, open: false }));
+  };
 
   return (
     <div className="page">
@@ -1324,7 +1333,7 @@ export default function App() {
 
         {page === 'identity' && (
           <>
-            <section className="card role-card">
+            <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
             <p className="tips">
               我们将为您发放对应观展票，权益说明如下：
@@ -1366,45 +1375,55 @@ export default function App() {
                 </span>
               </button>
             </div>
-            </section>
+            </FeishuCard>
           </>
         )}
 
         {page === 'form' && (
           <>
-            <section className="card stage-head">
-              <button type="button" className="stage-back" onClick={handleBackToIdentity}>
+            <FeishuCard className="stage-head">
+              <FeishuButton type="button" className="stage-back" variant="text" onClick={handleBackToIdentity}>
                 {'< 返回选择身份'}
-              </button>
+              </FeishuButton>
               <p className="stage-current stage-current-centered" aria-live="polite">
                 <span className="stage-current-value">{identityLabel}</span>
               </p>
-            </section>
+            </FeishuCard>
 
-            <section className={`card form-shell ${isSwitching ? 'form-shell-reveal' : ''}`} aria-live="polite">
+            <FeishuCard
+              className={`form-shell ${isSwitching ? 'form-shell-reveal' : ''}`}
+              aria-live="polite"
+            >
               {identity === 'industry' && (
                 <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
-                  <div className="field">
-                    <label htmlFor="industry-name">姓名</label>
-                    <input
+                  <FeishuField
+                    label="姓名"
+                    htmlFor="industry-name"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'name')) ? industryErrors.name : ''}
+                  >
+                    <FeishuInput
                       id="industry-name"
                       type="text"
                       autoComplete="name"
                       placeholder="请输入姓名"
                       value={industryForm.name}
+                      status={shouldShowError(fieldKey('industry', 'name')) && industryErrors.name ? 'error' : 'default'}
                       onChange={handleIndustryChange('name')}
                       onBlur={() => markTouched(fieldKey('industry', 'name'))}
                     />
-                    {shouldShowError(fieldKey('industry', 'name')) && industryErrors.name && (
-                      <span className="error">{industryErrors.name}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-idType">证件类型</label>
-                    <select
+                  <FeishuField
+                    label="证件类型"
+                    htmlFor="industry-idType"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'idType')) ? industryErrors.idType : ''}
+                  >
+                    <FeishuSelect
                       id="industry-idType"
                       value={industryForm.idType}
+                      status={shouldShowError(fieldKey('industry', 'idType')) && industryErrors.idType ? 'error' : 'default'}
                       onChange={handleIndustryChange('idType')}
                       onBlur={() => markTouched(fieldKey('industry', 'idType'))}
                     >
@@ -1414,28 +1433,27 @@ export default function App() {
                           {option.label}
                         </option>
                       ))}
-                    </select>
-                    {shouldShowError(fieldKey('industry', 'idType')) && industryErrors.idType && (
-                      <span className="error">{industryErrors.idType}</span>
-                    )}
-                  </div>
+                    </FeishuSelect>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-idNumber">证件号码</label>
-                    <input
+                  <FeishuField
+                    label="证件号码"
+                    htmlFor="industry-idNumber"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'idNumber')) ? industryErrors.idNumber : ''}
+                  >
+                    <FeishuInput
                       id="industry-idNumber"
                       type="text"
                       autoComplete="off"
                       inputMode="text"
                       placeholder="请输入证件号码"
                       value={industryForm.idNumber}
+                      status={shouldShowError(fieldKey('industry', 'idNumber')) && industryErrors.idNumber ? 'error' : 'default'}
                       onChange={handleIndustryChange('idNumber')}
                       onBlur={() => markTouched(fieldKey('industry', 'idNumber'))}
                     />
-                    {shouldShowError(fieldKey('industry', 'idNumber')) && industryErrors.idNumber && (
-                      <span className="error">{industryErrors.idNumber}</span>
-                    )}
-                  </div>
+                  </FeishuField>
                   {industryNeedsIdVerify && industryIdVerify.status !== 'idle' && (
                     <div className="field">
                       <div className="id-verify-row">
@@ -1449,7 +1467,7 @@ export default function App() {
                           }`}
                           aria-live="polite"
                         >
-                  {industryIdVerify.status === 'passed'
+                          {industryIdVerify.status === 'passed'
                             ? (industryIdVerify.message || '实名验证通过')
                             : industryIdVerify.status === 'failed'
                               ? (industryIdVerify.message || '身份证与姓名不匹配')
@@ -1462,25 +1480,31 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="field">
-                    <label htmlFor="industry-phone">手机号</label>
-                    <input
+                  <FeishuField
+                    label="手机号"
+                    htmlFor="industry-phone"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'phone')) ? industryErrors.phone : ''}
+                  >
+                    <FeishuInput
                       id="industry-phone"
                       type="tel"
                       autoComplete="tel"
                       inputMode="numeric"
                       placeholder="请输入手机号"
                       value={industryForm.phone}
+                      status={shouldShowError(fieldKey('industry', 'phone')) && industryErrors.phone ? 'error' : 'default'}
                       onChange={handleIndustryChange('phone')}
                       onBlur={() => markTouched(fieldKey('industry', 'phone'))}
                     />
-                    {shouldShowError(fieldKey('industry', 'phone')) && industryErrors.phone && (
-                      <span className="error">{industryErrors.phone}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-proof">上传专业观众证明</label>
+                  <FeishuField
+                    label="上传专业观众证明"
+                    htmlFor="industry-proof"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'proofFiles')) ? industryErrors.proofFiles : ''}
+                  >
                     <input
                       id="industry-proof"
                       ref={proofInputRef}
@@ -1536,9 +1560,11 @@ export default function App() {
                         {proofPreviews.length === 0 ? (
                           <div className="upload-empty">
                             <div className="upload-drop-surface">粘贴或拖拽至这里上传</div>
-                            <button
+                            <FeishuButton
                               type="button"
                               className="upload-add-button"
+                              variant="text"
+                              icon={<span className="upload-add-plus" aria-hidden="true">+</span>}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 if (isSubmitting) return;
@@ -1546,9 +1572,8 @@ export default function App() {
                               }}
                               disabled={isSubmitting}
                             >
-                              <span className="upload-add-plus" aria-hidden="true">+</span>
                               添加本地文件
-                            </button>
+                            </FeishuButton>
                           </div>
                         ) : (
                           <>
@@ -1636,9 +1661,11 @@ export default function App() {
                               })}
                             </div>
 
-                            <button
+                            <FeishuButton
                               type="button"
                               className="upload-add-button upload-add-button-inline"
+                              variant="text"
+                              icon={<span className="upload-add-plus" aria-hidden="true">+</span>}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 if (isSubmitting) return;
@@ -1646,9 +1673,8 @@ export default function App() {
                               }}
                               disabled={isSubmitting}
                             >
-                              <span className="upload-add-plus" aria-hidden="true">+</span>
                               添加本地文件
-                            </button>
+                            </FeishuButton>
                           </>
                         )}
                       </div>
@@ -1680,48 +1706,54 @@ export default function App() {
                         如在现场发现为非专业观众，我们有权请您离开现场
                       </li>
                     </ul>
-                    {shouldShowError(fieldKey('industry', 'proofFiles')) && industryErrors.proofFiles && (
-                      <span className="error">{industryErrors.proofFiles}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-company">公司</label>
-                    <input
+                  <FeishuField
+                    label="公司"
+                    htmlFor="industry-company"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'company')) ? industryErrors.company : ''}
+                  >
+                    <FeishuInput
                       id="industry-company"
                       type="text"
                       autoComplete="organization"
                       placeholder="请输入公司名称"
                       value={industryForm.company}
+                      status={shouldShowError(fieldKey('industry', 'company')) && industryErrors.company ? 'error' : 'default'}
                       onChange={handleIndustryChange('company')}
                       onBlur={() => markTouched(fieldKey('industry', 'company'))}
                     />
-                    {shouldShowError(fieldKey('industry', 'company')) && industryErrors.company && (
-                      <span className="error">{industryErrors.company}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-title">职位</label>
-                    <input
+                  <FeishuField
+                    label="职位"
+                    htmlFor="industry-title"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'title')) ? industryErrors.title : ''}
+                  >
+                    <FeishuInput
                       id="industry-title"
                       type="text"
                       autoComplete="organization-title"
                       placeholder="请输入职位"
                       value={industryForm.title}
+                      status={shouldShowError(fieldKey('industry', 'title')) && industryErrors.title ? 'error' : 'default'}
                       onChange={handleIndustryChange('title')}
                       onBlur={() => markTouched(fieldKey('industry', 'title'))}
                     />
-                    {shouldShowError(fieldKey('industry', 'title')) && industryErrors.title && (
-                      <span className="error">{industryErrors.title}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-businessType">贵司业务类型</label>
-                    <select
+                  <FeishuField
+                    label="贵司业务类型"
+                    htmlFor="industry-businessType"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'businessType')) ? industryErrors.businessType : ''}
+                  >
+                    <FeishuSelect
                       id="industry-businessType"
                       value={industryForm.businessType}
+                      status={shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? 'error' : 'default'}
                       onChange={handleIndustryChange('businessType')}
                       onBlur={() => markTouched(fieldKey('industry', 'businessType'))}
                     >
@@ -1731,17 +1763,19 @@ export default function App() {
                           {option}
                         </option>
                       ))}
-                    </select>
-                    {shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType && (
-                      <span className="error">{industryErrors.businessType}</span>
-                    )}
-                  </div>
+                    </FeishuSelect>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="industry-department">您所处部门</label>
-                    <select
+                  <FeishuField
+                    label="您所处部门"
+                    htmlFor="industry-department"
+                    required
+                    error={shouldShowError(fieldKey('industry', 'department')) ? industryErrors.department : ''}
+                  >
+                    <FeishuSelect
                       id="industry-department"
                       value={industryForm.department}
+                      status={shouldShowError(fieldKey('industry', 'department')) && industryErrors.department ? 'error' : 'default'}
                       onChange={handleIndustryChange('department')}
                       onBlur={() => markTouched(fieldKey('industry', 'department'))}
                     >
@@ -1751,46 +1785,50 @@ export default function App() {
                           {option}
                         </option>
                       ))}
-                    </select>
-                    {shouldShowError(fieldKey('industry', 'department')) && industryErrors.department && (
-                      <span className="error">{industryErrors.department}</span>
-                    )}
-                  </div>
+                    </FeishuSelect>
+                  </FeishuField>
 
                   <div className="form-actions">
                     {notice && (
                       <p className="notice notice-error">{notice}</p>
                     )}
-                    <button className="submit-button" type="submit" disabled={!identity || isSubmitting}>
+                    <FeishuButton className="submit-button" type="submit" size="lg" block disabled={!identity || isSubmitting}>
                       {isSubmitting ? '提交中...' : '领取观展票'}
-                    </button>
+                    </FeishuButton>
                   </div>
                 </form>
               )}
 
               {identity === 'consumer' && (
                 <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
-                  <div className="field">
-                    <label htmlFor="consumer-name">姓名</label>
-                    <input
+                  <FeishuField
+                    label="姓名"
+                    htmlFor="consumer-name"
+                    required
+                    error={shouldShowError(fieldKey('consumer', 'name')) ? consumerErrors.name : ''}
+                  >
+                    <FeishuInput
                       id="consumer-name"
                       type="text"
                       autoComplete="name"
                       placeholder="请输入姓名"
                       value={consumerForm.name}
+                      status={shouldShowError(fieldKey('consumer', 'name')) && consumerErrors.name ? 'error' : 'default'}
                       onChange={handleConsumerChange('name')}
                       onBlur={() => markTouched(fieldKey('consumer', 'name'))}
                     />
-                    {shouldShowError(fieldKey('consumer', 'name')) && consumerErrors.name && (
-                      <span className="error">{consumerErrors.name}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="consumer-idType">证件类型</label>
-                    <select
+                  <FeishuField
+                    label="证件类型"
+                    htmlFor="consumer-idType"
+                    required
+                    error={shouldShowError(fieldKey('consumer', 'idType')) ? consumerErrors.idType : ''}
+                  >
+                    <FeishuSelect
                       id="consumer-idType"
                       value={consumerForm.idType}
+                      status={shouldShowError(fieldKey('consumer', 'idType')) && consumerErrors.idType ? 'error' : 'default'}
                       onChange={handleConsumerChange('idType')}
                       onBlur={() => markTouched(fieldKey('consumer', 'idType'))}
                     >
@@ -1800,28 +1838,27 @@ export default function App() {
                           {option.label}
                         </option>
                       ))}
-                    </select>
-                    {shouldShowError(fieldKey('consumer', 'idType')) && consumerErrors.idType && (
-                      <span className="error">{consumerErrors.idType}</span>
-                    )}
-                  </div>
+                    </FeishuSelect>
+                  </FeishuField>
 
-                  <div className="field">
-                    <label htmlFor="consumer-idNumber">证件号码</label>
-                    <input
+                  <FeishuField
+                    label="证件号码"
+                    htmlFor="consumer-idNumber"
+                    required
+                    error={shouldShowError(fieldKey('consumer', 'idNumber')) ? consumerErrors.idNumber : ''}
+                  >
+                    <FeishuInput
                       id="consumer-idNumber"
                       type="text"
                       autoComplete="off"
                       inputMode="text"
                       placeholder="请输入证件号码"
                       value={consumerForm.idNumber}
+                      status={shouldShowError(fieldKey('consumer', 'idNumber')) && consumerErrors.idNumber ? 'error' : 'default'}
                       onChange={handleConsumerChange('idNumber')}
                       onBlur={() => markTouched(fieldKey('consumer', 'idNumber'))}
                     />
-                    {shouldShowError(fieldKey('consumer', 'idNumber')) && consumerErrors.idNumber && (
-                      <span className="error">{consumerErrors.idNumber}</span>
-                    )}
-                  </div>
+                  </FeishuField>
                   {consumerNeedsIdVerify && consumerIdVerify.status !== 'idle' && (
                     <div className="field">
                       <div className="id-verify-row">
@@ -1848,46 +1885,67 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="field">
-                    <label htmlFor="consumer-phone">手机号</label>
-                    <input
+                  <FeishuField
+                    label="手机号"
+                    htmlFor="consumer-phone"
+                    required
+                    error={shouldShowError(fieldKey('consumer', 'phone')) ? consumerErrors.phone : ''}
+                  >
+                    <FeishuInput
                       id="consumer-phone"
                       type="tel"
                       autoComplete="tel"
                       inputMode="numeric"
                       placeholder="请输入手机号"
                       value={consumerForm.phone}
+                      status={shouldShowError(fieldKey('consumer', 'phone')) && consumerErrors.phone ? 'error' : 'default'}
                       onChange={handleConsumerChange('phone')}
                       onBlur={() => markTouched(fieldKey('consumer', 'phone'))}
                     />
-                    {shouldShowError(fieldKey('consumer', 'phone')) && consumerErrors.phone && (
-                      <span className="error">{consumerErrors.phone}</span>
-                    )}
-                  </div>
+                  </FeishuField>
 
                   <div className="form-actions">
                     {notice && (
                       <p className="notice notice-error">{notice}</p>
                     )}
-                    <button className="submit-button" type="submit" disabled={!identity || isSubmitting}>
+                    <FeishuButton className="submit-button" type="submit" size="lg" block disabled={!identity || isSubmitting}>
                       {isSubmitting ? '提交中...' : '领取观展票'}
-                    </button>
+                    </FeishuButton>
                   </div>
                 </form>
               )}
-            </section>
+            </FeishuCard>
           </>
         )}
       </div>
 
-      {submitDialog.open && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="提交状态">
-          <div className="modal">
+      <FeishuDialog
+        open={submitDialog.open}
+        title={
+          submitDialog.status === 'submitting'
+            ? '正在提交'
+            : submitDialog.status === 'success'
+              ? '提交成功'
+              : '提交失败'
+        }
+        ariaLabel="提交状态"
+        className={
+          submitDialog.status === 'success'
+            ? 'is-success'
+            : submitDialog.status === 'error'
+              ? 'is-error'
+              : 'is-submitting'
+        }
+        onClose={canCloseSubmitDialog ? closeSubmitDialog : undefined}
+        closeOnEsc={canCloseSubmitDialog}
+        closeOnMask={false}
+        body={
+          <>
             {submitDialog.status === 'submitting' && (
-              <>
-                <h3 className="modal-title">正在提交</h3>
+              <div className="modal-loading-wrap">
+                <FeishuLoading size="md" text="正在提交，请稍候" />
                 {identity === 'industry' && proofPreviews.length > 0 ? (
-                  <p className="modal-body">
+                  <p className="modal-body-copy">
                     正在上传附件（
                     {proofPreviews.filter((item) => item.status === 'success').length}/{proofPreviews.length}
                     ，
@@ -1901,17 +1959,16 @@ export default function App() {
                     %），请勿关闭页面。
                   </p>
                 ) : (
-                  <p className="modal-body">我们正在接收您的信息，请勿关闭页面。</p>
+                  <p className="modal-body-copy">我们正在接收您的信息，请勿关闭页面。</p>
                 )}
-              </>
+              </div>
             )}
             {submitDialog.status === 'success' && (
               <>
                 <div className="modal-success-icon" aria-hidden="true">
                   <span>✓</span>
                 </div>
-                <h3 className="modal-title modal-title-ok">提交成功</h3>
-                <p className="modal-body">
+                <p className="modal-body-copy">
                   {identity === 'industry' ? '您已提交成功，专业观众将进入人工审核流程（1-3个工作日）。' : '您已提交成功。'}
                   <br />
                   【入场方式】凭大陆身份证原件+电子门票免签到入场（电子门票会在展前3天通过短信/邮件统一发放）
@@ -1919,24 +1976,22 @@ export default function App() {
               </>
             )}
             {submitDialog.status === 'error' && (
-              <>
-                <h3 className="modal-title modal-title-error">提交失败</h3>
-                <p className="modal-body">请稍后重试。如持续失败，请联系工作人员。</p>
-              </>
+              <p className="modal-body-copy">请稍后重试。如持续失败，请联系工作人员。</p>
             )}
-            <div className="modal-actions">
-              <button
-                className={`modal-button ${submitDialog.status === 'submitting' ? '' : 'modal-button-primary'}`}
-                type="button"
-                onClick={() => setSubmitDialog((prev) => ({ ...prev, open: false }))}
-                disabled={submitDialog.status === 'submitting' && isSubmitting}
-              >
-                {submitDialog.status === 'submitting' ? '隐藏' : '确定'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        }
+        footer={
+          <FeishuButton
+            className="modal-button"
+            type="button"
+            variant={submitDialog.status === 'submitting' ? 'secondary' : 'primary'}
+            onClick={closeSubmitDialog}
+            disabled={!canCloseSubmitDialog}
+          >
+            {submitDialog.status === 'submitting' ? '隐藏' : '确定'}
+          </FeishuButton>
+        }
+      />
 
       {toast.open && (
         <div className="toast" role="status" aria-live="assertive">

@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "name": "feishu-web-component-contracts",
+    "source": "Feishu design specification markdown corpus (61 files)",
+    "version": "1.0.0",
+    "lastReviewed": "2026-02-13",
+    "defaultDensity": "default",
+    "supportedPlatforms": ["web", "desktop-web", "mobile-web"]
+  },
+  "components": {
+    "Button": {
+      "description": "基础按钮/文字按钮/图标按钮/分裂按钮/全圆角按钮/悬浮按钮统一契约。",
+      "props": {
+        "variant": {"type": "'primary'|'secondary'|'tertiary'|'text'|'link'|'danger'|'success'|'icon'|'split'|'fab'|'round'", "default": "primary"},
+        "size": {"type": "'xs'|'sm'|'md'|'lg'", "default": "md", "notes": "xs=24px, sm=28px, md=32px, lg=40/48px by context"},
+        "disabled": {"type": "boolean", "default": false},
+        "loading": {"type": "boolean", "default": false},
+        "selected": {"type": "boolean", "default": false, "notes": "用于状态切换按钮"},
+        "icon": {"type": "string|null", "default": null},
+        "tooltip": {"type": "string|null", "default": null, "notes": "图标按钮建议必配"},
+        "fullWidth": {"type": "boolean", "default": false}
+      },
+      "events": ["click", "focus", "blur", "keydown", "toggle"],
+      "states": ["default", "hover", "active", "focus", "disabled", "loading", "selected"],
+      "a11y": {
+        "minContrastRatio": "4.5:1 (disabled exempt)",
+        "keyboard": ["Tab focus", "Enter trigger", "Space trigger"],
+        "aria": ["aria-disabled", "aria-pressed (toggle)", "aria-busy (loading)"]
+      },
+      "i18n": {
+        "rule": "按钮文案优先精简，禁止换行/省略。多语言超长时优先改文案或改布局，不要截断关键动作。"
+      }
+    },
+    "Input": {
+      "description": "输入框、数字输入、属性输入、带图标输入、组合输入、文本域。",
+      "props": {
+        "type": {"type": "'text'|'number'|'password'|'search'|'textarea'", "default": "text"},
+        "size": {"type": "'sm'|'md'|'lg'", "default": "md", "notes": "sm=28px, md=32px, lg=40px"},
+        "status": {"type": "'default'|'error'|'warning'|'success'", "default": "default"},
+        "placeholder": {"type": "string", "default": ""},
+        "prefix": {"type": "string|object|null", "default": null},
+        "suffix": {"type": "string|object|null", "default": null},
+        "clearable": {"type": "boolean", "default": true},
+        "readonly": {"type": "boolean", "default": false},
+        "disabled": {"type": "boolean", "default": false},
+        "maxLength": {"type": "number|null", "default": null}
+      },
+      "events": ["input", "change", "focus", "blur", "clear", "pressEnter"],
+      "states": ["default", "hover", "typing", "filled", "readonly", "disabled", "error"],
+      "behavior": {
+        "debounceValidationMs": 500,
+        "minWidth": 240,
+        "maxWidth": 600
+      },
+      "a11y": {
+        "keyboard": ["Tab focus", "Enter submit in form context", "Esc clear in searchable context"],
+        "aria": ["aria-invalid (error)", "aria-required", "aria-describedby"]
+      },
+      "i18n": {
+        "rule": "下拉/输入选项正文建议单行，多语言最多两行，超出使用 tooltip 展示完整内容。"
+      }
+    },
+    "Table": {
+      "description": "数据表格，支持紧凑/基础/宽松密度、固定列、内部滚动与行内操作。",
+      "props": {
+        "density": {"type": "'compact'|'default'|'loose'", "default": "default", "notes": "compact vertical padding≈8px, loose≈16px in small breakpoints"},
+        "rowSelection": {"type": "'none'|'single'|'multiple'", "default": "none"},
+        "stickyHeader": {"type": "boolean", "default": false},
+        "stickyColumns": {"type": "boolean", "default": false},
+        "scroll": {"type": "{x?:number,y?:number}", "default": "{}"},
+        "pagination": {"type": "boolean|object", "default": true}
+      },
+      "events": ["sort", "filter", "rowClick", "rowSelect", "pageChange"],
+      "states": ["default", "hover", "selected", "loading", "empty", "error"],
+      "responsive": {
+        "xs_s": "优先宽松行高与触控友好；复杂列采用横向内部滚动或列折叠",
+        "m_l_xl": "默认基础密度；可启用固定列/表头"
+      },
+      "a11y": {
+        "keyboard": ["Arrow navigation", "Space select row", "Enter open row action"],
+        "aria": ["role=table/grid", "aria-rowcount", "aria-colcount", "aria-sort"]
+      }
+    },
+    "Dialog": {
+      "description": "对话框与确认弹窗。",
+      "props": {
+        "size": {"type": "'s'|'m'|'l'|'xl'", "default": "m"},
+        "title": {"type": "string", "default": ""},
+        "description": {"type": "string", "default": ""},
+        "closable": {"type": "boolean", "default": true},
+        "maskClosable": {"type": "boolean", "default": false},
+        "footer": {"type": "'default'|'custom'|'none'", "default": "default"}
+      },
+      "events": ["open", "close", "confirm", "cancel", "afterClose"],
+      "states": ["enter", "open", "exit"],
+      "responsive": {
+        "rule": "桌面固定 S/M/L/XL，移动端改为响应式宽度；触达最小安全边距 32px 后继续压缩宽度并启用内部滚动。"
+      },
+      "a11y": {
+        "keyboard": ["Esc close", "Tab trap focus", "Enter trigger primary"],
+        "aria": ["role=dialog", "aria-modal=true", "aria-labelledby", "aria-describedby"]
+      }
+    },
+    "Navigation": {
+      "description": "顶部导航、侧边导航、面包屑、Tabs、锚点、下拉菜单。",
+      "props": {
+        "mode": {"type": "'top'|'side'|'breadcrumb'|'tabs'|'anchor'|'dropdown'", "default": "top"},
+        "collapsed": {"type": "boolean", "default": false},
+        "items": {"type": "Array<NavItem>", "default": "[]"},
+        "overflow": {"type": "'menu'|'scroll'|'wrap'", "default": "menu"}
+      },
+      "responsive": {
+        "m_l": "显示完整导航",
+        "s": "半收起；通过 hover/popover 暴露二三级",
+        "xs": "隐藏为图标入口，使用抽屉或全屏模态"
+      },
+      "a11y": {
+        "keyboard": ["Arrow key roving", "Enter activate", "Esc close popup menu"],
+        "aria": ["aria-current", "aria-expanded", "aria-controls", "aria-haspopup"]
+      }
+    },
+    "Card": {
+      "description": "信息卡片与气泡卡片。",
+      "props": {
+        "elevation": {"type": "'none'|'s1'|'s2'|'s3'", "default": "s1"},
+        "bordered": {"type": "boolean", "default": true},
+        "radius": {"type": "'xs'|'s'|'m'|'l'", "default": "m"},
+        "actions": {"type": "Array<Action>", "default": "[]"}
+      },
+      "states": ["default", "hover", "active", "dragging"],
+      "a11y": {
+        "rule": "卡片背景需与页面背景保持足够对比，可通过描边或投影增强分层。"
+      }
+    },
+    "List": {
+      "description": "信息列表与操作列表。",
+      "props": {
+        "density": {"type": "'compact'|'default'|'loose'", "default": "default"},
+        "divider": {"type": "boolean", "default": true},
+        "virtualized": {"type": "boolean", "default": false},
+        "infiniteScroll": {"type": "boolean", "default": false}
+      },
+      "events": ["itemClick", "reachStart", "reachEnd"],
+      "responsive": {
+        "rule": "窄屏提升触控间距，必要时转为分组/折叠展示。"
+      }
+    },
+    "Pagination": {
+      "description": "分页器。",
+      "props": {
+        "current": {"type": "number", "default": 1},
+        "pageSize": {"type": "number", "default": 20},
+        "total": {"type": "number", "default": 0},
+        "showQuickJumper": {"type": "boolean", "default": true},
+        "showSizeChanger": {"type": "boolean", "default": true}
+      },
+      "behavior": {
+        "pageItemMinSize": "28x28",
+        "jumperMinWidth": 48
+      },
+      "responsive": {
+        "mobile": "仅保留翻页与总量信息，减少高级能力"
+      },
+      "events": ["change", "pageSizeChange"]
+    },
+    "Loading": {
+      "description": "加载中、骨架屏、进度条。",
+      "props": {
+        "type": {"type": "'spinner'|'skeleton'|'progress'", "default": "spinner"},
+        "delay": {"type": "number", "default": 1000, "notes": "建议不低于 1000ms"},
+        "percent": {"type": "number|null", "default": null},
+        "text": {"type": "string|null", "default": null}
+      },
+      "a11y": {
+        "aria": ["aria-busy", "role=status"],
+        "rule": "长时加载需可感知反馈与可恢复路径。"
+      }
+    },
+    "Tooltip": {
+      "description": "文字提示（Tooltips）与轻提示。",
+      "props": {
+        "placement": {"type": "'top'|'bottom'|'left'|'right'", "default": "top"},
+        "trigger": {"type": "'hover'|'focus'|'click'", "default": "hover"},
+        "maxWidth": {"type": "number", "default": 320},
+        "interactive": {"type": "boolean", "default": false}
+      },
+      "states": ["hidden", "visible"],
+      "a11y": {
+        "keyboard": ["focus show", "Esc hide"],
+        "aria": ["role=tooltip", "aria-describedby"]
+      },
+      "i18n": {
+        "rule": "多语言长文案可折行；可点击内容优先改用 Popover。"
+      }
+    },
+    "Chart": {
+      "description": "折线/柱状/条形/饼环/雷达等数据可视化。",
+      "props": {
+        "type": {"type": "'line'|'bar'|'column'|'pie'|'radar'|'area'", "default": "line"},
+        "palette": {"type": "'categorical'|'sequential'|'functional'", "default": "categorical"},
+        "showLegend": {"type": "boolean", "default": true},
+        "showGrid": {"type": "boolean", "default": true},
+        "dataZoom": {"type": "boolean", "default": false}
+      },
+      "behavior": {
+        "legend": "桌面默认底部居中；移动建议置顶",
+        "priority": "空间受限时：图形 > 图例 > 坐标轴 > 网格线"
+      },
+      "responsive": {
+        "labelOverflow": ["ellipsis", "wrap", "rotate (careful)", "sampling"],
+        "mobileTooltip": "移动端以按压触发并固定在图表上方展示"
+      },
+      "a11y": {
+        "rule": "色弱场景使用纹理或形状补充颜色差异；确保文本可读。"
+      }
+    }
+  }
+}
