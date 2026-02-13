@@ -455,6 +455,7 @@ jobs:
             }
             NGINX_CONF
 
+            rm -f /etc/nginx/sites-enabled/default || true
             nginx -t
 
             if command -v systemctl >/dev/null 2>&1; then
