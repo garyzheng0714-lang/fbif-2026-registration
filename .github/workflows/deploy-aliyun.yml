@@ -13,7 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -58,7 +58,7 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           set -euo pipefail
-          API_URL="${VITE_API_URL:-http://112.124.103.65:8080}"
+          API_URL="${VITE_API_URL:-/api}"
 
           npm ci --prefix apps/api
           DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
@@ -112,7 +112,6 @@ jobs:
               exit 1
             fi
 
-            # Support pasted values with extra text around the key block.
             RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
             if printf '%s' "${RAW_KEY}" | grep -q -- '-----BEGIN OPENSSH PRIVATE KEY-----'; then
               printf '%s\n' "${RAW_KEY}" | awk '
@@ -180,10 +179,14 @@ jobs:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
           APP_DIR: ${{ secrets.APP_DIR }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          WEB_PORT: ${{ secrets.WEB_PORT }}
+          API_PORT: ${{ secrets.API_PORT }}
+          API_PORT_INTERNAL: ${{ secrets.API_PORT_INTERNAL }}
           WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           DATA_KEY: ${{ secrets.DATA_KEY }}
           DATA_HASH_SALT: ${{ secrets.DATA_HASH_SALT }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
@@ -200,6 +203,26 @@ jobs:
           OSS_MAX_UPLOAD_MB: ${{ secrets.OSS_MAX_UPLOAD_MB }}
           OSS_POLICY_EXPIRE_SECONDS: ${{ secrets.OSS_POLICY_EXPIRE_SECONDS }}
           OSS_OBJECT_ACL: ${{ secrets.OSS_OBJECT_ACL }}
+          ID_VERIFY_ENABLED: ${{ secrets.ID_VERIFY_ENABLED }}
+          ID_VERIFY_ALIYUN_HOST: ${{ secrets.ID_VERIFY_ALIYUN_HOST }}
+          ID_VERIFY_ALIYUN_PATH: ${{ secrets.ID_VERIFY_ALIYUN_PATH }}
+          ID_VERIFY_APPCODE: ${{ secrets.ID_VERIFY_APPCODE }}
+          ID_VERIFY_TIMEOUT_MS: ${{ secrets.ID_VERIFY_TIMEOUT_MS }}
+          ID_VERIFY_TOKEN_TTL_SECONDS: ${{ secrets.ID_VERIFY_TOKEN_TTL_SECONDS }}
+          RATE_LIMIT_WINDOW_MS: ${{ secrets.RATE_LIMIT_WINDOW_MS }}
+          RATE_LIMIT_MAX: ${{ secrets.RATE_LIMIT_MAX }}
+          RATE_LIMIT_BURST: ${{ secrets.RATE_LIMIT_BURST }}
+          SYNC_POLL_TIMEOUT_MS: ${{ secrets.SYNC_POLL_TIMEOUT_MS }}
+          FEISHU_SYNC_ATTEMPTS: ${{ secrets.FEISHU_SYNC_ATTEMPTS }}
+          FEISHU_SYNC_BACKOFF_MS: ${{ secrets.FEISHU_SYNC_BACKOFF_MS }}
+          FEISHU_SYNC_BACKOFF_MAX_MS: ${{ secrets.FEISHU_SYNC_BACKOFF_MAX_MS }}
+          FEISHU_WORKER_CONCURRENCY: ${{ secrets.FEISHU_WORKER_CONCURRENCY }}
+          FEISHU_WORKER_QPS: ${{ secrets.FEISHU_WORKER_QPS }}
+          FEISHU_SELECT_WRITE_MODE: ${{ secrets.FEISHU_SELECT_WRITE_MODE }}
+          MAX_PROOF_URLS: ${{ secrets.MAX_PROOF_URLS }}
+          MAX_PROOF_URL_LENGTH: ${{ secrets.MAX_PROOF_URL_LENGTH }}
+          RUN_DB_MIGRATE: ${{ secrets.RUN_DB_MIGRATE }}
+          RUN_WORKER: ${{ secrets.RUN_WORKER }}
           GH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -213,140 +236,260 @@ jobs:
             RELEASES_DIR="${APP_ROOT}/releases"
             CURRENT_LINK="${APP_ROOT}/current"
             RELEASE_DIR="${RELEASES_DIR}/${GH_SHA}"
+            SHARED_DIR="${APP_ROOT}/shared"
+            BACKEND_ENV_FILE="${SHARED_DIR}/backend.env"
+            BACKEND_ENV_TMP="${SHARED_DIR}/backend.env.tmp"
+            WEB_RELEASES_DIR="${APP_ROOT}/web-releases"
+            WEB_CURRENT_LINK="${APP_ROOT}/web-current"
+            WEB_RELEASE_DIR="${WEB_RELEASES_DIR}/${GH_SHA}"
+            NGINX_SITE="/etc/nginx/conf.d/fbif-form.conf"
 
-            mkdir -p "${RELEASES_DIR}"
-            rm -rf "${RELEASE_DIR}"
-            mkdir -p "${RELEASE_DIR}"
+            WEB_PORT_VALUE="${WEB_PORT:-3001}"
+            API_PORT_VALUE="${API_PORT:-8080}"
+            API_PORT_INTERNAL_VALUE="${API_PORT_INTERNAL:-8080}"
+            WEB_ORIGIN_VALUE="${WEB_ORIGIN:-http://112.124.103.65:${WEB_PORT_VALUE}}"
+
+            mkdir -p "${RELEASES_DIR}" "${SHARED_DIR}" "${WEB_RELEASES_DIR}"
+            rm -rf "${RELEASE_DIR}" "${WEB_RELEASE_DIR}"
+            mkdir -p "${RELEASE_DIR}" "${WEB_RELEASE_DIR}"
 
             tar -xzf /tmp/release.tgz -C "${RELEASE_DIR}"
 
-            npm ci --prefix "${RELEASE_DIR}/apps/api"
-
-            SOURCE_ENV=""
-            if [ -f "${CURRENT_LINK}/apps/api/.env" ]; then
-              SOURCE_ENV="${CURRENT_LINK}/apps/api/.env"
-            elif [ -f "${APP_ROOT}/apps/api/.env" ]; then
-              SOURCE_ENV="${APP_ROOT}/apps/api/.env"
+            if [ ! -d "${RELEASE_DIR}/apps/web/dist" ]; then
+              echo "Missing frontend build output: ${RELEASE_DIR}/apps/web/dist" >&2
+              exit 1
             fi
 
-            if [ -n "${SOURCE_ENV}" ]; then
-              cp "${SOURCE_ENV}" "${RELEASE_DIR}/apps/api/.env"
-              # GitHub Actions passes empty env vars as "", which would override dotenv values.
-              # When reusing existing server .env, unset empty injected vars to avoid clobbering.
-              for key in \
-                WEB_ORIGIN DATABASE_URL REDIS_URL DATA_KEY DATA_HASH_SALT \
-                FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN FEISHU_TABLE_ID \
-                OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET OSS_BUCKET OSS_REGION OSS_HOST \
-                OSS_PUBLIC_BASE_URL OSS_UPLOAD_PREFIX OSS_MAX_UPLOAD_MB \
-                OSS_POLICY_EXPIRE_SECONDS OSS_OBJECT_ACL; do
-                if [ -z "${!key:-}" ]; then
-                  unset "${key}"
-                fi
-              done
-            else
-              : "${DATABASE_URL:?Missing DATABASE_URL secret (or existing server apps/api/.env)}"
-              : "${REDIS_URL:?Missing REDIS_URL secret (or existing server apps/api/.env)}"
-              : "${DATA_KEY:?Missing DATA_KEY secret (or existing server apps/api/.env)}"
-              : "${DATA_HASH_SALT:?Missing DATA_HASH_SALT secret (or existing server apps/api/.env)}"
-              : "${FEISHU_APP_SECRET:?Missing FEISHU_APP_SECRET secret (or existing server .env)}"
-              : "${FEISHU_APP_TOKEN:?Missing FEISHU_APP_TOKEN secret (or existing server .env)}"
-
-              {
-                echo "NODE_ENV=production"
-                echo "PORT=8080"
-                echo "WEB_ORIGIN=${WEB_ORIGIN:-http://112.124.103.65:3001}"
-                echo "DATABASE_URL=${DATABASE_URL}"
-                echo "REDIS_URL=${REDIS_URL}"
-                echo "DATA_KEY=${DATA_KEY}"
-                echo "DATA_HASH_SALT=${DATA_HASH_SALT}"
-                echo "FEISHU_APP_ID=${FEISHU_APP_ID:-cli_a9f7f8703778dcee}"
-                echo "FEISHU_APP_SECRET=${FEISHU_APP_SECRET}"
-                echo "FEISHU_APP_TOKEN=${FEISHU_APP_TOKEN}"
-                echo "FEISHU_TABLE_ID=${FEISHU_TABLE_ID:-tbl0CQ74guMS1IDd}"
-                echo "FEISHU_FIELD_NAME=姓名（问卷题）"
-                echo "FEISHU_FIELD_PHONE=手机号（问卷题）"
-                echo "FEISHU_FIELD_TITLE=职位（问卷题）"
-                echo "FEISHU_FIELD_COMPANY=公司（问卷题）"
-                echo "FEISHU_FIELD_ID=证件号码（问卷题）"
-                echo "FEISHU_FIELD_BUSINESS_TYPE=贵司的业务类型"
-                echo "FEISHU_FIELD_DEPARTMENT=您所处的部门（问卷题）"
-                echo "FEISHU_FIELD_PROOF_URL=专业观众证明（附件链接）"
-                echo "FEISHU_FIELD_SUBMITTED_AT="
-                echo "FEISHU_FIELD_SYNC_STATUS="
-
-                if [ -n "${OSS_ACCESS_KEY_ID:-}" ]; then echo "OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}"; fi
-                if [ -n "${OSS_ACCESS_KEY_SECRET:-}" ]; then echo "OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}"; fi
-                if [ -n "${OSS_BUCKET:-}" ]; then echo "OSS_BUCKET=${OSS_BUCKET}"; fi
-                if [ -n "${OSS_REGION:-}" ]; then echo "OSS_REGION=${OSS_REGION}"; fi
-                if [ -n "${OSS_HOST:-}" ]; then echo "OSS_HOST=${OSS_HOST}"; fi
-                if [ -n "${OSS_PUBLIC_BASE_URL:-}" ]; then echo "OSS_PUBLIC_BASE_URL=${OSS_PUBLIC_BASE_URL}"; fi
-                if [ -n "${OSS_UPLOAD_PREFIX:-}" ]; then echo "OSS_UPLOAD_PREFIX=${OSS_UPLOAD_PREFIX}"; fi
-                if [ -n "${OSS_MAX_UPLOAD_MB:-}" ]; then echo "OSS_MAX_UPLOAD_MB=${OSS_MAX_UPLOAD_MB}"; fi
-                if [ -n "${OSS_POLICY_EXPIRE_SECONDS:-}" ]; then echo "OSS_POLICY_EXPIRE_SECONDS=${OSS_POLICY_EXPIRE_SECONDS}"; fi
-                if [ -n "${OSS_OBJECT_ACL:-}" ]; then echo "OSS_OBJECT_ACL=${OSS_OBJECT_ACL}"; fi
-              } > "${RELEASE_DIR}/apps/api/.env"
-            fi
-
-            (cd "${RELEASE_DIR}/apps/api" && npm run prisma:migrate)
-
+            cp -a "${RELEASE_DIR}/apps/web/dist/." "${WEB_RELEASE_DIR}/"
+            ln -sfn "${WEB_RELEASE_DIR}" "${WEB_CURRENT_LINK}"
             ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
-            if ! command -v pm2 >/dev/null 2>&1; then
-              npm install -g pm2
-            fi
-
-            pm2 delete fbif-mock-api >/dev/null 2>&1 || true
-
-            pm2 delete fbif-api >/dev/null 2>&1 || true
-            pm2 start "${CURRENT_LINK}/apps/api/dist/index.js" --name fbif-api --cwd "${CURRENT_LINK}/apps/api" --update-env
-
-            pm2 delete fbif-worker >/dev/null 2>&1 || true
-            pm2 start "${CURRENT_LINK}/apps/api/dist/worker.js" --name fbif-worker --cwd "${CURRENT_LINK}/apps/api" --update-env
-
-            pm2 delete fbif-web >/dev/null 2>&1 || true
-            if [ -f "${CURRENT_LINK}/docker-compose.nginx.yml" ] && command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-              echo "Deploying web via docker compose service fbif-web-nginx..."
-              (
-                cd "${CURRENT_LINK}"
-                VITE_API_URL="${VITE_API_URL:-}" docker compose -f docker-compose.nginx.yml up -d --build fbif-web-nginx
-              )
-            elif ss -lnt | grep -q ':3001 '; then
-              echo "Port 3001 already in use, skip pm2 web startup."
+            if [ -f "${BACKEND_ENV_FILE}" ]; then
+              cp "${BACKEND_ENV_FILE}" "${BACKEND_ENV_TMP}"
             else
-              pm2 serve "${CURRENT_LINK}/apps/web/dist" 3001 --name fbif-web --spa
+              : > "${BACKEND_ENV_TMP}"
             fi
 
-            pm2 save
-            pm2 startup systemd -u root --hp /root || true
+            upsert_env() {
+              local key="$1"
+              local value="$2"
+              grep -v "^${key}=" "${BACKEND_ENV_TMP}" > "${BACKEND_ENV_TMP}.next" || true
+              printf '%s=%s\n' "${key}" "${value}" >> "${BACKEND_ENV_TMP}.next"
+              mv "${BACKEND_ENV_TMP}.next" "${BACKEND_ENV_TMP}"
+            }
+
+            set_if_non_empty() {
+              local key="$1"
+              local value="${2:-}"
+              if [ -n "${value}" ]; then
+                upsert_env "${key}" "${value}"
+              fi
+            }
+
+            set_default() {
+              local key="$1"
+              local value="$2"
+              if ! grep -q "^${key}=" "${BACKEND_ENV_TMP}"; then
+                upsert_env "${key}" "${value}"
+              fi
+            }
+
+            get_env_value() {
+              local key="$1"
+              local line
+              line="$(grep "^${key}=" "${BACKEND_ENV_TMP}" | tail -n 1 || true)"
+              printf '%s' "${line#*=}"
+            }
+
+            set_default NODE_ENV production
+            set_default API_PORT "${API_PORT_VALUE}"
+            set_default API_PORT_INTERNAL "${API_PORT_INTERNAL_VALUE}"
+            set_default WEB_ORIGIN "${WEB_ORIGIN_VALUE}"
+            set_default CSRF_COOKIE_SECURE false
+            set_default POSTGRES_USER fbif
+            set_default POSTGRES_PASSWORD change_me
+            set_default POSTGRES_DB fbif_form
+            set_default FEISHU_APP_ID cli_a9f7f8703778dcee
+            set_default FEISHU_TABLE_ID tbl0CQ74guMS1IDd
+            set_default FEISHU_FIELD_NAME 姓名（问卷题）
+            set_default FEISHU_FIELD_PHONE 手机号（问卷题）
+            set_default FEISHU_FIELD_TITLE 职位（问卷题）
+            set_default FEISHU_FIELD_COMPANY 公司（问卷题）
+            set_default FEISHU_FIELD_ID 证件号码（问卷题）
+            set_default FEISHU_FIELD_BUSINESS_TYPE 贵司的业务类型
+            set_default FEISHU_FIELD_DEPARTMENT 您所处的部门（问卷题）
+            set_default FEISHU_FIELD_PROOF_URL 专业观众证明（附件链接）
+            set_default FEISHU_FIELD_SUBMITTED_AT ""
+            set_default FEISHU_FIELD_SYNC_STATUS ""
+            set_default RATE_LIMIT_WINDOW_MS 60000
+            set_default RATE_LIMIT_MAX 120
+            set_default RATE_LIMIT_BURST 20
+            set_default SYNC_POLL_TIMEOUT_MS 30000
+            set_default FEISHU_SYNC_ATTEMPTS 8
+            set_default FEISHU_SYNC_BACKOFF_MS 1000
+            set_default FEISHU_SYNC_BACKOFF_MAX_MS 120000
+            set_default FEISHU_WORKER_CONCURRENCY 10
+            set_default FEISHU_WORKER_QPS 10
+            set_default FEISHU_SELECT_WRITE_MODE label
+            set_default MAX_PROOF_URLS 5
+            set_default MAX_PROOF_URL_LENGTH 2048
+            set_default ID_VERIFY_ENABLED false
+            set_default ID_VERIFY_ALIYUN_HOST https://sxidcheck.market.alicloudapi.com
+            set_default ID_VERIFY_ALIYUN_PATH /idcard/check
+            set_default ID_VERIFY_TIMEOUT_MS 5000
+            set_default ID_VERIFY_TOKEN_TTL_SECONDS 900
+            set_default RUN_DB_MIGRATE true
+            set_default RUN_WORKER true
+
+            set_if_non_empty WEB_ORIGIN "${WEB_ORIGIN:-}"
+            set_if_non_empty API_PORT "${API_PORT:-}"
+            set_if_non_empty API_PORT_INTERNAL "${API_PORT_INTERNAL:-}"
+            set_if_non_empty CSRF_COOKIE_SECURE "${CSRF_COOKIE_SECURE:-}"
+            set_if_non_empty POSTGRES_USER "${POSTGRES_USER:-}"
+            set_if_non_empty POSTGRES_PASSWORD "${POSTGRES_PASSWORD:-}"
+            set_if_non_empty POSTGRES_DB "${POSTGRES_DB:-}"
+            set_if_non_empty DATA_KEY "${DATA_KEY:-}"
+            set_if_non_empty DATA_HASH_SALT "${DATA_HASH_SALT:-}"
+            set_if_non_empty FEISHU_APP_ID "${FEISHU_APP_ID:-}"
+            set_if_non_empty FEISHU_APP_SECRET "${FEISHU_APP_SECRET:-}"
+            set_if_non_empty FEISHU_APP_TOKEN "${FEISHU_APP_TOKEN:-}"
+            set_if_non_empty FEISHU_TABLE_ID "${FEISHU_TABLE_ID:-}"
+            set_if_non_empty OSS_ACCESS_KEY_ID "${OSS_ACCESS_KEY_ID:-}"
+            set_if_non_empty OSS_ACCESS_KEY_SECRET "${OSS_ACCESS_KEY_SECRET:-}"
+            set_if_non_empty OSS_BUCKET "${OSS_BUCKET:-}"
+            set_if_non_empty OSS_REGION "${OSS_REGION:-}"
+            set_if_non_empty OSS_HOST "${OSS_HOST:-}"
+            set_if_non_empty OSS_PUBLIC_BASE_URL "${OSS_PUBLIC_BASE_URL:-}"
+            set_if_non_empty OSS_UPLOAD_PREFIX "${OSS_UPLOAD_PREFIX:-}"
+            set_if_non_empty OSS_MAX_UPLOAD_MB "${OSS_MAX_UPLOAD_MB:-}"
+            set_if_non_empty OSS_POLICY_EXPIRE_SECONDS "${OSS_POLICY_EXPIRE_SECONDS:-}"
+            set_if_non_empty OSS_OBJECT_ACL "${OSS_OBJECT_ACL:-}"
+            set_if_non_empty ID_VERIFY_ENABLED "${ID_VERIFY_ENABLED:-}"
+            set_if_non_empty ID_VERIFY_ALIYUN_HOST "${ID_VERIFY_ALIYUN_HOST:-}"
+            set_if_non_empty ID_VERIFY_ALIYUN_PATH "${ID_VERIFY_ALIYUN_PATH:-}"
+            set_if_non_empty ID_VERIFY_APPCODE "${ID_VERIFY_APPCODE:-}"
+            set_if_non_empty ID_VERIFY_TIMEOUT_MS "${ID_VERIFY_TIMEOUT_MS:-}"
+            set_if_non_empty ID_VERIFY_TOKEN_TTL_SECONDS "${ID_VERIFY_TOKEN_TTL_SECONDS:-}"
+            set_if_non_empty RATE_LIMIT_WINDOW_MS "${RATE_LIMIT_WINDOW_MS:-}"
+            set_if_non_empty RATE_LIMIT_MAX "${RATE_LIMIT_MAX:-}"
+            set_if_non_empty RATE_LIMIT_BURST "${RATE_LIMIT_BURST:-}"
+            set_if_non_empty SYNC_POLL_TIMEOUT_MS "${SYNC_POLL_TIMEOUT_MS:-}"
+            set_if_non_empty FEISHU_SYNC_ATTEMPTS "${FEISHU_SYNC_ATTEMPTS:-}"
+            set_if_non_empty FEISHU_SYNC_BACKOFF_MS "${FEISHU_SYNC_BACKOFF_MS:-}"
+            set_if_non_empty FEISHU_SYNC_BACKOFF_MAX_MS "${FEISHU_SYNC_BACKOFF_MAX_MS:-}"
+            set_if_non_empty FEISHU_WORKER_CONCURRENCY "${FEISHU_WORKER_CONCURRENCY:-}"
+            set_if_non_empty FEISHU_WORKER_QPS "${FEISHU_WORKER_QPS:-}"
+            set_if_non_empty FEISHU_SELECT_WRITE_MODE "${FEISHU_SELECT_WRITE_MODE:-}"
+            set_if_non_empty MAX_PROOF_URLS "${MAX_PROOF_URLS:-}"
+            set_if_non_empty MAX_PROOF_URL_LENGTH "${MAX_PROOF_URL_LENGTH:-}"
+            set_if_non_empty RUN_DB_MIGRATE "${RUN_DB_MIGRATE:-}"
+            set_if_non_empty RUN_WORKER "${RUN_WORKER:-}"
+
+            missing=0
+            for key in DATA_KEY DATA_HASH_SALT FEISHU_APP_SECRET FEISHU_APP_TOKEN; do
+              if [ -z "$(get_env_value "${key}")" ]; then
+                echo "Missing required backend env: ${key}" >&2
+                missing=1
+              fi
+            done
+            if [ "${missing}" -ne 0 ]; then
+              exit 1
+            fi
+
+            mv "${BACKEND_ENV_TMP}" "${BACKEND_ENV_FILE}"
+            chmod 600 "${BACKEND_ENV_FILE}"
+
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found on server." >&2
+              exit 1
+            fi
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "Docker Compose v2 not found on server." >&2
+              exit 1
+            fi
+
+            (
+              cd "${RELEASE_DIR}"
+              docker compose --env-file "${BACKEND_ENV_FILE}" -f docker-compose.backend.yml up -d --build --remove-orphans
+            )
+
+            docker rm -f fbif-form-web-nginx >/dev/null 2>&1 || true
+
+            if command -v pm2 >/dev/null 2>&1; then
+              pm2 delete fbif-web >/dev/null 2>&1 || true
+              pm2 delete fbif-api >/dev/null 2>&1 || true
+              pm2 delete fbif-worker >/dev/null 2>&1 || true
+              pm2 delete fbif-mock-api >/dev/null 2>&1 || true
+              pm2 save >/dev/null 2>&1 || true
+            fi
+
+            if ! command -v nginx >/dev/null 2>&1; then
+              echo "NGINX is not installed on server." >&2
+              exit 1
+            fi
+
+            cat > "${NGINX_SITE}" <<NGINX_CONF
+            server {
+              listen ${WEB_PORT_VALUE};
+              server_name _;
+              root ${WEB_CURRENT_LINK};
+              index index.html;
+
+              location / {
+                try_files \$uri \$uri/ /index.html;
+              }
+
+              location /api/ {
+                proxy_pass http://127.0.0.1:${API_PORT_VALUE};
+                proxy_http_version 1.1;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+              }
+
+              location = /healthz {
+                default_type text/plain;
+                return 200 "ok";
+              }
+            }
+            NGINX_CONF
+
+            nginx -t
+
+            if command -v systemctl >/dev/null 2>&1; then
+              systemctl enable nginx >/dev/null 2>&1 || true
+              systemctl restart nginx
+            else
+              nginx -s reload || nginx
+            fi
 
             wait_http() {
               local url="$1"
               local retries="${2:-20}"
               local i=1
-              while [ "$i" -le "$retries" ]; do
-                if curl -fsS "$url" >/dev/null; then
+              while [ "${i}" -le "${retries}" ]; do
+                if curl -fsS "${url}" >/dev/null; then
                   return 0
                 fi
                 sleep 1
                 i=$((i + 1))
               done
-
-              echo "health check failed: ${url}" >&2
-              pm2 ls --no-color || true
-              pm2 logs fbif-api --lines 80 --nostream || true
-              pm2 logs fbif-worker --lines 80 --nostream || true
+              echo "Health check failed: ${url}" >&2
+              docker ps || true
               return 1
             }
 
-            wait_http http://127.0.0.1:8080/health 20
-            wait_http http://127.0.0.1:3001 10
+            wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 40
+            wait_http "http://127.0.0.1:${WEB_PORT_VALUE}/healthz" 20
 
             ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+            ls -1dt "${WEB_RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
           REMOTE_SCRIPT
 
           REMOTE_ENV="$(printf \
-            "APP_DIR=%q VITE_API_URL=%q WEB_ORIGIN=%q DATABASE_URL=%q REDIS_URL=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q GH_SHA=%q" \
-            "${APP_DIR:-}" "${VITE_API_URL:-}" "${WEB_ORIGIN:-}" "${DATABASE_URL:-}" "${REDIS_URL:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${GH_SHA}")"
+            "APP_DIR=%q WEB_PORT=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q" \
+            "${APP_DIR:-}" "${WEB_PORT:-}" "${API_PORT:-}" "${API_PORT_INTERNAL:-}" "${WEB_ORIGIN:-}" "${CSRF_COOKIE_SECURE:-}" "${POSTGRES_USER:-}" "${POSTGRES_PASSWORD:-}" "${POSTGRES_DB:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${ID_VERIFY_ENABLED:-}" "${ID_VERIFY_ALIYUN_HOST:-}" "${ID_VERIFY_ALIYUN_PATH:-}" "${ID_VERIFY_APPCODE:-}" "${ID_VERIFY_TIMEOUT_MS:-}" "${ID_VERIFY_TOKEN_TTL_SECONDS:-}" "${RATE_LIMIT_WINDOW_MS:-}" "${RATE_LIMIT_MAX:-}" "${RATE_LIMIT_BURST:-}" "${SYNC_POLL_TIMEOUT_MS:-}" "${FEISHU_SYNC_ATTEMPTS:-}" "${FEISHU_SYNC_BACKOFF_MS:-}" "${FEISHU_SYNC_BACKOFF_MAX_MS:-}" "${FEISHU_WORKER_CONCURRENCY:-}" "${FEISHU_WORKER_QPS:-}" "${FEISHU_SELECT_WRITE_MODE:-}" "${MAX_PROOF_URLS:-}" "${MAX_PROOF_URL_LENGTH:-}" "${RUN_DB_MIGRATE:-}" "${RUN_WORKER:-}" "${GH_SHA}")"
 
           ssh \
             -i ~/.ssh/id_aliyun \
