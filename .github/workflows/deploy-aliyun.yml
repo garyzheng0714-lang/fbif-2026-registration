@@ -300,8 +300,27 @@ jobs:
             pm2 save
             pm2 startup systemd -u root --hp /root || true
 
-            curl -fsS http://127.0.0.1:8080/health >/dev/null
-            curl -fsS http://127.0.0.1:3001 >/dev/null
+            wait_http() {
+              local url="$1"
+              local retries="${2:-20}"
+              local i=1
+              while [ "$i" -le "$retries" ]; do
+                if curl -fsS "$url" >/dev/null; then
+                  return 0
+                fi
+                sleep 1
+                i=$((i + 1))
+              done
+
+              echo "health check failed: ${url}" >&2
+              pm2 ls --no-color || true
+              pm2 logs fbif-api --lines 80 --nostream || true
+              pm2 logs fbif-worker --lines 80 --nostream || true
+              return 1
+            }
+
+            wait_http http://127.0.0.1:8080/health 20
+            wait_http http://127.0.0.1:3001 10
 
             ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
           REMOTE_SCRIPT
