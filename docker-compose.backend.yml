@@ -1,0 +1,102 @@
+name: fbif-form-backend
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: fbif-form-api:latest
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-18080}:${API_PORT_INTERNAL:-8080}"
+    environment:
+      NODE_ENV: production
+      PORT: ${API_PORT_INTERNAL:-8080}
+      WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
+      CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-true}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fbif}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-fbif_form}
+      REDIS_URL: redis://redis:6379
+      DATA_KEY: ${DATA_KEY:?DATA_KEY is required}
+      DATA_HASH_SALT: ${DATA_HASH_SALT:?DATA_HASH_SALT is required}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:?FEISHU_APP_ID is required}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:?FEISHU_APP_SECRET is required}
+      FEISHU_APP_TOKEN: ${FEISHU_APP_TOKEN:?FEISHU_APP_TOKEN is required}
+      FEISHU_TABLE_ID: ${FEISHU_TABLE_ID:?FEISHU_TABLE_ID is required}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}
+      SYNC_POLL_TIMEOUT_MS: ${SYNC_POLL_TIMEOUT_MS:-30000}
+      FEISHU_SYNC_ATTEMPTS: ${FEISHU_SYNC_ATTEMPTS:-8}
+      FEISHU_SYNC_BACKOFF_MS: ${FEISHU_SYNC_BACKOFF_MS:-1000}
+      FEISHU_SYNC_BACKOFF_MAX_MS: ${FEISHU_SYNC_BACKOFF_MAX_MS:-120000}
+      FEISHU_WORKER_CONCURRENCY: ${FEISHU_WORKER_CONCURRENCY:-10}
+      FEISHU_WORKER_QPS: ${FEISHU_WORKER_QPS:-10}
+      FEISHU_SELECT_WRITE_MODE: ${FEISHU_SELECT_WRITE_MODE:-label}
+      MAX_PROOF_URLS: ${MAX_PROOF_URLS:-5}
+      MAX_PROOF_URL_LENGTH: ${MAX_PROOF_URL_LENGTH:-2048}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_BUCKET: ${OSS_BUCKET:-}
+      OSS_REGION: ${OSS_REGION:-}
+      OSS_HOST: ${OSS_HOST:-}
+      OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
+      OSS_UPLOAD_PREFIX: ${OSS_UPLOAD_PREFIX:-fbif-form/proof}
+      OSS_MAX_UPLOAD_MB: ${OSS_MAX_UPLOAD_MB:-50}
+      OSS_POLICY_EXPIRE_SECONDS: ${OSS_POLICY_EXPIRE_SECONDS:-600}
+      OSS_OBJECT_ACL: ${OSS_OBJECT_ACL:-public-read}
+      ID_VERIFY_ENABLED: ${ID_VERIFY_ENABLED:-false}
+      ID_VERIFY_ALIYUN_HOST: ${ID_VERIFY_ALIYUN_HOST:-https://sxidcheck.market.alicloudapi.com}
+      ID_VERIFY_ALIYUN_PATH: ${ID_VERIFY_ALIYUN_PATH:-/idcard/check}
+      ID_VERIFY_APPCODE: ${ID_VERIFY_APPCODE:-}
+      ID_VERIFY_TIMEOUT_MS: ${ID_VERIFY_TIMEOUT_MS:-5000}
+      ID_VERIFY_TOKEN_TTL_SECONDS: ${ID_VERIFY_TOKEN_TTL_SECONDS:-900}
+      RUN_DB_MIGRATE: ${RUN_DB_MIGRATE:-true}
+      RUN_WORKER: ${RUN_WORKER:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - edge
+      - private
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fbif}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-fbif_form}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fbif} -d ${POSTGRES_DB:-fbif_form}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - private
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    volumes:
+      - redisdata:/data
+    networks:
+      - private
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  edge:
+  private:
+    internal: true
