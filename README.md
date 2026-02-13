@@ -52,6 +52,35 @@ node scripts/local-stack.mjs status
 
 完整说明与测试用例见 `docs/local-dev-environment.md`。
 
+## 生产部署（现有 NGINX + 后端容器隔离）
+目标架构：
+- 前端：`apps/web` 在 CI/本机构建后，发布静态文件到现有 NGINX。
+- 后端：单一 API 容器（内部同时运行 API + Worker）。
+- 数据层：专用 `postgres:16` + `redis:7`，仅供该 API 容器访问。
+
+1. 构建前端静态资源（不在服务器运行 Node）：
+```bash
+cd apps/web
+npm ci
+VITE_API_URL=https://form.example.com npm run build
+```
+
+2. 将 `apps/web/dist/` 同步到现有 NGINX 站点目录（如 `/var/www/fbif-form`），由 NGINX 直接托管。
+
+3. 启动后端隔离容器栈：
+```bash
+cp backend.env.example backend.env
+docker compose --env-file backend.env -f docker-compose.backend.yml up -d --build
+```
+
+4. 验证：
+```bash
+docker compose --env-file backend.env -f docker-compose.backend.yml ps
+curl -i http://127.0.0.1:18080/health
+```
+
+完整步骤与 NGINX 反向代理示例见 `docs/deployment.md`。
+
 ## 重要配置
 - `FEISHU_APP_SECRET` 必须从环境变量注入
 - `FEISHU_TABLE_ID` 需填写多维表格的 Table ID
