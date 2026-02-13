@@ -230,6 +230,18 @@ jobs:
 
             if [ -n "${SOURCE_ENV}" ]; then
               cp "${SOURCE_ENV}" "${RELEASE_DIR}/apps/api/.env"
+              # GitHub Actions passes empty env vars as "", which would override dotenv values.
+              # When reusing existing server .env, unset empty injected vars to avoid clobbering.
+              for key in \
+                WEB_ORIGIN DATABASE_URL REDIS_URL DATA_KEY DATA_HASH_SALT \
+                FEISHU_APP_ID FEISHU_APP_SECRET FEISHU_APP_TOKEN FEISHU_TABLE_ID \
+                OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET OSS_BUCKET OSS_REGION OSS_HOST \
+                OSS_PUBLIC_BASE_URL OSS_UPLOAD_PREFIX OSS_MAX_UPLOAD_MB \
+                OSS_POLICY_EXPIRE_SECONDS OSS_OBJECT_ACL; do
+                if [ -z "${!key:-}" ]; then
+                  unset "${key}"
+                fi
+              done
             else
               : "${DATABASE_URL:?Missing DATABASE_URL secret (or existing server apps/api/.env)}"
               : "${REDIS_URL:?Missing REDIS_URL secret (or existing server apps/api/.env)}"
