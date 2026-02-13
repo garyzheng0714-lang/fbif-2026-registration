@@ -291,7 +291,11 @@ jobs:
             pm2 start "${CURRENT_LINK}/apps/api/dist/worker.js" --name fbif-worker --cwd "${CURRENT_LINK}/apps/api" --update-env
 
             pm2 delete fbif-web >/dev/null 2>&1 || true
-            pm2 serve "${CURRENT_LINK}/apps/web/dist" 3001 --name fbif-web --spa
+            if ss -lnt | grep -q ':3001 '; then
+              echo "Port 3001 already in use, skip pm2 web startup (external web runtime expected)."
+            else
+              pm2 serve "${CURRENT_LINK}/apps/web/dist" 3001 --name fbif-web --spa
+            fi
 
             pm2 save
             pm2 startup systemd -u root --hp /root || true
