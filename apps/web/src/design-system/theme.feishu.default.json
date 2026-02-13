@@ -1,0 +1,72 @@
+{
+  "name": "feishu-default-light",
+  "density": "default",
+  "color": {
+    "brand.primary": "#1456F0",
+    "text.primary": "#1F2329",
+    "text.secondary": "#646A73",
+    "text.tertiary": "#8F959E",
+    "text.disabled": "#BBBFC4",
+    "border.interactive": "#D0D3D6",
+    "border.card": "#DEE0E3",
+    "fill.disabled": "#EFF0F1",
+    "bg.level1": "#EFF0F1",
+    "bg.level2": "#F2F3F5",
+    "bg.level3": "#F5F6F7",
+    "mask": "rgba(0,0,0,0.55)",
+    "state.info": "#4275E0",
+    "state.success": "#4BA254",
+    "state.warning": "#E57A3C",
+    "state.danger": "#E55E55"
+  },
+  "radius": {
+    "xs": 4,
+    "s": 6,
+    "m": 8,
+    "l": 10,
+    "round": 9999
+  },
+  "spacing": {
+    "base": 8,
+    "fine": 4,
+    "safe.mobile": 16,
+    "safe.desktop": 24
+  },
+  "typography": {
+    "fontFamily": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
+    "weights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600
+    },
+    "scale": {
+      "h0": {"fontSize": 26, "lineHeight": 40, "fontWeight": 600},
+      "h1": {"fontSize": 24, "lineHeight": 36, "fontWeight": 600},
+      "h2": {"fontSize": 20, "lineHeight": 30, "fontWeight": 500},
+      "h3": {"fontSize": 17, "lineHeight": 26, "fontWeight": 500},
+      "body": {"fontSize": 16, "lineHeight": 24, "fontWeight": 400},
+      "body2": {"fontSize": 14, "lineHeight": 22, "fontWeight": 400},
+      "caption": {"fontSize": 12, "lineHeight": 20, "fontWeight": 400}
+    }
+  },
+  "shadow": {
+    "down.s1": "0 1px 2px -2px rgba(31,35,39,0.02), 0 2px 4px 0 rgba(31,35,39,0.02)",
+    "down.s2": "0 2px 4px -4px rgba(31,35,39,0.02), 0 4px 8px 0 rgba(31,35,39,0.02)",
+    "down.s3": "0 3px 6px -6px rgba(31,35,39,0.05), 0 4px 8px 0 rgba(31,35,39,0.03)",
+    "down.pri": "0 4px 8px 0 rgba(36,91,219,0.16)"
+  },
+  "motion": {
+    "duration.short": 120,
+    "duration.medium": 200,
+    "duration.long": 320,
+    "easing.standard": "cubic-bezier(0.3,0,0.1,1)",
+    "easing.linear": "linear"
+  },
+  "breakpoints": {
+    "xs": 0,
+    "s": 600,
+    "m": 1024,
+    "l": 1440,
+    "xl": 1920
+  }
+}
