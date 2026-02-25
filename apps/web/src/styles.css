@@ -2130,11 +2130,12 @@ body {
 }
 
 .page.has-submit-dock {
-  padding-bottom: 144px;
+  padding-bottom: 116px;
 }
 
 .page.has-submit-dock .legal-footer {
-  margin-bottom: 4px;
+  margin-bottom: 0;
+  padding-top: 6px;
 }
 
 .frame {
@@ -2532,7 +2533,7 @@ body {
   }
 
   .page.has-submit-dock {
-    padding-bottom: 136px;
+    padding-bottom: 118px;
   }
 
   .card {
