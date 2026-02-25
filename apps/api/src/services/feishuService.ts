@@ -12,7 +12,7 @@ const fieldMap = {
   title: process.env.FEISHU_FIELD_TITLE || '职位（问卷题）',
   company: process.env.FEISHU_FIELD_COMPANY || '公司（问卷题）',
   idNumber: process.env.FEISHU_FIELD_ID || '证件号码（问卷题）',
-  identity: process.env.FEISHU_FIELD_IDENTITY || '',
+  identity: process.env.FEISHU_FIELD_IDENTITY || '观展身份',
   idType: process.env.FEISHU_FIELD_ID_TYPE || '',
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
@@ -271,6 +271,16 @@ function normalizeDepartmentOptionText(value: unknown) {
   return text;
 }
 
+function getIdTypeLabel(idType: string) {
+  if (idType === 'cn_id') return '中国居民身份证';
+  if (idType === 'hk_macao_mainland_permit') return '港澳居民来往内地通行证';
+  if (idType === 'taiwan_mainland_permit') return '台湾居民来往大陆通行证';
+  if (idType === 'passport') return '护照';
+  if (idType === 'foreign_permanent_resident_id') return '外国人永久居留身份证';
+  if (idType === 'hmt_residence_permit') return '港澳台居民居住证';
+  return '';
+}
+
 export type BitableWriteFields = {
   readableFields: Record<string, string>;
   optionIdFields: Record<string, string>;
@@ -296,11 +306,7 @@ function buildReadableFields(input: {
   }
 
   if (fieldMap.idType) {
-    const idTypeValue = submission.idType === 'cn_id'
-      ? '中国居民身份证'
-      : submission.idType === 'passport'
-        ? '护照'
-        : '';
+    const idTypeValue = getIdTypeLabel(String(submission.idType || ''));
 
     if (idTypeValue) {
       fields[fieldMap.idType] = idTypeValue;

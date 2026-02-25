@@ -10,6 +10,15 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
+async function selectFeishuOption(
+  user: ReturnType<typeof userEvent.setup>,
+  fieldLabel: string,
+  optionLabel: string
+) {
+  await user.click(screen.getByLabelText(fieldLabel));
+  await user.click(await screen.findByRole('option', { name: optionLabel }));
+}
+
 describe('App dynamic form', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -49,10 +58,7 @@ describe('App dynamic form', () => {
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
     expect(await screen.findByText('姓名至少 2 个字符')).toBeInTheDocument();
-    const idTypeErrors = screen
-      .getAllByText('请选择证件类型')
-      .filter((node) => node.tagName === 'SPAN');
-    expect(idTypeErrors.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('证件类型')).toHaveTextContent('中国居民身份证');
     expect(screen.getByText('手机号格式不正确')).toBeInTheDocument();
     // CSRF is prefetched when entering form page.
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -66,7 +72,7 @@ describe('App dynamic form', () => {
     await user.click(screen.getByRole('button', { name: '我是消费者' }));
     await screen.findByLabelText('姓名');
     await user.type(screen.getByLabelText('姓名'), '张三');
-    await user.selectOptions(screen.getByLabelText('证件类型'), 'cn_id');
+    await selectFeishuOption(user, '证件类型', '中国居民身份证');
     await user.type(screen.getByLabelText('证件号码'), '123456');
     await user.type(screen.getByLabelText('手机号'), '13800000000');
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
@@ -87,9 +93,10 @@ describe('App dynamic form', () => {
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
-    await user.selectOptions(screen.getByLabelText('证件类型'), 'passport');
+    await selectFeishuOption(user, '证件类型', '护照');
     await user.type(screen.getByLabelText('证件号码'), 'A1234567');
     await user.type(screen.getByLabelText('手机号'), '13800000000');
+    await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
     await waitFor(() => {
@@ -103,9 +110,16 @@ describe('App dynamic form', () => {
     expect(submitBody.title).toBe('消费者');
     expect(submitBody.company).toBe('个人消费者');
     expect(submitBody.name).toBe('张三');
-    expect(submitBody.phone).toBe('13800000000');
+    expect(submitBody.phone).toBe('+8613800000000');
 
-    expect(await screen.findByText('提交成功')).toBeInTheDocument();
+    expect(await screen.findByText('感谢您申请')).toBeInTheDocument();
+    expect(screen.getByText('FBIF食品创新展2026 消费者观展票')).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) =>
+        element?.textContent === '您可凭大陆身份证原件，于4月29日入场观展（不含论坛）'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '点击链接' })).not.toBeInTheDocument();
     expect(screen.queryByText(/^Trace ID:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Submission ID:/)).not.toBeInTheDocument();
   });
@@ -131,9 +145,10 @@ describe('App dynamic form', () => {
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
-    await user.selectOptions(screen.getByLabelText('证件类型'), 'cn_id');
+    await selectFeishuOption(user, '证件类型', '中国居民身份证');
     await user.type(screen.getByLabelText('证件号码'), '110105199912310022');
     await user.type(screen.getByLabelText('手机号'), '13800000000');
+    await user.click(screen.getByRole('checkbox'));
 
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
@@ -159,9 +174,10 @@ describe('App dynamic form', () => {
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
-    await user.selectOptions(screen.getByLabelText('证件类型'), 'cn_id');
+    await selectFeishuOption(user, '证件类型', '中国居民身份证');
     await user.type(screen.getByLabelText('证件号码'), '11010519491231002X');
     await user.type(screen.getByLabelText('手机号'), '13800000000');
+    await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
     expect(await screen.findByText('年龄过大')).toBeInTheDocument();

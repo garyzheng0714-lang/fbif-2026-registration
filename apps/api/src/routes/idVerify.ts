@@ -8,7 +8,15 @@ import { IdVerifyError, verifyIdentityByAliyun } from '../services/idVerifyServi
 
 const verifySchema = z.object({
   name: z.string().min(2, '姓名至少 2 个字符').max(32),
-  idType: z.enum(['cn_id', 'passport', 'other']),
+  idType: z.enum([
+    'cn_id',
+    'hk_macao_mainland_permit',
+    'taiwan_mainland_permit',
+    'passport',
+    'foreign_permanent_resident_id',
+    'hmt_residence_permit',
+    'other'
+  ]),
   idNumber: z.string().min(1).max(64)
 });
 
