@@ -2,9 +2,16 @@ import { env } from '../config/env.js';
 
 type RawVerifyResponse = {
   code?: string | number;
+  status?: string | number;
+  message?: string;
   msg?: string;
+  result?: number | string;
+  success?: boolean | string | number;
   data?: {
     result?: number | string;
+    res?: number | string;
+    status?: number | string;
+    verifyResult?: number | string;
     birthday?: string;
     gender?: number;
     age?: number;
@@ -31,10 +38,41 @@ function normalizeProviderCode(value: unknown) {
   return String(value ?? '').trim();
 }
 
-function normalizeProviderResult(value: unknown) {
+function normalizeProviderResult(value: unknown): 1 | 2 | 3 {
   const n = Number(value);
   if (n === 1 || n === 2 || n === 3) return n as 1 | 2 | 3;
   return 3 as const;
+}
+
+function isProviderSuccessCode(code: string) {
+  const normalized = String(code || '').trim().toLowerCase();
+  if (!normalized) return true;
+  return normalized === '0' || normalized === '200' || normalized === 'ok' || normalized === 'success';
+}
+
+function parseProviderResult(payload: RawVerifyResponse | null): 1 | 2 | 3 | null {
+  const candidates = [
+    payload?.data?.result,
+    payload?.data?.res,
+    payload?.data?.verifyResult,
+    payload?.data?.status,
+    payload?.result
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate == null || String(candidate).trim() === '') continue;
+    const n = Number(candidate);
+    if (n === 1 || n === 2 || n === 3) {
+      return n as 1 | 2 | 3;
+    }
+
+    const text = String(candidate).trim().toLowerCase();
+    if (['pass', 'passed', 'match', 'matched', 'success', 'true'].includes(text)) return 1;
+    if (['mismatch', 'not_match', 'unmatch', 'false'].includes(text)) return 2;
+    if (['not_found', 'no_record', 'unknown'].includes(text)) return 3;
+  }
+
+  return null;
 }
 
 export async function verifyIdentityByAliyun(input: { name: string; idCard: string }) {
@@ -70,8 +108,8 @@ export async function verifyIdentityByAliyun(input: { name: string; idCard: stri
       payload = null;
     }
 
-    const providerCode = normalizeProviderCode(payload?.code);
-    const providerMsg = String(payload?.msg || '').trim() || `HTTP_${resp.status}`;
+    const providerCode = normalizeProviderCode(payload?.code ?? payload?.status);
+    const providerMsg = String(payload?.msg || payload?.message || '').trim() || `HTTP_${resp.status}`;
 
     if (!resp.ok) {
       if (resp.status === 429 || providerCode === '6') {
@@ -80,7 +118,8 @@ export async function verifyIdentityByAliyun(input: { name: string; idCard: stri
       throw new IdVerifyError('身份证验证服务暂时不可用，请稍后重试', 502, 'ID_VERIFY_UPSTREAM');
     }
 
-    if (providerCode !== '0') {
+    const parsedResult = parseProviderResult(payload);
+    if (!isProviderSuccessCode(providerCode) && parsedResult == null) {
       if (providerCode === '1') {
         throw new IdVerifyError(providerMsg || '身份证验证参数错误', 400, 'ID_VERIFY_BAD_REQUEST');
       }
@@ -93,7 +132,7 @@ export async function verifyIdentityByAliyun(input: { name: string; idCard: stri
       throw new IdVerifyError(providerMsg || '身份证验证失败', 502, 'ID_VERIFY_FAILED');
     }
 
-    const result = normalizeProviderResult(payload?.data?.result);
+    const result = parsedResult ?? normalizeProviderResult(payload?.data?.result);
     const verified = result === 1;
 
     return {

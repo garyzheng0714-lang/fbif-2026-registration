@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, DragEvent, FormEvent, KeyboardEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useThrottleCallback } from './hooks/useThrottleCallback';
 import {
   FeishuButton,
@@ -11,30 +11,59 @@ import {
   FeishuSelect
 } from './components/feishu/FeishuPrimitives';
 import {
+  composeInternationalPhone,
   validateChineseId,
   validatePhone,
   validateRequired
 } from './utils/validation';
 
 function defaultApiBase() {
-  // In production we usually host web on :3001 and API on :8080 on the same hostname.
-  // This runtime fallback prevents "localhost" mistakes when VITE_API_URL is not set at build time.
+  // Production should use same-origin /api reverse proxy.
+  // Only fallback to :8080 for local development hosts.
   if (typeof window !== 'undefined' && window.location) {
     const protocol = window.location.protocol || 'http:';
     const hostname = window.location.hostname || 'localhost';
-    return `${protocol}//${hostname}:8080`;
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0'
+    ) {
+      return `${protocol}//${hostname}:8080`;
+    }
+    return '';
   }
-  return 'http://localhost:8080';
+  return '';
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || defaultApiBase();
+function apiUrl(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const base = String(API_BASE || '').trim().replace(/\/+$/, '');
+  if (!base) return normalizedPath;
+  if (base.endsWith('/api') && normalizedPath.startsWith('/api/')) {
+    return `${base}${normalizedPath.slice(4)}`;
+  }
+  return `${base}${normalizedPath}`;
+}
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
+const SUCCESS_VERTICAL_BANNER_URL =
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
+const CARRIE_WECHAT_QR_URL =
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_4n_OhFZpJMUwWmIfeukVLQ_1771982405432/img_v3_02v8_558254bb-fd95-4e88-8eed-da8e5bc2b20g_1771982405633.jpg';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
 type Identity = '' | 'industry' | 'consumer';
-type IdType = '' | 'cn_id' | 'passport' | 'other';
+type SubmittedRole = 'industry' | 'consumer';
+type IdType =
+  | ''
+  | 'cn_id'
+  | 'hk_macao_mainland_permit'
+  | 'taiwan_mainland_permit'
+  | 'passport'
+  | 'foreign_permanent_resident_id'
+  | 'hmt_residence_permit';
 
 function createClientRequestId() {
   try {
@@ -61,25 +90,117 @@ const industryBusinessOptions = [
 ] as const;
 
 const departmentOptions = [
-  '高管/战略',
-  '研发/生产/品控',
-  '采购/物流/仓储',
-  '采购/市场/生产',
-  '市场/销售/电商',
-  '行政',
-  '其他'
+  '高管、战略部门',
+  '研发、产品、包装',
+  '品牌、市场、营销',
+  '采购、供应链、生产',
+  '渠道、销售、电商',
+  '高校',
+  '其他（如财务、行政等）'
 ] as const;
 
 const idTypeOptions = [
-  { value: 'cn_id', label: '身份证' },
+  { value: 'cn_id', label: '中国居民身份证' },
+  { value: 'hk_macao_mainland_permit', label: '港澳居民来往内地通行证' },
+  { value: 'taiwan_mainland_permit', label: '台湾居民来往大陆通行证' },
   { value: 'passport', label: '护照' },
-  { value: 'other', label: '其他证件' }
+  { value: 'foreign_permanent_resident_id', label: '外国人永久居留身份证' },
+  { value: 'hmt_residence_permit', label: '港澳台居民居住证' }
+] as const;
+
+const phoneCountryCodeOptions = [
+  { value: '+86', label: '中国', code: '+86' },
+  { value: '+852', label: '中国香港', code: '+852' },
+  { value: '+853', label: '中国澳门', code: '+853' },
+  { value: '+886', label: '中国台湾', code: '+886' },
+  { value: '+1', label: '美国/加拿大', code: '+1' },
+  { value: '+7', label: '俄罗斯/哈萨克斯坦', code: '+7' },
+  { value: '+20', label: '埃及', code: '+20' },
+  { value: '+27', label: '南非', code: '+27' },
+  { value: '+30', label: '希腊', code: '+30' },
+  { value: '+31', label: '荷兰', code: '+31' },
+  { value: '+32', label: '比利时', code: '+32' },
+  { value: '+33', label: '法国', code: '+33' },
+  { value: '+34', label: '西班牙', code: '+34' },
+  { value: '+36', label: '匈牙利', code: '+36' },
+  { value: '+39', label: '意大利', code: '+39' },
+  { value: '+40', label: '罗马尼亚', code: '+40' },
+  { value: '+41', label: '瑞士', code: '+41' },
+  { value: '+43', label: '奥地利', code: '+43' },
+  { value: '+44', label: '英国', code: '+44' },
+  { value: '+45', label: '丹麦', code: '+45' },
+  { value: '+46', label: '瑞典', code: '+46' },
+  { value: '+47', label: '挪威', code: '+47' },
+  { value: '+48', label: '波兰', code: '+48' },
+  { value: '+49', label: '德国', code: '+49' },
+  { value: '+52', label: '墨西哥', code: '+52' },
+  { value: '+54', label: '阿根廷', code: '+54' },
+  { value: '+55', label: '巴西', code: '+55' },
+  { value: '+56', label: '智利', code: '+56' },
+  { value: '+57', label: '哥伦比亚', code: '+57' },
+  { value: '+60', label: '马来西亚', code: '+60' },
+  { value: '+61', label: '澳大利亚', code: '+61' },
+  { value: '+62', label: '印度尼西亚', code: '+62' },
+  { value: '+63', label: '菲律宾', code: '+63' },
+  { value: '+64', label: '新西兰', code: '+64' },
+  { value: '+65', label: '新加坡', code: '+65' },
+  { value: '+66', label: '泰国', code: '+66' },
+  { value: '+81', label: '日本', code: '+81' },
+  { value: '+82', label: '韩国', code: '+82' },
+  { value: '+84', label: '越南', code: '+84' },
+  { value: '+90', label: '土耳其', code: '+90' },
+  { value: '+91', label: '印度', code: '+91' },
+  { value: '+92', label: '巴基斯坦', code: '+92' },
+  { value: '+93', label: '阿富汗', code: '+93' },
+  { value: '+94', label: '斯里兰卡', code: '+94' },
+  { value: '+95', label: '缅甸', code: '+95' },
+  { value: '+98', label: '伊朗', code: '+98' },
+  { value: '+212', label: '摩洛哥', code: '+212' },
+  { value: '+213', label: '阿尔及利亚', code: '+213' },
+  { value: '+216', label: '突尼斯', code: '+216' },
+  { value: '+218', label: '利比亚', code: '+218' },
+  { value: '+220', label: '冈比亚', code: '+220' },
+  { value: '+221', label: '塞内加尔', code: '+221' },
+  { value: '+223', label: '马里', code: '+223' },
+  { value: '+225', label: '科特迪瓦', code: '+225' },
+  { value: '+227', label: '尼日尔', code: '+227' },
+  { value: '+228', label: '多哥', code: '+228' },
+  { value: '+230', label: '毛里求斯', code: '+230' },
+  { value: '+231', label: '利比里亚', code: '+231' },
+  { value: '+233', label: '加纳', code: '+233' },
+  { value: '+234', label: '尼日利亚', code: '+234' },
+  { value: '+254', label: '肯尼亚', code: '+254' },
+  { value: '+255', label: '坦桑尼亚', code: '+255' },
+  { value: '+256', label: '乌干达', code: '+256' },
+  { value: '+260', label: '赞比亚', code: '+260' },
+  { value: '+263', label: '津巴布韦', code: '+263' },
+  { value: '+351', label: '葡萄牙', code: '+351' },
+  { value: '+353', label: '爱尔兰', code: '+353' },
+  { value: '+358', label: '芬兰', code: '+358' },
+  { value: '+359', label: '保加利亚', code: '+359' },
+  { value: '+370', label: '立陶宛', code: '+370' },
+  { value: '+371', label: '拉脱维亚', code: '+371' },
+  { value: '+372', label: '爱沙尼亚', code: '+372' },
+  { value: '+380', label: '乌克兰', code: '+380' },
+  { value: '+385', label: '克罗地亚', code: '+385' },
+  { value: '+386', label: '斯洛文尼亚', code: '+386' },
+  { value: '+420', label: '捷克', code: '+420' },
+  { value: '+421', label: '斯洛伐克', code: '+421' },
+  { value: '+960', label: '马尔代夫', code: '+960' },
+  { value: '+966', label: '沙特阿拉伯', code: '+966' },
+  { value: '+971', label: '阿联酋', code: '+971' },
+  { value: '+972', label: '以色列', code: '+972' },
+  { value: '+974', label: '卡塔尔', code: '+974' },
+  { value: '+975', label: '不丹', code: '+975' },
+  { value: '+976', label: '蒙古', code: '+976' },
+  { value: '+977', label: '尼泊尔', code: '+977' }
 ] as const;
 
 const initialIndustryForm = {
   name: '',
-  idType: '' as IdType,
+  idType: 'cn_id' as IdType,
   idNumber: '',
+  phoneCountryCode: '+86',
   phone: '',
   company: '',
   title: '',
@@ -90,8 +211,9 @@ const initialIndustryForm = {
 
 const initialConsumerForm = {
   name: '',
-  idType: '' as IdType,
+  idType: 'cn_id' as IdType,
   idNumber: '',
+  phoneCountryCode: '+86',
   phone: ''
 };
 
@@ -107,6 +229,19 @@ type IdVerifyState = {
   verifiedIdNumber: string;
 };
 type Notice = string;
+
+function normalizeDraftIdType(value: unknown): IdType {
+  const text = String(value || '').trim();
+  const allowed: IdType[] = [
+    'cn_id',
+    'hk_macao_mainland_permit',
+    'taiwan_mainland_permit',
+    'passport',
+    'foreign_permanent_resident_id',
+    'hmt_residence_permit'
+  ];
+  return (allowed as string[]).includes(text) ? (text as IdType) : 'cn_id';
+}
 
 const initialIdVerifyState: IdVerifyState = {
   status: 'idle',
@@ -138,7 +273,7 @@ type OssPolicy = {
 };
 
 async function createOssPolicy(file: File, csrfToken: string): Promise<OssPolicy> {
-  const resp = await fetch(`${API_BASE}/api/oss/policy`, {
+  const resp = await fetch(apiUrl('/api/oss/policy'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -423,9 +558,123 @@ function DownloadIcon() {
   );
 }
 
+function SectionPersonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.66-5.33-4-8-4z" />
+    </svg>
+  );
+}
+
+function SectionVerifiedUserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11.19 1.36l-7 3.11C3.47 4.79 3 5.51 3 6.3V11c0 5.55 3.84 10.74 9 12c5.16-1.26 9-6.45 9-12V6.3c0-.79-.47-1.51-1.19-1.83l-7-3.11c-.51-.23-1.11-.23-1.62 0zm-1.9 14.93L6.7 13.7a.996.996 0 1 1 1.41-1.41L10 14.17l5.88-5.88a.996.996 0 1 1 1.41 1.41l-6.59 6.59a.996.996 0 0 1-1.41 0z" />
+    </svg>
+  );
+}
+
+function SectionBusinessIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 7V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2h-8zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm9 12h-7v-2h2v-2h-2v-2h2v-2h-2V9h7c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1zm-1-8h-2v2h2v-2zm0 4h-2v2h2v-2z" />
+    </svg>
+  );
+}
+
+function CloudUploadRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l4.65-4.65c.2-.2.51-.2.71 0L17 13h-3z" />
+    </svg>
+  );
+}
+
+function CheckCircleRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zM9.29 16.29L5.7 12.7a.996.996 0 1 1 1.41-1.41L10 14.17l6.88-6.88a.996.996 0 1 1 1.41 1.41l-7.59 7.59a.996.996 0 0 1-1.41 0z" />
+    </svg>
+  );
+}
+
+function CancelRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10s10-4.47 10-10S17.53 2 12 2zm4.3 14.3a.996.996 0 0 1-1.41 0L12 13.41L9.11 16.3a.996.996 0 1 1-1.41-1.41L10.59 12L7.7 9.11A.996.996 0 1 1 9.11 7.7L12 10.59l2.89-2.89a.996.996 0 1 1 1.41 1.41L13.41 12l2.89 2.89c.38.38.38 1.02 0 1.41z" />
+    </svg>
+  );
+}
+
+function PendingActionsRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17 12c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2zm0-10H7c-1.1 0-2 .9-2 2v16l4-4h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-6 9H8V9h3v2zm5-4H8V5h8v2z" />
+    </svg>
+  );
+}
+
+function EventAvailableRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V10h14v9zm-7.06-1.29l4.24-4.24l-1.41-1.41l-2.83 2.83l-1.41-1.41l-1.41 1.41l2.82 2.82z" />
+    </svg>
+  );
+}
+
+function SupportAgentRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 1a9 9 0 0 0-9 9v5a3 3 0 0 0 3 3h1v-8H5v-1a7 7 0 1 1 14 0v1h-2v8h2a3 3 0 0 0 3-3v-5a9 9 0 0 0-9-9zm-3 17a1.5 1.5 0 0 0 1.5 1.5h3A1.5 1.5 0 0 0 15.5 18H9z" />
+    </svg>
+  );
+}
+
+function ChatRoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7l-5 4V6a2 2 0 0 1 2-2zm3 6h10V8H7v2zm0 3h7v-2H7v2z" />
+    </svg>
+  );
+}
+
+function OpenInNewSmallIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M9.5 2.5h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 2.5 7.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.5 3.5h-2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function QrCodeSmallIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2.5 2.5h3v3h-3zm8 0h3v3h-3zm-8 8h3v3h-3zm5-5h1v1h-1zm1 1h1v1h-1zm-1 1h1v1h-1zm2 0h1v1h-1zm1 1h1v1h-1zm-3 2h1v1h-1zm1 1h1v1h-1zm2-1h2v2h-2z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 2h4v4H2zm8 0h4v4h-4zM2 10h4v4H2z" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function ChevronLeftSmallIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M9.5 3.5 5 8l4.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function App() {
-  const [page, setPage] = useState<'identity' | 'form'>('identity');
+  const [page, setPage] = useState<'identity' | 'form' | 'submitted'>('identity');
   const [identity, setIdentity] = useState<Identity>('');
+  const [submittedRole, setSubmittedRole] = useState<SubmittedRole | null>(null);
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
   const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
   const [industryIdVerify, setIndustryIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
@@ -436,7 +685,6 @@ export default function App() {
   const [notice, setNotice] = useState<Notice>('');
   const [isSwitching, setIsSwitching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isProofDragOver, setIsProofDragOver] = useState(false);
   const [proofPreviews, setProofPreviews] = useState<ProofPreview[]>([]);
   const proofPreviewUrlsRef = useRef<string[]>([]);
   const proofUploadXhrsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
@@ -453,6 +701,9 @@ export default function App() {
     open: false,
     message: ''
   });
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [ticketPolicyAccepted, setTicketPolicyAccepted] = useState(false);
+  const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const [submitDialog, setSubmitDialog] = useState<{
     open: boolean;
     status: 'submitting' | 'success' | 'error';
@@ -478,10 +729,19 @@ export default function App() {
       }
       if (parsed.industryForm) {
         const { proofFiles: _proofFiles, ...rest } = parsed.industryForm;
-        setIndustryForm((prev) => ({ ...prev, ...rest, proofFiles: [] }));
+        setIndustryForm((prev) => ({
+          ...prev,
+          ...rest,
+          idType: normalizeDraftIdType(rest?.idType),
+          proofFiles: []
+        }));
       }
       if (parsed.consumerForm) {
-        setConsumerForm((prev) => ({ ...prev, ...parsed.consumerForm }));
+        setConsumerForm((prev) => ({
+          ...prev,
+          ...parsed.consumerForm,
+          idType: normalizeDraftIdType(parsed.consumerForm?.idType)
+        }));
       }
     } catch {
       // Ignore invalid local draft.
@@ -570,7 +830,8 @@ export default function App() {
       name: validateRequired(industryForm.name, '姓名', 2, 32),
       idType: industryForm.idType ? '' : '请选择证件类型',
       idNumber: validateIdNumber(industryForm.idType, industryForm.idNumber),
-      phone: validatePhone(industryForm.phone),
+      phoneCountryCode: '',
+      phone: validatePhone(industryForm.phone, industryForm.phoneCountryCode),
       company: validateRequired(industryForm.company, '公司', 2, 64),
       title: validateRequired(industryForm.title, '职位', 2, 32),
       businessType: industryForm.businessType ? '' : '请选择业务类型',
@@ -584,7 +845,8 @@ export default function App() {
       name: validateRequired(consumerForm.name, '姓名', 2, 32),
       idType: consumerForm.idType ? '' : '请选择证件类型',
       idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber),
-      phone: validatePhone(consumerForm.phone)
+      phoneCountryCode: '',
+      phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode)
     };
   }, [consumerForm]);
 
@@ -678,7 +940,7 @@ export default function App() {
     }
 
     const requestPromise = (async () => {
-      const csrfResp = await fetch(`${API_BASE}/api/csrf`, {
+      const csrfResp = await fetch(apiUrl('/api/csrf'), {
         credentials: 'include'
       });
 
@@ -754,7 +1016,7 @@ export default function App() {
       let completed = false;
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const resp = await fetch(`${API_BASE}/api/id-verify`, {
+        const resp = await fetch(apiUrl('/api/id-verify'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -784,7 +1046,12 @@ export default function App() {
         if (resp.status === 429) {
           throw new Error(message || '验证过于频繁，请稍后再试');
         }
-        throw new Error(message || '身份证与姓名不匹配');
+        throw new Error(
+          message ||
+            (resp.status >= 500
+              ? '实名验证服务暂时不可用，请稍后重试'
+              : '身份证与姓名不匹配')
+        );
       }
 
       if (!completed) {
@@ -971,7 +1238,6 @@ export default function App() {
     setNotice('');
     setSubmitAttempted(false);
     setTouched({});
-    setIsProofDragOver(false);
     setIsSwitching(true);
     switchTimerRef.current = window.setTimeout(() => {
       setIsSwitching(false);
@@ -986,10 +1252,23 @@ export default function App() {
     clearProofFiles();
 
     setPage('identity');
+    setSubmittedRole(null);
+    setQrDialogOpen(false);
     setNotice('');
     setSubmitAttempted(false);
     setTouched({});
-    setIsProofDragOver(false);
+    setIsSwitching(false);
+  };
+
+  const handleBackFromSubmitted = () => {
+    if (switchTimerRef.current) {
+      window.clearTimeout(switchTimerRef.current);
+    }
+    setPage('identity');
+    setSubmittedRole(null);
+    setNotice('');
+    setSubmitAttempted(false);
+    setTouched({});
     setIsSwitching(false);
   };
 
@@ -1081,20 +1360,6 @@ export default function App() {
     link.remove();
   };
 
-  const handleProofDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsProofDragOver(false);
-    if (isSubmitting) return;
-    addProofFiles(event.dataTransfer.files);
-  };
-
-  const handleProofZoneKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      proofInputRef.current?.click();
-    }
-  };
-
   const submit = useThrottleCallback(async () => {
     if (isSubmitting) return;
     if (!identity) {
@@ -1106,6 +1371,11 @@ export default function App() {
 
     if (hasFieldError) {
       setNotice('请先修正表单错误');
+      return;
+    }
+
+    if (!ticketPolicyAccepted) {
+      setNotice('请先阅读并同意《FBIF2026 购票及参会协议》');
       return;
     }
 
@@ -1168,7 +1438,7 @@ export default function App() {
         identity === 'industry'
           ? {
               clientRequestId,
-              phone: industryForm.phone.trim(),
+              phone: composeInternationalPhone(industryForm.phoneCountryCode, industryForm.phone),
               name: industryForm.name.trim(),
               title: industryForm.title.trim(),
               company: industryForm.company.trim(),
@@ -1184,7 +1454,7 @@ export default function App() {
             }
           : {
               clientRequestId,
-              phone: consumerForm.phone.trim(),
+              phone: composeInternationalPhone(consumerForm.phoneCountryCode, consumerForm.phone),
               name: consumerForm.name.trim(),
               title: '消费者',
               company: '个人消费者',
@@ -1208,7 +1478,7 @@ export default function App() {
       let submitData: any = null;
       let accepted = false;
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const resp = await fetch(`${API_BASE}/api/submissions`, {
+        const resp = await fetch(apiUrl('/api/submissions'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1244,10 +1514,12 @@ export default function App() {
         throw new Error('submit_failed');
       }
 
+      setSubmittedRole(role);
+      setPage('submitted');
       setSubmitDialog((prev) => ({
         ...prev,
-        open: true,
-        status: 'success',
+        open: false,
+        status: 'submitting',
         submissionId: String(submitData.id || ''),
         traceId: String(submitData.traceId || '')
       }));
@@ -1261,6 +1533,7 @@ export default function App() {
       clearProofFiles();
       setTouched({});
       setSubmitAttempted(false);
+      setTicketPolicyAccepted(false);
       setNotice('');
       try {
         window.localStorage.setItem(
@@ -1327,9 +1600,13 @@ export default function App() {
   };
 
   return (
-    <div className="page">
+    <div
+      className={`page ${page === 'form' ? 'has-submit-dock' : ''} ${page === 'submitted' ? 'page-submitted' : ''} ${identity ? `page-${identity}` : ''}`}
+    >
       <div className="frame">
-        <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
+        {page !== 'submitted' && (
+          <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
+        )}
 
         {page === 'identity' && (
           <>
@@ -1382,8 +1659,14 @@ export default function App() {
         {page === 'form' && (
           <>
             <FeishuCard className="stage-head">
-              <FeishuButton type="button" className="stage-back" variant="text" onClick={handleBackToIdentity}>
-                {'< 返回选择身份'}
+              <FeishuButton
+                type="button"
+                className="stage-back"
+                variant="text"
+                icon={<ChevronLeftSmallIcon />}
+                onClick={handleBackToIdentity}
+              >
+                返回选择身份
               </FeishuButton>
               <p className="stage-current stage-current-centered" aria-live="polite">
                 <span className="stage-current-value">{identityLabel}</span>
@@ -1396,6 +1679,12 @@ export default function App() {
             >
               {identity === 'industry' && (
                 <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
+                  <div className="form-page-layout industry-layout">
+                    <section className="form-section-card section-personal" aria-labelledby="section-personal-title">
+                      <div className="form-section-head">
+                        <span className="form-section-icon" aria-hidden="true"><SectionPersonIcon /></span>
+                        <h3 className="form-section-title" id="section-personal-title">个人信息</h3>
+                      </div>
                   <FeishuField
                     label="姓名"
                     htmlFor="industry-name"
@@ -1476,7 +1765,6 @@ export default function App() {
                                 : ''}
                         </span>
                       </div>
-                      {industryIdVerify.status === 'failed' && <span className="error">{industryIdVerify.message}</span>}
                     </div>
                   )}
 
@@ -1486,19 +1774,43 @@ export default function App() {
                     required
                     error={shouldShowError(fieldKey('industry', 'phone')) ? industryErrors.phone : ''}
                   >
-                    <FeishuInput
-                      id="industry-phone"
-                      type="tel"
-                      autoComplete="tel"
-                      inputMode="numeric"
-                      placeholder="请输入手机号"
-                      value={industryForm.phone}
-                      status={shouldShowError(fieldKey('industry', 'phone')) && industryErrors.phone ? 'error' : 'default'}
-                      onChange={handleIndustryChange('phone')}
-                      onBlur={() => markTouched(fieldKey('industry', 'phone'))}
-                    />
+                    <div className="phone-input-row">
+                      <FeishuSelect
+                        id="industry-phone-countryCode"
+                        aria-label="国家区号"
+                        className="phone-country-code-select"
+                        value={industryForm.phoneCountryCode}
+                        onChange={handleIndustryChange('phoneCountryCode')}
+                        onBlur={() => markTouched(fieldKey('industry', 'phone'))}
+                      >
+                        {phoneCountryCodeOptions.map((option) => (
+                          <option key={`${option.value}-${option.label}`} value={option.value}>
+                            {`${option.label} ${option.code}`}
+                          </option>
+                        ))}
+                      </FeishuSelect>
+                      <FeishuInput
+                        id="industry-phone"
+                        className="phone-number-input"
+                        type="tel"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        placeholder="请输入手机号（不含区号）"
+                        value={industryForm.phone}
+                        status={shouldShowError(fieldKey('industry', 'phone')) && industryErrors.phone ? 'error' : 'default'}
+                        onChange={handleIndustryChange('phone')}
+                        onBlur={() => markTouched(fieldKey('industry', 'phone'))}
+                      />
+                    </div>
                   </FeishuField>
 
+                    </section>
+
+                    <section className="form-section-card section-proof" aria-labelledby="section-proof-title">
+                      <div className="form-section-head">
+                        <span className="form-section-icon" aria-hidden="true"><SectionVerifiedUserIcon /></span>
+                        <h3 className="form-section-title" id="section-proof-title">专业观众身份审核</h3>
+                      </div>
                   <FeishuField
                     label="上传专业观众证明"
                     htmlFor="industry-proof"
@@ -1516,198 +1828,149 @@ export default function App() {
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                     />
                     <div
-                      className={`upload-zone ${isProofDragOver ? 'is-drag-over' : ''} ${proofPreviews.length ? 'has-files' : ''} ${isSubmitting ? 'is-disabled' : ''}`}
-                      role="button"
-                      tabIndex={isSubmitting ? -1 : 0}
-                      aria-label="上传专业观众证明文件"
+                      className={`upload-panel ${proofPreviews.length === 0 ? 'is-empty' : ''} ${isSubmitting ? 'is-disabled' : ''}`}
                       aria-disabled={isSubmitting}
-                      onClick={() => {
-                        if (isSubmitting) return;
-                        proofInputRef.current?.click();
-                      }}
-                      onKeyDown={(event) => {
-                        if (isSubmitting) return;
-                        handleProofZoneKeyDown(event);
-                      }}
-                      onPaste={(event) => {
-                        if (isSubmitting) return;
-                        const items = event.clipboardData?.items;
-                        if (!items) return;
-                        const files = Array.from(items)
-                          .map((item) => (item.kind === 'file' ? item.getAsFile() : null))
-                          .filter(Boolean) as File[];
-                        if (files.length === 0) return;
-                        event.preventDefault();
-                        addProofFiles(files);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (isSubmitting) return;
-                        setIsProofDragOver(true);
-                      }}
-                      onDragEnter={(event) => {
-                        event.preventDefault();
-                        if (isSubmitting) return;
-                        setIsProofDragOver(true);
-                      }}
-                      onDragLeave={(event) => {
-                        event.preventDefault();
-                        setIsProofDragOver(false);
-                      }}
-                      onDrop={handleProofDrop}
                     >
-                      <div className="upload-zone-content">
-                        {proofPreviews.length === 0 ? (
-                          <div className="upload-empty">
-                            <div className="upload-drop-surface">粘贴或拖拽至这里上传</div>
-                            <FeishuButton
-                              type="button"
-                              className="upload-add-button"
-                              variant="text"
-                              icon={<span className="upload-add-plus" aria-hidden="true">+</span>}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (isSubmitting) return;
-                                proofInputRef.current?.click();
-                              }}
-                              disabled={isSubmitting}
-                            >
-                              添加本地文件
-                            </FeishuButton>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="proof-card-list" role="list" aria-label="已选择的证明文件">
-                              {proofPreviews.map((file) => {
-                                const isUploading = file.status === 'uploading';
-                                const isFailed = file.status === 'error';
-                                const displayPercent = Math.min(100, Math.max(0, Math.round(file.progress || 0)));
-                                const isImage = (file.type || '').toLowerCase().startsWith('image/');
-                                const isPdf =
-                                  (file.type || '').toLowerCase() === 'application/pdf' ||
-                                  file.name.toLowerCase().endsWith('.pdf');
+                      {proofPreviews.length === 0 ? (
+                        <button
+                          type="button"
+                          className="upload-empty-trigger"
+                          onClick={() => {
+                            if (isSubmitting) return;
+                            proofInputRef.current?.click();
+                          }}
+                          disabled={isSubmitting}
+                          aria-label="点击上传文件"
+                        >
+                          <span className="upload-empty-icon" aria-hidden="true">
+                            <CloudUploadRoundIcon />
+                          </span>
+                          <span className="upload-empty-title">点击上传文件</span>
+                          <span className="upload-empty-subtitle">支持 JPG, PNG, PDF (最大 50MB)</span>
+                        </button>
+                      ) : (
+                        <FeishuButton
+                          type="button"
+                          variant="secondary"
+                          className="upload-panel-button"
+                          onClick={() => {
+                            if (isSubmitting) return;
+                            proofInputRef.current?.click();
+                          }}
+                          disabled={isSubmitting}
+                        >
+                          添加本地文件
+                        </FeishuButton>
+                      )}
 
-                                return (
-                                  <div
-                                    key={file.id}
-                                    className={`proof-card ${isUploading ? 'is-uploading' : ''} ${isFailed ? 'is-error' : ''}`}
-                                    role="listitem"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      if (!file.previewUrl) return;
-                                      window.open(file.previewUrl, '_blank', 'noopener');
-                                    }}
-                                  >
+                      {proofPreviews.length > 0 ? (
+                        <ul className="proof-file-list-plain" role="list" aria-label="已选择的证明文件">
+                          {proofPreviews.map((file) => {
+                            const isUploading = file.status === 'uploading';
+                            const isFailed = file.status === 'error';
+                            const displayPercent = Math.min(100, Math.max(0, Math.round(file.progress || 0)));
+                            const statusText = isUploading
+                              ? `上传中 ${displayPercent}%`
+                              : isFailed
+                                ? (file.error || '上传失败，请重试')
+                                : file.status === 'success'
+                                  ? '已上传'
+                                  : '';
+
+                            return (
+                              <li
+                                key={file.id}
+                                className={`proof-file-row ${isFailed ? 'is-error' : ''}`}
+                                role="listitem"
+                              >
+                                <div className="proof-file-main">
+                                  <p className="proof-file-name" title={file.name}>{file.name}</p>
+                                  <p className="proof-file-meta">
+                                    <span>{formatBytes(file.size)}</span>
+                                    {statusText ? (
+                                      <span
+                                        className={`proof-file-status ${isUploading ? 'is-uploading' : ''} ${isFailed ? 'is-error' : ''}`}
+                                      >
+                                        {statusText}
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                </div>
+                                <div className="proof-file-actions">
+                                  {file.previewUrl && (
                                     <button
                                       type="button"
-                                      className="proof-card-remove"
-                                      aria-label={`移除 ${file.name}`}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        removeProofFile(file.id);
-                                      }}
+                                      className="proof-file-link"
+                                      onClick={() => downloadProofFile(file)}
                                       disabled={isSubmitting}
                                     >
-                                      ×
+                                      下载
                                     </button>
-
-                                    <div className="proof-card-thumb" aria-hidden="true">
-                                      {file.previewUrl && isImage ? (
-                                        <img src={file.previewUrl} alt={file.name} loading="lazy" />
-                                      ) : (
-                                        <div className="proof-card-fallback">
-                                          {isPdf ? 'PDF' : 'FILE'}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {isUploading ? (
-                                      <div className="proof-card-overlay proof-card-overlay-uploading" aria-hidden="true">
-                                        <div className="proof-card-progress">
-                                          <div
-                                            className="proof-card-progress-bar"
-                                            style={{ width: `${displayPercent}%` }}
-                                          />
-                                        </div>
-                                        <div className="proof-card-progress-text">{displayPercent}%</div>
-                                      </div>
-                                    ) : isFailed ? (
-                                      <div className="proof-card-overlay proof-card-overlay-error" aria-hidden="true">
-                                        <div className="proof-card-error-title">转换失败</div>
-                                        <div className="proof-card-error-body">
-                                          {file.error || '请删除后重传'}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="proof-card-overlay" aria-hidden="true">
-                                        <span className="proof-card-name-pill" title={file.name}>
-                                          {file.name}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          className="proof-card-download"
-                                          aria-label={`下载 ${file.name}`}
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            downloadProofFile(file);
-                                          }}
-                                        >
-                                          <DownloadIcon />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            <FeishuButton
-                              type="button"
-                              className="upload-add-button upload-add-button-inline"
-                              variant="text"
-                              icon={<span className="upload-add-plus" aria-hidden="true">+</span>}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (isSubmitting) return;
-                                proofInputRef.current?.click();
-                              }}
-                              disabled={isSubmitting}
-                            >
-                              添加本地文件
-                            </FeishuButton>
-                          </>
-                        )}
-                      </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="proof-file-remove"
+                                    aria-label={`移除 ${file.name}`}
+                                    onClick={() => removeProofFile(file.id)}
+                                    disabled={isSubmitting}
+                                  >
+                                    删除
+                                  </button>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
                     </div>
-                    <ul className="proof-guidelines" aria-label="专业观众证明上传说明">
-                      <li className="proof-guideline proof-guideline-accept">
-                        <strong>请提交：</strong>
-                        能够体现您为食品行业从业人员的证明材料，包含“姓名公司职位”，包括但不限于：名片、工作软件截图（如钉钉、飞书、企微）、工作证、企业邮箱截图等
-                        {' '}
-                        <a
-                          href="https://www.foodtalks.cn/news/55602"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          查看示例
-                        </a>
-                      </li>
-                      <li className="proof-guideline proof-guideline-reject">
-                        <strong>请勿提交：</strong>
-                        证件照片、自拍、形象照、产品图、工厂图、聊天截图等为无效证明，将无法通过审核
-                      </li>
-                      <li className="proof-guideline">
-                        审核需要 1-3 个工作日，审核通过的出席人员方可入场
-                      </li>
-                      <li className="proof-guideline">
-                        如有任何问题，请联系工作人员 Carrie（微信：lovelyFBIFer1）
-                      </li>
-                      <li className="proof-guideline proof-guideline-warn">
-                        如在现场发现为非专业观众，我们有权请您离开现场
-                      </li>
-                    </ul>
+                    <div className="proof-guidelines" aria-label="专业观众证明上传说明">
+                      <div className="proof-guideline-row">
+                        <span className="proof-guideline-row-icon is-accept" aria-hidden="true">
+                          <CheckCircleRoundIcon />
+                        </span>
+                        <div className="proof-guideline-row-content">
+                          <p className="proof-guideline-copy">
+                            <strong className="proof-guideline-title is-accept">请提交：</strong>
+                            能够体现您为食品行业从业人员的证明材料，包含“姓名公司职位”，包括但不限于：名片、工作软件截图（如钉钉、飞书、企微）、工作证、企业邮箱截图等
+                            {' '}
+                            <a
+                              href="https://www.foodtalks.cn/news/55602"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              查看示例
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="proof-guideline-row">
+                        <span className="proof-guideline-row-icon is-reject" aria-hidden="true">
+                          <CancelRoundIcon />
+                        </span>
+                        <div className="proof-guideline-row-content">
+                          <p className="proof-guideline-copy">
+                            <strong className="proof-guideline-title is-reject">请勿提交：</strong>
+                            证件照片、自拍、形象照、产品图、工厂图、聊天截图等为无效证明，将无法通过审核。
+                          </p>
+                        </div>
+                      </div>
+
+                      <ul className="proof-guideline-meta-list">
+                        <li>审核需要 1-3 个工作日，审核通过的出席人员方可入场</li>
+                        <li>如有任何问题，请联系工作人员 Carrie（微信：lovelyFBIFer1）</li>
+                        <li className="is-warn">如在现场发现为非专业观众，我们有权请您离开现场</li>
+                      </ul>
+                    </div>
                   </FeishuField>
 
+                    </section>
+
+                    <section className="form-section-card section-work" aria-labelledby="section-work-title">
+                      <div className="form-section-head">
+                        <span className="form-section-icon" aria-hidden="true"><SectionBusinessIcon /></span>
+                        <h3 className="form-section-title" id="section-work-title">职业信息</h3>
+                      </div>
                   <FeishuField
                     label="公司"
                     htmlFor="industry-company"
@@ -1752,6 +2015,7 @@ export default function App() {
                   >
                     <FeishuSelect
                       id="industry-businessType"
+                      className="compact-select-text"
                       value={industryForm.businessType}
                       status={shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? 'error' : 'default'}
                       onChange={handleIndustryChange('businessType')}
@@ -1774,6 +2038,7 @@ export default function App() {
                   >
                     <FeishuSelect
                       id="industry-department"
+                      className="compact-select-text"
                       value={industryForm.department}
                       status={shouldShowError(fieldKey('industry', 'department')) && industryErrors.department ? 'error' : 'default'}
                       onChange={handleIndustryChange('department')}
@@ -1787,20 +2052,19 @@ export default function App() {
                       ))}
                     </FeishuSelect>
                   </FeishuField>
-
-                  <div className="form-actions">
-                    {notice && (
-                      <p className="notice notice-error">{notice}</p>
-                    )}
-                    <FeishuButton className="submit-button" type="submit" size="lg" block disabled={!identity || isSubmitting}>
-                      {isSubmitting ? '提交中...' : '领取观展票'}
-                    </FeishuButton>
+                    </section>
                   </div>
                 </form>
               )}
 
               {identity === 'consumer' && (
                 <form className="dynamic-form" id="fbif-ticket-form" onSubmit={onSubmit}>
+                  <div className="form-page-layout consumer-layout">
+                    <section className="form-section-card section-personal" aria-labelledby="section-consumer-personal-title">
+                      <div className="form-section-head">
+                        <span className="form-section-icon" aria-hidden="true"><SectionPersonIcon /></span>
+                        <h3 className="form-section-title" id="section-consumer-personal-title">个人信息</h3>
+                      </div>
                   <FeishuField
                     label="姓名"
                     htmlFor="consumer-name"
@@ -1881,7 +2145,6 @@ export default function App() {
                                 : ''}
                         </span>
                       </div>
-                      {consumerIdVerify.status === 'failed' && <span className="error">{consumerIdVerify.message}</span>}
                     </div>
                   )}
 
@@ -1891,33 +2154,266 @@ export default function App() {
                     required
                     error={shouldShowError(fieldKey('consumer', 'phone')) ? consumerErrors.phone : ''}
                   >
-                    <FeishuInput
-                      id="consumer-phone"
-                      type="tel"
-                      autoComplete="tel"
-                      inputMode="numeric"
-                      placeholder="请输入手机号"
-                      value={consumerForm.phone}
-                      status={shouldShowError(fieldKey('consumer', 'phone')) && consumerErrors.phone ? 'error' : 'default'}
-                      onChange={handleConsumerChange('phone')}
-                      onBlur={() => markTouched(fieldKey('consumer', 'phone'))}
-                    />
+                    <div className="phone-input-row">
+                      <FeishuSelect
+                        id="consumer-phone-countryCode"
+                        aria-label="国家区号"
+                        className="phone-country-code-select"
+                        value={consumerForm.phoneCountryCode}
+                        onChange={handleConsumerChange('phoneCountryCode')}
+                        onBlur={() => markTouched(fieldKey('consumer', 'phone'))}
+                      >
+                        {phoneCountryCodeOptions.map((option) => (
+                          <option key={`${option.value}-${option.label}`} value={option.value}>
+                            {`${option.label} ${option.code}`}
+                          </option>
+                        ))}
+                      </FeishuSelect>
+                      <FeishuInput
+                        id="consumer-phone"
+                        className="phone-number-input"
+                        type="tel"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        placeholder="请输入手机号（不含区号）"
+                        value={consumerForm.phone}
+                        status={shouldShowError(fieldKey('consumer', 'phone')) && consumerErrors.phone ? 'error' : 'default'}
+                        onChange={handleConsumerChange('phone')}
+                        onBlur={() => markTouched(fieldKey('consumer', 'phone'))}
+                      />
+                    </div>
                   </FeishuField>
-
-                  <div className="form-actions">
-                    {notice && (
-                      <p className="notice notice-error">{notice}</p>
-                    )}
-                    <FeishuButton className="submit-button" type="submit" size="lg" block disabled={!identity || isSubmitting}>
-                      {isSubmitting ? '提交中...' : '领取观展票'}
-                    </FeishuButton>
+                    </section>
                   </div>
                 </form>
               )}
             </FeishuCard>
+
+            <div className="submit-dock" role="region" aria-label="提交操作区">
+              <div className="submit-dock-inner">
+                <div className={`submit-policy-row ${submitAttempted && !ticketPolicyAccepted ? 'is-error' : ''}`}>
+                  <label className="submit-policy-check">
+                    <input
+                      className="submit-policy-input"
+                      type="checkbox"
+                      checked={ticketPolicyAccepted}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setTicketPolicyAccepted(checked);
+                        if (checked && notice.includes('购票及参会协议')) {
+                          setNotice('');
+                        }
+                      }}
+                    />
+                    <span className="submit-policy-indicator" aria-hidden="true" />
+                    <span className="submit-policy-text">我已阅读并同意</span>
+                  </label>
+                  <a
+                    className="submit-policy-link"
+                    href="https://tickets.foodtalks.cn/policy/ticket?policyCode=gpxy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    《FBIF2026 购票及参会协议》
+                  </a>
+                </div>
+                {notice && (
+                  <p className="notice notice-error submit-dock-notice">{notice}</p>
+                )}
+                <FeishuButton
+                  className="submit-button"
+                  type="submit"
+                  form="fbif-ticket-form"
+                  size="lg"
+                  block
+                  disabled={!identity || isSubmitting}
+                >
+                  {isSubmitting ? '提交中...' : '领取观展票'}
+                </FeishuButton>
+              </div>
+            </div>
           </>
         )}
+
+        {page === 'submitted' && (
+          <FeishuCard className={`submit-complete-card is-${submittedRole || 'unknown'}`} aria-live="polite">
+            <div className="submit-complete-layout">
+              <div className="submit-complete-banner-pane" aria-hidden="true">
+                <img
+                  className="submit-complete-banner submit-complete-banner-horizontal"
+                  src={TOP_BANNER_URL}
+                  alt=""
+                />
+                <img
+                  className="submit-complete-banner submit-complete-banner-vertical"
+                  src={SUCCESS_VERTICAL_BANNER_URL}
+                  alt=""
+                />
+              </div>
+
+              <div className="submit-complete-main">
+                <div className="submit-complete-head">
+                  <div className="submit-complete-head-text">
+                    <h2>感谢您申请</h2>
+                    <p>
+                      {submittedRole === 'consumer'
+                        ? 'FBIF食品创新展2026 消费者观展票'
+                        : 'FBIF食品创新展2026 观展票'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="submit-complete-sections">
+                  {submittedRole === 'industry' ? (
+                    <>
+                      <section className="submit-complete-section">
+                        <div className="submit-complete-section-content">
+                          <h3>审核状态</h3>
+                          <p>
+                            审核结果将在
+                            <span className="submit-complete-emphasis">1-3个工作日</span>
+                            内发送至您的手机
+                          </p>
+                          <p className="submit-complete-inline-link">
+                            您也可以
+                            <a
+                              href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              点击链接
+                              <span aria-hidden="true" className="submit-complete-link-icon">
+                                <OpenInNewSmallIcon />
+                              </span>
+                            </a>
+                            ，查询审核结果
+                          </p>
+                        </div>
+                      </section>
+                    </>
+                  ) : (
+                    <section className="submit-complete-section">
+                      <div className="submit-complete-section-content">
+                        <h3>入场说明</h3>
+                        <p>
+                          您可凭
+                          <span className="submit-complete-emphasis">大陆身份证原件</span>
+                          ，于
+                          <span className="submit-complete-emphasis">4月29日</span>
+                          入场观展（不含论坛）
+                        </p>
+                      </div>
+                    </section>
+                  )}
+
+                  <section className="submit-complete-section">
+                    <div className="submit-complete-section-content">
+                      <h3>联系工作人员</h3>
+                      <p className="submit-complete-contact-line">
+                        如有任何问题，请联系FBIF工作人员Carrie（微信：lovelyFBIFer1）
+                        <button
+                          type="button"
+                          className="submit-complete-qr-trigger"
+                          aria-label="查看 Carrie 微信二维码"
+                          title="查看微信二维码"
+                          onClick={() => setQrDialogOpen(true)}
+                        >
+                          <span aria-hidden="true" className="submit-complete-qr-trigger-icon">
+                            <QrCodeSmallIcon />
+                          </span>
+                        </button>
+                      </p>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="submit-complete-actions">
+                  <a
+                    className="fs-button fs-button-primary submit-complete-primary-link"
+                    href="https://www.foodtalks.cn/news/57680"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    查看展会介绍
+                  </a>
+                </div>
+              </div>
+            </div>
+          </FeishuCard>
+        )}
       </div>
+
+      <footer className="legal-footer" aria-label="页面合规信息">
+        <div className="legal-footer-inner">
+          <p className="legal-footer-line">
+            本页面为 FBIF食品创新展2026 观众注册页面，用于观展报名、身份核验与票务审核。
+          </p>
+          <p className="legal-footer-line">
+            提交信息即视为您已阅读并同意
+            <button
+              type="button"
+              className="legal-footer-link"
+              onClick={() => setPrivacyDialogOpen(true)}
+            >
+              《个人信息授权及保护声明》
+            </button>
+          </p>
+          <p className="legal-footer-line legal-footer-icp">
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
+              ICP 备案号：沪ICP备19035501号
+            </a>
+          </p>
+        </div>
+      </footer>
+
+      <FeishuDialog
+        open={qrDialogOpen}
+        title="工作人员微信二维码"
+        ariaLabel="工作人员微信二维码"
+        className="submit-qr-dialog"
+        onClose={() => setQrDialogOpen(false)}
+        closeOnEsc
+        closeOnMask
+        body={
+          <div className="submit-qr-dialog-body">
+            <img className="submit-qr-dialog-image" src={CARRIE_WECHAT_QR_URL} alt="FBIF 工作人员 Carrie 微信二维码" />
+            <p className="submit-qr-dialog-caption">Carrie（微信：lovelyFBIFer1）</p>
+          </div>
+        }
+        footer={
+          <FeishuButton type="button" className="modal-button" onClick={() => setQrDialogOpen(false)}>
+            关闭
+          </FeishuButton>
+        }
+      />
+
+      <FeishuDialog
+        open={privacyDialogOpen}
+        title="个人信息授权及保护声明"
+        ariaLabel="个人信息授权及保护声明"
+        className="privacy-dialog"
+        onClose={() => setPrivacyDialogOpen(false)}
+        closeOnEsc
+        closeOnMask
+        body={
+          <div className="privacy-dialog-body">
+            <p>
+              为完成 FBIF食品创新展2026 观众注册、实名校验、票务审核与通知服务，我们将收集并处理您主动提交的个人信息（如姓名、证件信息、手机号及证明材料）。
+            </p>
+            <p>
+              您提交的信息仅用于本次观展注册与审核相关流程，不会用于与本次活动无关的用途。我们将采取合理的技术与管理措施保护您的信息安全。
+            </p>
+            <p>
+              如您继续提交，即视为您已知悉并同意上述个人信息处理目的与范围。如需咨询，请联系 FBIF 工作人员 Carrie（微信：lovelyFBIFer1）。
+            </p>
+          </div>
+        }
+        footer={
+          <FeishuButton type="button" className="modal-button" onClick={() => setPrivacyDialogOpen(false)}>
+            我已知晓
+          </FeishuButton>
+        }
+      />
 
       <FeishuDialog
         open={submitDialog.open}

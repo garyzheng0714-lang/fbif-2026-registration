@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { env } from '../config/env.js';
 import { verifyIdVerifyToken } from '../utils/idVerifyToken.js';
 
-const phoneRegex = /^1[3-9]\d{9}$/;
+const mainlandPhoneRegex = /^1[3-9]\d{9}$/;
 const idRegex = /^\d{17}[\dXx]$/;
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
 
@@ -101,7 +101,15 @@ export function normalizeProofUrls(value: unknown): string[] {
 }
 
 const roleSchema = z.enum(['industry', 'consumer']);
-const idTypeSchema = z.enum(['cn_id', 'passport', 'other']);
+const idTypeSchema = z.enum([
+  'cn_id',
+  'hk_macao_mainland_permit',
+  'taiwan_mainland_permit',
+  'passport',
+  'foreign_permanent_resident_id',
+  'hmt_residence_permit',
+  'other'
+]);
 
 export const submissionSchema = z.object({
   clientRequestId: z.string().min(8).max(64).optional(),
@@ -109,7 +117,7 @@ export const submissionSchema = z.object({
   role: roleSchema,
   idType: idTypeSchema,
   idNumber: z.string().min(1).max(64),
-  phone: z.string().regex(phoneRegex, '手机号格式不正确'),
+  phone: z.string().min(1).refine(isValidPhone, '手机号格式不正确'),
   name: z.string().min(2, '姓名至少 2 个字符').max(32),
   title: z.string().min(2, '职位至少 2 个字符').max(32),
   company: z.string().min(2, '公司至少 2 个字符').max(64),
@@ -207,3 +215,15 @@ export const submissionSchema = z.object({
 });
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;
+function normalizePhone(value: unknown) {
+  return String(value || '').trim().replace(/[\s()-]/g, '');
+}
+
+function isValidPhone(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  if (mainlandPhoneRegex.test(raw)) return true;
+
+  const normalized = normalizePhone(raw);
+  return /^\+[1-9]\d{5,19}$/.test(normalized);
+}
