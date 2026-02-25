@@ -66,17 +66,21 @@ export function applySingleSelectMappings(
 
     const optionId = resolveSingleSelectOptionId(meta, value);
     if (!optionId) {
+      const availableOptions = Array.from(meta.optionsByName.keys()).slice(0, 12);
       logger?.warn?.(
         {
           traceId: ctx.traceId,
           idSuffix: ctx.idSuffix,
           fieldName,
-          value: value.slice(0, 128)
+          value: value.slice(0, 128),
+          availableOptions
         },
-        'bitable select option not found; omitting field'
+        'bitable select option not found; failing sync to avoid silent empty field'
       );
-      delete fields[fieldName];
-      continue;
+
+      throw new Error(
+        `bitable single-select option not found for field "${fieldName}": "${value.slice(0, 128)}"`
+      );
     }
 
     fields[fieldName] = optionId;

@@ -37,13 +37,13 @@ describe('App dynamic form', () => {
     expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /返回选择身份/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '我是食品行业相关从业者' }));
+    await user.click(screen.getByRole('button', { name: '专业观众注册' }));
     await screen.findByLabelText('公司');
     expect(screen.getByRole('button', { name: /返回选择身份/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '我是消费者' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /返回选择身份/ }));
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
     expect(screen.queryByLabelText('公司')).not.toBeInTheDocument();
   });
@@ -53,7 +53,7 @@ describe('App dynamic form', () => {
     const fetchMock = vi.mocked(fetch);
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
@@ -69,7 +69,7 @@ describe('App dynamic form', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
     await user.type(screen.getByLabelText('姓名'), '张三');
     await selectFeishuOption(user, '证件类型', '中国居民身份证');
@@ -89,7 +89,7 @@ describe('App dynamic form', () => {
 
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
@@ -141,7 +141,7 @@ describe('App dynamic form', () => {
 
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
@@ -170,7 +170,7 @@ describe('App dynamic form', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ csrfToken: 'csrf-token' }));
 
     render(<App />);
-    await user.click(screen.getByRole('button', { name: '我是消费者' }));
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
     await screen.findByLabelText('姓名');
 
     await user.type(screen.getByLabelText('姓名'), '张三');
