@@ -703,7 +703,6 @@ export default function App() {
   });
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [ticketPolicyAccepted, setTicketPolicyAccepted] = useState(false);
-  const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const [submitDialog, setSubmitDialog] = useState<{
     open: boolean;
     status: 'submitting' | 'success' | 'error';
@@ -1592,7 +1591,11 @@ export default function App() {
     submit();
   };
 
-  const identityLabel = identity === 'industry' ? '食品行业相关从业者' : '消费者';
+  const identityLabel = identity === 'industry' ? '专业观众注册' : '消费者注册';
+  const identityAgeNotice =
+    identity === 'industry'
+      ? '16岁以下观众禁止入场，请勿注册！'
+      : '16岁以下及50岁以上观众禁止入场，请勿注册！';
   const canCloseSubmitDialog = !(submitDialog.status === 'submitting' && isSubmitting);
   const closeSubmitDialog = () => {
     if (!canCloseSubmitDialog) return;
@@ -1626,14 +1629,14 @@ export default function App() {
                 className={`role-option ${identity === 'industry' ? 'is-active' : ''}`}
                 onClick={() => handleIdentitySelect('industry')}
                 aria-pressed={identity === 'industry'}
-                aria-label="我是食品行业相关从业者"
+                aria-label="专业观众注册"
               >
                 <span className="role-icon" aria-hidden="true">
                   <IndustryCardIcon />
                 </span>
                 <span className="role-content">
-                  <span className="role-title">我是食品行业相关从业者</span>
-                  <span className="role-desc">提交专业材料并审核后发放 3 日展区票</span>
+                  <span className="role-title">专业观众注册</span>
+                  <span className="role-desc">需审核身份，通过后发放3日展区票</span>
                 </span>
               </button>
               <button
@@ -1641,13 +1644,13 @@ export default function App() {
                 className={`role-option ${identity === 'consumer' ? 'is-active' : ''}`}
                 onClick={() => handleIdentitySelect('consumer')}
                 aria-pressed={identity === 'consumer'}
-                aria-label="我是消费者"
+                aria-label="消费者注册"
               >
                 <span className="role-icon" aria-hidden="true">
                   <ConsumerCardIcon />
                 </span>
                 <span className="role-content">
-                  <span className="role-title">我是消费者</span>
+                  <span className="role-title">消费者注册</span>
                   <span className="role-desc">无需审核，直接发放 1 日展区票</span>
                 </span>
               </button>
@@ -1668,9 +1671,12 @@ export default function App() {
               >
                 返回选择身份
               </FeishuButton>
-              <p className="stage-current stage-current-centered" aria-live="polite">
-                <span className="stage-current-value">{identityLabel}</span>
-              </p>
+              <div className="stage-current-group" aria-live="polite">
+                <p className="stage-current stage-current-centered">
+                  <span className="stage-current-value">{identityLabel}</span>
+                </p>
+                <p className="stage-current-note">{identityAgeNotice}</p>
+              </div>
             </FeishuCard>
 
             <FeishuCard
@@ -2343,26 +2349,10 @@ export default function App() {
         )}
       </div>
 
-      <footer className="legal-footer" aria-label="页面合规信息">
-        <div className="legal-footer-inner">
-          <p className="legal-footer-line">
-            本页面为 FBIF食品创新展2026 观众注册页面，用于观展报名、身份核验与票务审核。
-          </p>
-          <p className="legal-footer-line">
-            提交信息即视为您已阅读并同意
-            <button
-              type="button"
-              className="legal-footer-link"
-              onClick={() => setPrivacyDialogOpen(true)}
-            >
-              《个人信息授权及保护声明》
-            </button>
-          </p>
-          <p className="legal-footer-line legal-footer-icp">
-            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
-              ICP 备案号：沪ICP备19035501号
-            </a>
-          </p>
+      <footer className="legal-footer" aria-label="网站备案信息">
+        <div className="legal-footer-bar">
+          <p className="legal-footer-copy">© Copyright 2026 Simba. All rights reserved. 上海辛巴商务咨询有限公司 版权所有</p>
+          <p className="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p>
         </div>
       </footer>
 
@@ -2383,34 +2373,6 @@ export default function App() {
         footer={
           <FeishuButton type="button" className="modal-button" onClick={() => setQrDialogOpen(false)}>
             关闭
-          </FeishuButton>
-        }
-      />
-
-      <FeishuDialog
-        open={privacyDialogOpen}
-        title="个人信息授权及保护声明"
-        ariaLabel="个人信息授权及保护声明"
-        className="privacy-dialog"
-        onClose={() => setPrivacyDialogOpen(false)}
-        closeOnEsc
-        closeOnMask
-        body={
-          <div className="privacy-dialog-body">
-            <p>
-              为完成 FBIF食品创新展2026 观众注册、实名校验、票务审核与通知服务，我们将收集并处理您主动提交的个人信息（如姓名、证件信息、手机号及证明材料）。
-            </p>
-            <p>
-              您提交的信息仅用于本次观展注册与审核相关流程，不会用于与本次活动无关的用途。我们将采取合理的技术与管理措施保护您的信息安全。
-            </p>
-            <p>
-              如您继续提交，即视为您已知悉并同意上述个人信息处理目的与范围。如需咨询，请联系 FBIF 工作人员 Carrie（微信：lovelyFBIFer1）。
-            </p>
-          </div>
-        }
-        footer={
-          <FeishuButton type="button" className="modal-button" onClick={() => setPrivacyDialogOpen(false)}>
-            我已知晓
           </FeishuButton>
         }
       />

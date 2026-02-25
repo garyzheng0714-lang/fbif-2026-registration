@@ -44,6 +44,8 @@ body {
   min-height: 100vh;
   padding: 16px 12px 28px;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .frame {
@@ -51,6 +53,8 @@ body {
   margin: 0 auto;
   display: grid;
   gap: 16px;
+  width: 100%;
+  flex: 1 0 auto;
 }
 
 .frame > * {
@@ -424,11 +428,28 @@ body {
   text-align: center;
 }
 
+.stage-current-group {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
 .stage-current-value {
   color: var(--deep-blue);
   font-weight: 700;
   font-size: 1rem;
   line-height: 1.4;
+}
+
+.stage-current-note {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .role-card h2 {
@@ -1859,57 +1880,34 @@ select:not(.fs-select):focus {
 
 .legal-footer {
   width: min(100%, var(--content-width));
-  margin: 6px auto 0;
-  padding: 12px 2px 2px;
-}
-
-.legal-footer-inner {
-  border-top: 1px solid #e5e7eb;
+  margin: auto auto 0;
   padding-top: 10px;
-  display: grid;
-  gap: 6px;
 }
 
-.legal-footer-line {
+.legal-footer-bar {
+  width: 100%;
+  margin: 0;
+  padding: 8px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.legal-footer-copy {
   margin: 0;
   color: #6b7280;
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
 }
 
-.legal-footer-link {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  margin-left: 2px;
-  color: #1456f0;
-  font: inherit;
-  line-height: inherit;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-
-.legal-footer-link:hover {
-  color: #0f4ad9;
-}
-
-.legal-footer-link:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(20, 86, 240, 0.15);
-  border-radius: 4px;
-}
-
-.legal-footer-icp a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.legal-footer-icp a:hover {
-  color: #4b5563;
-  text-decoration: underline;
+.legal-footer-icp {
+  white-space: nowrap;
 }
 
 .privacy-dialog {
@@ -2071,12 +2069,22 @@ select:not(.fs-select):focus {
   }
 
   .legal-footer {
-    padding-top: 10px;
+    margin-top: auto;
+    padding-top: 8px;
   }
 
-  .legal-footer-line {
+  .legal-footer-bar {
+    padding: 6px 2px calc(10px + env(safe-area-inset-bottom));
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .legal-footer-copy {
     font-size: 11px;
-    line-height: 1.5;
+    line-height: 1.45;
+    text-align: center;
   }
 }
 
@@ -2132,6 +2140,7 @@ body {
 .frame {
   max-width: 1280px;
   gap: 16px;
+  align-content: start;
 }
 
 .banner {
@@ -2148,7 +2157,7 @@ body {
 }
 
 .stage-head {
-  min-height: 88px;
+  min-height: 108px;
   padding: 18px 22px;
   border-radius: 16px;
   display: flex;
@@ -2414,10 +2423,10 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   color: #374151;
   font-size: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 .submit-policy-row.is-error {
@@ -2474,17 +2483,19 @@ body {
 }
 
 .submit-policy-link {
-  color: #1456f0;
+  color: #2f63d8;
   font-size: inherit;
   line-height: inherit;
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-decoration-color: rgba(47, 99, 216, 0.45);
+  text-underline-offset: 3px;
 }
 
 .submit-policy-link:hover {
-  color: #0f4ad9;
+  color: #2458c9;
+  text-decoration-color: rgba(36, 88, 201, 0.65);
 }
 
 .submit-dock-notice {
@@ -2977,6 +2988,21 @@ body {
 
   .stage-back .fs-button-label {
     font-size: 0.85rem;
+  }
+
+  .stage-head {
+    min-height: 112px;
+    padding: 18px 16px 14px;
+  }
+
+  .stage-current-group {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  .stage-current-note {
+    font-size: 12px;
+    line-height: 1.4;
   }
 }
 
