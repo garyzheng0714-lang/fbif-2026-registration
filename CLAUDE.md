@@ -17,7 +17,10 @@ web-fbif-form/
 ├── scripts/          # 工具脚本 (local-stack, preview-manager)
 ├── docker-compose.yml           # 本地开发 (Postgres + Redis)
 ├── docker-compose.backend.yml   # 生产后端 (API + Postgres + Redis)
-└── .github/workflows/deploy-aliyun.yml  # CI/CD
+├── docker-compose.staging.yml   # 测试环境后端
+└── .github/workflows/
+    ├── deploy-aliyun.yml        # 生产部署 (main → 服务器)
+    └── deploy-staging.yml       # 测试部署 (staging → 服务器)
 ```
 
 ## 技术栈
@@ -177,6 +180,8 @@ Worker 同步到飞书多维表格
 | `FEISHU_APP_TOKEN` / `FEISHU_TABLE_ID` | 多维表格标识 |
 | `FEISHU_ALERT_WEBHOOK` | 告警 Webhook |
 | `FEISHU_ALERT_ENABLED` | 是否启用告警 |
+| `FEISHU_FIELD_SOURCE` | 飞书"数据来源"列名 |
+| `FEISHU_SUBMISSION_SOURCE` | 来源标记值 (生产 "正式环境" / 测试 "测试环境") |
 | `OSS_ACCESS_KEY_ID` / `OSS_BUCKET` / `OSS_REGION` | 阿里云 OSS |
 | `ID_VERIFY_ENABLED` / `ID_VERIFY_APPCODE` | 身份证验证 |
 | `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX` | 限流配置 |
@@ -246,8 +251,80 @@ ssh aliyun-prod "cd /opt/web-fbif-form/backend && docker compose -f docker-compo
 
 **相关文件:** `apps/api/src/services/alertService.ts`, `apps/api/src/worker.ts`
 
+## 测试环境 (Staging)
+
+### 架构
+
+| 项目 | 生产 (main) | 测试 (staging) |
+|------|------------|---------------|
+| 前端 NGINX | 3001 | 3003 |
+| 后端 API | 8080 | 8083 |
+| Docker 项目名 | `fbif-form-backend` | `fbif-form-staging` |
+| 服务器路径 | `/opt/web-fbif-form/` | `/opt/web-fbif-form-staging/` |
+| 数据库 | `fbif_form` | `fbif_form_staging` |
+| NGINX 配置 | `fbif-form.conf` | `fbif-form-staging.conf` |
+
+测试环境使用独立的 PostgreSQL 和 Redis 容器（独立 Docker volumes），完全隔离不影响生产数据。
+
+### 测试环境预览地址
+
+- 前端: http://112.124.103.65:3003
+- 后端健康检查: http://127.0.0.1:8083/health
+
+### 关键文件
+
+| 文件 | 用途 |
+|------|------|
+| `docker-compose.staging.yml` | 测试环境 Docker Compose |
+| `.github/workflows/deploy-staging.yml` | 测试环境部署工作流 |
+| `.github/workflows/deploy-aliyun.yml` | 生产环境部署工作流 |
+
+### 数据来源字段
+
+飞书同步支持写入"数据来源"字段，用于区分生产/测试数据：
+- `FEISHU_FIELD_SOURCE` - 飞书表格中的列名（如 "数据来源"）
+- `FEISHU_SUBMISSION_SOURCE` - 写入值（生产默认 "正式环境"，测试默认 "测试环境"）
+
+前提：需在飞书多维表格中手动添加"数据来源"列。
+
+## 开发工作流规范（必须遵守）
+
+**所有代码改动必须先部署到 staging 测试环境预览，用户确认后才能合并到 main 部署生产。**
+
+### 标准流程
+
+```
+1. 在 staging 分支上开发/修改代码
+2. 提交并推送到 staging 分支
+3. GitHub Actions 自动部署到测试环境 (http://112.124.103.65:3003)
+4. 将预览链接返回给用户，等待用户确认
+5. 用户确认没问题后，合并 staging → main
+6. GitHub Actions 自动部署到生产环境 (https://fbif2026ticket.foodtalks.cn)
+```
+
+### 规则
+
+1. **禁止直接推送到 main 分支** — 所有改动必须先经过 staging 验证
+2. **每次部署 staging 后必须返回预览链接** — `http://112.124.103.65:3003`
+3. **必须等待用户明确同意后才合并到 main** — 不要自行决定合并
+4. **合并到 main 后需确认生产部署成功** — 检查 GitHub Actions 状态
+
+### 常用 Git 操作
+
+```bash
+# 切换到 staging 分支开发
+git checkout staging
+
+# 提交并推送到 staging（触发测试环境部署）
+git add . && git commit -m "描述" && git push origin staging
+
+# 用户确认后，合并到 main（触发生产部署）
+git checkout main && git merge staging && git push origin main
+```
+
 ## 待办事项
 
 - [x] 增加数据同步失败告警 (飞书机器人通知)
+- [x] 添加 staging 测试环境
 - [ ] 添加管理后台查看失败记录
 - [ ] 定期数据对账脚本

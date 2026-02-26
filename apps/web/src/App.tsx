@@ -659,13 +659,10 @@ function QrCodeSmallIcon() {
 
 function ChevronLeftSmallIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 1152 1024" fill="none" aria-hidden="true">
       <path
-        d="M9.5 3.5 5 8l4.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M55.364267 501.464178c-11.241244 0-22.596267-4.346311-31.197867-13.061689a45.033244 45.033244 0 0 1 0-63.0784L421.091556 23.483733a43.713422 43.713422 0 0 1 62.327466 0 45.033244 45.033244 0 0 1 0 63.101156L86.471111 488.402489a43.576889 43.576889 0 0 1-31.1296 13.061689z m396.856889 401.840355c-11.264 0-22.641778-4.369067-31.220623-13.061689L24.1664 488.402489a45.033244 45.033244 0 0 1 0-63.0784 43.713422 43.713422 0 0 1 62.327467 0L483.419022 827.164444a45.033244 45.033244 0 0 1 0 63.0784 43.645156 43.645156 0 0 1-31.220622 13.061689z"
+        fill="currentColor"
       />
     </svg>
   );
@@ -1601,10 +1598,55 @@ export default function App() {
     if (!canCloseSubmitDialog) return;
     setSubmitDialog((prev) => ({ ...prev, open: false }));
   };
+  const submitActionBlock = (
+    <div className="form-submit-section" role="region" aria-label="提交操作区">
+      <div className="submit-dock-inner">
+        <div className={`submit-policy-row ${submitAttempted && !ticketPolicyAccepted ? 'is-error' : ''}`}>
+          <label className="submit-policy-check">
+            <input
+              className="submit-policy-input"
+              type="checkbox"
+              checked={ticketPolicyAccepted}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setTicketPolicyAccepted(checked);
+                if (checked && notice.includes('购票及参会协议')) {
+                  setNotice('');
+                }
+              }}
+            />
+            <span className="submit-policy-indicator" aria-hidden="true" />
+            <span className="submit-policy-text">我已阅读并同意</span>
+          </label>
+          <a
+            className="submit-policy-link"
+            href="https://tickets.foodtalks.cn/policy/ticket?policyCode=gpxy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            《FBIF2026 购票及参会协议》
+          </a>
+        </div>
+        {notice && (
+          <p className="notice notice-error submit-dock-notice">{notice}</p>
+        )}
+        <FeishuButton
+          className="submit-button"
+          type="submit"
+          form="fbif-ticket-form"
+          size="lg"
+          block
+          disabled={!identity || isSubmitting}
+        >
+          {isSubmitting ? '提交中...' : '领取观展票'}
+        </FeishuButton>
+      </div>
+    </div>
+  );
 
   return (
     <div
-      className={`page ${page === 'form' ? 'has-submit-dock' : ''} ${page === 'submitted' ? 'page-submitted' : ''} ${identity ? `page-${identity}` : ''}`}
+      className={`page ${page === 'submitted' ? 'page-submitted' : ''} ${identity ? `page-${identity}` : ''}`}
     >
       <div className="frame">
         {page !== 'submitted' && (
@@ -1667,10 +1709,9 @@ export default function App() {
                 className="stage-back"
                 variant="text"
                 icon={<ChevronLeftSmallIcon />}
+                aria-label="返回选择身份"
                 onClick={handleBackToIdentity}
-              >
-                返回选择身份
-              </FeishuButton>
+              />
               <div className="stage-current-group" aria-live="polite">
                 <p className="stage-current stage-current-centered">
                   <span className="stage-current-value">{identityLabel}</span>
@@ -2060,6 +2101,7 @@ export default function App() {
                   </FeishuField>
                     </section>
                   </div>
+                  {submitActionBlock}
                 </form>
               )}
 
@@ -2191,53 +2233,10 @@ export default function App() {
                   </FeishuField>
                     </section>
                   </div>
+                  {submitActionBlock}
                 </form>
               )}
             </FeishuCard>
-
-            <div className="submit-dock" role="region" aria-label="提交操作区">
-              <div className="submit-dock-inner">
-                <div className={`submit-policy-row ${submitAttempted && !ticketPolicyAccepted ? 'is-error' : ''}`}>
-                  <label className="submit-policy-check">
-                    <input
-                      className="submit-policy-input"
-                      type="checkbox"
-                      checked={ticketPolicyAccepted}
-                      onChange={(event) => {
-                        const checked = event.target.checked;
-                        setTicketPolicyAccepted(checked);
-                        if (checked && notice.includes('购票及参会协议')) {
-                          setNotice('');
-                        }
-                      }}
-                    />
-                    <span className="submit-policy-indicator" aria-hidden="true" />
-                    <span className="submit-policy-text">我已阅读并同意</span>
-                  </label>
-                  <a
-                    className="submit-policy-link"
-                    href="https://tickets.foodtalks.cn/policy/ticket?policyCode=gpxy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    《FBIF2026 购票及参会协议》
-                  </a>
-                </div>
-                {notice && (
-                  <p className="notice notice-error submit-dock-notice">{notice}</p>
-                )}
-                <FeishuButton
-                  className="submit-button"
-                  type="submit"
-                  form="fbif-ticket-form"
-                  size="lg"
-                  block
-                  disabled={!identity || isSubmitting}
-                >
-                  {isSubmitting ? '提交中...' : '领取观展票'}
-                </FeishuButton>
-              </div>
-            </div>
           </>
         )}
 
