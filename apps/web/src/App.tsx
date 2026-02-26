@@ -375,13 +375,18 @@ function formatUploadError(message: string) {
   return '转换失败，请删除后重传';
 }
 
-function validateIdNumber(idType: IdType, idNumber: string) {
+function validateIdNumber(idType: IdType, idNumber: string, role?: 'industry' | 'consumer') {
   const normalized = idNumber.trim();
   if (!idType) return '请选择证件类型';
   if (!normalized) return '请输入证件号码';
   if (idType === 'cn_id') {
     const idError = validateChineseId(normalized);
-    return idError ? '请输入正确的身份证号' : '';
+    if (idError) return '请输入正确的身份证号';
+    if (role) {
+      const ageCheck = checkAgeLimit(role, idType, normalized);
+      if (!ageCheck.ok) return ageCheck.message;
+    }
+    return '';
   }
   if (!otherIdRegex.test(normalized)) {
     return '证件号格式不正确（6-20位字母/数字/短横线）';
@@ -426,14 +431,11 @@ function checkAgeLimit(role: 'industry' | 'consumer', idType: IdType, idNumber: 
   if (age == null) {
     return { ok: true as const };
   }
-  if (age < 16) {
-    return { ok: false as const, message: '年龄过小' };
+  if (role === 'consumer' && (age < 16 || age > 50)) {
+    return { ok: false as const, message: '因场内人流管控需要，16岁以下、50岁以上群体暂无法报名，感谢您的理解。' };
   }
-  if (role === 'consumer' && age > 50) {
-    return { ok: false as const, message: '年龄过大' };
-  }
-  if (role === 'industry' && age > 99) {
-    return { ok: false as const, message: '年龄过大' };
+  if (role === 'industry' && age < 16) {
+    return { ok: false as const, message: '16岁以下观众禁止入场，请勿报名，感谢您的理解' };
   }
   return { ok: true as const };
 }
@@ -825,7 +827,7 @@ export default function App() {
     return {
       name: validateRequired(industryForm.name, '姓名', 2, 32),
       idType: industryForm.idType ? '' : '请选择证件类型',
-      idNumber: validateIdNumber(industryForm.idType, industryForm.idNumber),
+      idNumber: validateIdNumber(industryForm.idType, industryForm.idNumber, 'industry'),
       phoneCountryCode: '',
       phone: validatePhone(industryForm.phone, industryForm.phoneCountryCode),
       company: validateRequired(industryForm.company, '公司', 2, 64),
@@ -840,7 +842,7 @@ export default function App() {
     return {
       name: validateRequired(consumerForm.name, '姓名', 2, 32),
       idType: consumerForm.idType ? '' : '请选择证件类型',
-      idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber),
+      idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber, 'consumer'),
       phoneCountryCode: '',
       phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode)
     };
@@ -1372,16 +1374,6 @@ export default function App() {
 
     if (!ticketPolicyAccepted) {
       setNotice('请先阅读并同意《FBIF2026 购票及参会协议》');
-      return;
-    }
-
-    const role = identity === 'industry' ? 'industry' : 'consumer';
-    const currentIdType = identity === 'industry' ? industryForm.idType : consumerForm.idType;
-    const currentIdNumber = (identity === 'industry' ? industryForm.idNumber : consumerForm.idNumber).trim().toUpperCase();
-    const ageLimitCheck = checkAgeLimit(role, currentIdType, currentIdNumber);
-    if (!ageLimitCheck.ok) {
-      setNotice('');
-      showToast(ageLimitCheck.message);
       return;
     }
 
