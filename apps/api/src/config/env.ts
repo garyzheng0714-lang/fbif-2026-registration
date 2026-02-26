@@ -69,7 +69,11 @@ const envSchema = z.object({
   ID_VERIFY_ALIYUN_PATH: z.string().default('/idcard/check'),
   ID_VERIFY_APPCODE: z.string().optional(),
   ID_VERIFY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(20000).default(5000),
-  ID_VERIFY_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900)
+  ID_VERIFY_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+
+  // 飞书告警 Webhook (用于数据同步失败通知)
+  FEISHU_ALERT_WEBHOOK: z.string().url().optional(),
+  FEISHU_ALERT_ENABLED: z.boolean().default(true)
 });
 
 export const env = envSchema.parse({
@@ -126,7 +130,10 @@ export const env = envSchema.parse({
   ID_VERIFY_ALIYUN_PATH: process.env.ID_VERIFY_ALIYUN_PATH,
   ID_VERIFY_APPCODE: process.env.ID_VERIFY_APPCODE,
   ID_VERIFY_TIMEOUT_MS: process.env.ID_VERIFY_TIMEOUT_MS,
-  ID_VERIFY_TOKEN_TTL_SECONDS: process.env.ID_VERIFY_TOKEN_TTL_SECONDS
+  ID_VERIFY_TOKEN_TTL_SECONDS: process.env.ID_VERIFY_TOKEN_TTL_SECONDS,
+
+  FEISHU_ALERT_WEBHOOK: process.env.FEISHU_ALERT_WEBHOOK,
+  FEISHU_ALERT_ENABLED: parseEnvBool(process.env.FEISHU_ALERT_ENABLED, true)
 });
 
 export const isProd = env.NODE_ENV === 'production';
