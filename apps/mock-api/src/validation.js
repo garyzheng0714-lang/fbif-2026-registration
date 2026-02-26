@@ -1,10 +1,29 @@
-const phoneRegex = /^1[3-9]\d{9}$/;
+const mainlandPhoneRegex = /^1[3-9]\d{9}$/;
 const idRegex = /^\d{17}[\dXx]$/;
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
 const maxProofUrls = Math.max(1, Number(process.env.MOCK_API_MAX_PROOF_URLS || 10));
 
 const allowedRoles = new Set(['industry', 'consumer']);
-const allowedIdTypes = new Set(['cn_id', 'passport', 'other']);
+const allowedIdTypes = new Set([
+  'cn_id',
+  'hk_macao_mainland_permit',
+  'taiwan_mainland_permit',
+  'passport',
+  'foreign_permanent_resident_id',
+  'hmt_residence_permit',
+  'other'
+]);
+
+function normalizePhone(value) {
+  return String(value || '').trim().replace(/[\s()-]/g, '');
+}
+
+function isValidPhone(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  if (mainlandPhoneRegex.test(raw)) return true;
+  return /^\+[1-9]\d{5,19}$/.test(normalizePhone(raw));
+}
 
 export function isValidChineseId(id) {
   if (!idRegex.test(id)) return false;
@@ -82,7 +101,7 @@ export function validateSubmission(input) {
   const idTypeRaw = trimText(input.idType);
   const idType = idTypeRaw ? idTypeRaw : 'cn_id';
 
-  if (!phoneRegex.test(phone)) {
+  if (!isValidPhone(phone)) {
     return { ok: false, error: '手机号格式不正确' };
   }
 

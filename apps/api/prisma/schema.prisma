@@ -22,7 +22,11 @@ enum Role {
 
 enum IdType {
   cn_id
+  hk_macao_mainland_permit
+  taiwan_mainland_permit
   passport
+  foreign_permanent_resident_id
+  hmt_residence_permit
   other
 }
 

@@ -61,7 +61,7 @@ test('resolveSingleSelectOptionId: returns null on ambiguous substring matches',
   assert.equal(resolveSingleSelectOptionId(meta, '其他'), null);
 });
 
-test('applySingleSelectMappings: omits unmapped single select fields to avoid type mismatch', () => {
+test('applySingleSelectMappings: throws on unmapped single select fields to avoid silent empty values', () => {
   const metaByName = new Map<string, BitableFieldMeta>([
     ['贵司的业务类型', makeMeta([
       ['其他（如财务、行政等）', 'optX'],
@@ -74,9 +74,10 @@ test('applySingleSelectMappings: omits unmapped single select fields to avoid ty
     贵司的业务类型: '其他'
   };
 
-  applySingleSelectMappings(fields, metaByName, { traceId: 'trace', idSuffix: '001X' }, { warn: () => {} });
-
+  assert.throws(
+    () => applySingleSelectMappings(fields, metaByName, { traceId: 'trace', idSuffix: '001X' }, { warn: () => {} }),
+    /bitable single-select option not found/
+  );
   assert.equal(fields.姓名, '张三');
-  assert.equal(Object.prototype.hasOwnProperty.call(fields, '贵司的业务类型'), false);
+  assert.equal(fields['贵司的业务类型'], '其他');
 });
-

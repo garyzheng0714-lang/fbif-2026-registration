@@ -12,7 +12,7 @@ const fieldMap = {
   title: process.env.FEISHU_FIELD_TITLE || '职位（问卷题）',
   company: process.env.FEISHU_FIELD_COMPANY || '公司（问卷题）',
   idNumber: process.env.FEISHU_FIELD_ID || '证件号码（问卷题）',
-  identity: process.env.FEISHU_FIELD_IDENTITY || '',
+  identity: process.env.FEISHU_FIELD_IDENTITY || '观展身份',
   idType: process.env.FEISHU_FIELD_ID_TYPE || '',
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
@@ -220,23 +220,19 @@ function normalizeBusinessTypeOptionText(value: unknown) {
   if (!text) return '';
 
   if (text === '食品相关品牌方') {
-    return '食品饮料品牌方（包括传统的食品加工企业';
+    return '食品饮料品牌方';
   }
   if (text === '食品制造商') {
-    return '食品饮料品牌方（包括传统的食品加工企业';
+    return '食品饮料品牌方';
   }
   if (text === '供应链服务商') {
-    return '原材料供应商（提供各种食品配料和原材料的企业';
+    return '原材料供应商';
   }
   if (text === '咨询/营销/服务机构') {
     return '设计营销与咨询策划服务提供商';
   }
   if (text === '新兴渠道') {
-    return '新零售（前置仓到家';
-  }
-  if (text === '其他') {
-    // Avoid ambiguous substring matching ("其他" appears in multiple options).
-    return '其他（包含政府机构、协会、高校、媒体等等）';
+    return '新零售';
   }
 
   return text;
@@ -271,6 +267,16 @@ function normalizeDepartmentOptionText(value: unknown) {
   return text;
 }
 
+function getIdTypeLabel(idType: string) {
+  if (idType === 'cn_id') return '中国居民身份证';
+  if (idType === 'hk_macao_mainland_permit') return '港澳居民来往内地通行证';
+  if (idType === 'taiwan_mainland_permit') return '台湾居民来往大陆通行证';
+  if (idType === 'passport') return '护照';
+  if (idType === 'foreign_permanent_resident_id') return '外国人永久居留身份证';
+  if (idType === 'hmt_residence_permit') return '港澳台居民居住证';
+  return '';
+}
+
 export type BitableWriteFields = {
   readableFields: Record<string, string>;
   optionIdFields: Record<string, string>;
@@ -296,11 +302,7 @@ function buildReadableFields(input: {
   }
 
   if (fieldMap.idType) {
-    const idTypeValue = submission.idType === 'cn_id'
-      ? '中国居民身份证'
-      : submission.idType === 'passport'
-        ? '护照'
-        : '';
+    const idTypeValue = getIdTypeLabel(String(submission.idType || ''));
 
     if (idTypeValue) {
       fields[fieldMap.idType] = idTypeValue;

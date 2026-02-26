@@ -276,6 +276,16 @@ function normalizeDepartmentOptionText(value) {
   return text;
 }
 
+function getIdTypeLabel(idType) {
+  if (idType === 'cn_id') return '中国居民身份证';
+  if (idType === 'hk_macao_mainland_permit') return '港澳居民来往内地通行证';
+  if (idType === 'taiwan_mainland_permit') return '台湾居民来往大陆通行证';
+  if (idType === 'passport') return '护照';
+  if (idType === 'foreign_permanent_resident_id') return '外国人永久居留身份证';
+  if (idType === 'hmt_residence_permit') return '港澳台居民居住证';
+  return '';
+}
+
 function normalizeSelectOptionText(value) {
   // Remove invisible characters that can sneak into copied labels and break exact matching.
   return String(value || '')
@@ -367,11 +377,7 @@ async function mapFields(submission) {
   }
 
   if (fieldMap.idType && submission.idType) {
-    const idTypeValue = submission.idType === 'cn_id'
-      ? '中国居民身份证'
-      : submission.idType === 'passport'
-        ? '护照'
-        : '';
+    const idTypeValue = getIdTypeLabel(submission.idType);
 
     if (idTypeValue) {
       fields[fieldMap.idType] = idTypeValue;
