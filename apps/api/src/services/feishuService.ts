@@ -361,6 +361,11 @@ function isFieldTypeMismatchError(err: unknown) {
   );
 }
 
+function isFieldNameNotFoundError(err: unknown) {
+  if (!(err instanceof FeishuApiError)) return false;
+  return String(err.message || '').includes('FieldNameNotFound');
+}
+
 async function writeFieldsWithFallback(path: string, method: 'POST' | 'PUT', fields: BitableWriteFields) {
   const preferOptionId = env.FEISHU_SELECT_WRITE_MODE === 'option_id';
   const hasFallback = fieldsAreDifferent(fields.readableFields, fields.optionIdFields);
@@ -374,6 +379,20 @@ async function writeFieldsWithFallback(path: string, method: 'POST' | 'PUT', fie
       body: JSON.stringify({ fields: primaryFields })
     });
   } catch (err) {
+    // Enrich FieldNameNotFound with diagnostic info
+    if (isFieldNameNotFoundError(err)) {
+      const sentKeys = Object.keys(primaryFields);
+      const metaByName = bitableFieldMetaCache.value;
+      const tableColumns = metaByName ? Array.from(metaByName.keys()) : ['(cache empty)'];
+      const missingKeys = metaByName ? sentKeys.filter((k) => !metaByName.has(k)) : sentKeys;
+      const detail = `sent=[${sentKeys.join(',')}] missing=[${missingKeys.join(',')}] table=[${tableColumns.join(',')}]`;
+      throw new FeishuApiError(`${(err as FeishuApiError).message} | ${detail}`, {
+        status: (err as FeishuApiError).status,
+        code: (err as FeishuApiError).code,
+        retryable: (err as FeishuApiError).retryable
+      });
+    }
+
     if (!fallbackFields || !isFieldTypeMismatchError(err)) {
       throw err;
     }
