@@ -290,6 +290,11 @@ jobs:
               nginx -t >/dev/null 2>&1 && (systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null) || true
             fi
 
+            # --- 导出环境变量供 Docker Compose 插值 ---
+            set -a
+            . "${BACKEND_ENV_FILE}"
+            set +a
+
             # --- 启动全部容器 (web + api + postgres + redis) ---
             (
               cd "${RELEASE_DIR}"
