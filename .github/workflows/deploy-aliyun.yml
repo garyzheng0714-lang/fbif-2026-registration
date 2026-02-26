@@ -100,7 +100,7 @@ jobs:
           ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
         run: |
           set -euo pipefail
-          HOST="${ALIYUN_HOST:?ALIYUN_HOST secret is required}"
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
           USER="${ALIYUN_USER:-root}"
 
           mkdir -p ~/.ssh
@@ -163,7 +163,7 @@ jobs:
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
         run: |
           set -euo pipefail
-          HOST="${ALIYUN_HOST:?ALIYUN_HOST secret is required}"
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
           USER="${ALIYUN_USER:-root}"
 
           scp \
@@ -230,7 +230,7 @@ jobs:
           GH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          HOST="${ALIYUN_HOST:?ALIYUN_HOST secret is required}"
+          HOST="${ALIYUN_HOST:-112.124.103.65}"
           USER="${ALIYUN_USER:-root}"
 
           cat > /tmp/remote_deploy.sh <<'REMOTE_SCRIPT'
