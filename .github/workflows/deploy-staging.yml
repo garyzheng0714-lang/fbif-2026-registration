@@ -281,6 +281,12 @@ jobs:
               pm2 save >/dev/null 2>&1 || true
             fi
 
+            # --- 释放宿主机 NGINX 占用的端口 (过渡期) ---
+            rm -f /etc/nginx/conf.d/fbif-form-staging.conf 2>/dev/null || true
+            if command -v nginx >/dev/null 2>&1; then
+              nginx -t >/dev/null 2>&1 && (systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null) || true
+            fi
+
             # --- 启动全部容器 (web + api + postgres + redis) ---
             (
               cd "${RELEASE_DIR}"
