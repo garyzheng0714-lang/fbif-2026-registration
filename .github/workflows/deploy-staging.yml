@@ -1,13 +1,13 @@
-name: Deploy To Aliyun
+name: Deploy Staging To Aliyun
 
 on:
   push:
     branches:
-      - main
+      - staging
   workflow_dispatch:
 
 concurrency:
-  group: deploy-production
+  group: deploy-staging
   cancel-in-progress: true
 
 jobs:
@@ -21,11 +21,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fbif_form
+          POSTGRES_DB: fbif_form_staging
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d fbif_form"
+          --health-cmd "pg_isready -U postgres -d fbif_form_staging"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -61,7 +61,7 @@ jobs:
           API_URL="${VITE_API_URL:-/api}"
 
           npm ci --prefix apps/api
-          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
+          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form_staging" npm run prisma:migrate --prefix apps/api
           npm test --prefix apps/api
           npm run build --prefix apps/api
 
@@ -172,21 +172,20 @@ jobs:
             -o ConnectTimeout=20 \
             -o StrictHostKeyChecking=accept-new \
             release.tgz \
-            "${USER}@${HOST}:/tmp/release.tgz"
+            "${USER}@${HOST}:/tmp/release-staging.tgz"
 
       - name: Deploy On Server
         env:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
-          APP_DIR: ${{ secrets.APP_DIR }}
-          WEB_PORT: ${{ secrets.WEB_PORT }}
-          API_PORT: ${{ secrets.API_PORT }}
-          API_PORT_INTERNAL: ${{ secrets.API_PORT_INTERNAL }}
-          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          WEB_PORT: "3003"
+          API_PORT: "8083"
+          API_PORT_INTERNAL: "8080"
+          WEB_ORIGIN: ${{ secrets.STAGING_WEB_ORIGIN }}
           CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_DB: fbif_form_staging
           DATA_KEY: ${{ secrets.DATA_KEY }}
           DATA_HASH_SALT: ${{ secrets.DATA_HASH_SALT }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
@@ -222,7 +221,7 @@ jobs:
           MAX_PROOF_URLS: ${{ secrets.MAX_PROOF_URLS }}
           MAX_PROOF_URL_LENGTH: ${{ secrets.MAX_PROOF_URL_LENGTH }}
           FEISHU_FIELD_SOURCE: ${{ secrets.FEISHU_FIELD_SOURCE }}
-          FEISHU_SUBMISSION_SOURCE: ${{ secrets.FEISHU_SUBMISSION_SOURCE }}
+          FEISHU_SUBMISSION_SOURCE: "测试环境"
           FEISHU_ALERT_WEBHOOK: ${{ secrets.FEISHU_ALERT_WEBHOOK }}
           FEISHU_ALERT_ENABLED: ${{ secrets.FEISHU_ALERT_ENABLED }}
           RUN_DB_MIGRATE: ${{ secrets.RUN_DB_MIGRATE }}
@@ -236,7 +235,7 @@ jobs:
           cat > /tmp/remote_deploy.sh <<'REMOTE_SCRIPT'
             set -euo pipefail
 
-            APP_ROOT="${APP_DIR:-/opt/web-fbif-form}"
+            APP_ROOT="/opt/web-fbif-form-staging"
             RELEASES_DIR="${APP_ROOT}/releases"
             CURRENT_LINK="${APP_ROOT}/current"
             RELEASE_DIR="${RELEASES_DIR}/${GH_SHA}"
@@ -246,10 +245,10 @@ jobs:
             WEB_RELEASES_DIR="${APP_ROOT}/web-releases"
             WEB_CURRENT_LINK="${APP_ROOT}/web-current"
             WEB_RELEASE_DIR="${WEB_RELEASES_DIR}/${GH_SHA}"
-            NGINX_SITE="/etc/nginx/conf.d/fbif-form.conf"
+            NGINX_SITE="/etc/nginx/conf.d/fbif-form-staging.conf"
 
-            WEB_PORT_VALUE="${WEB_PORT:-3001}"
-            API_PORT_VALUE="${API_PORT:-8080}"
+            WEB_PORT_VALUE="${WEB_PORT:-3003}"
+            API_PORT_VALUE="${API_PORT:-8083}"
             API_PORT_INTERNAL_VALUE="${API_PORT_INTERNAL:-8080}"
             WEB_ORIGIN_VALUE="${WEB_ORIGIN:-http://112.124.103.65:${WEB_PORT_VALUE}}"
 
@@ -257,7 +256,7 @@ jobs:
             rm -rf "${RELEASE_DIR}" "${WEB_RELEASE_DIR}"
             mkdir -p "${RELEASE_DIR}" "${WEB_RELEASE_DIR}"
 
-            tar -xzf /tmp/release.tgz -C "${RELEASE_DIR}"
+            tar -xzf /tmp/release-staging.tgz -C "${RELEASE_DIR}"
 
             if [ ! -d "${RELEASE_DIR}/apps/web/dist" ]; then
               echo "Missing frontend build output: ${RELEASE_DIR}/apps/web/dist" >&2
@@ -312,7 +311,7 @@ jobs:
             set_default CSRF_COOKIE_SECURE false
             set_default POSTGRES_USER fbif
             set_default POSTGRES_PASSWORD change_me
-            set_default POSTGRES_DB fbif_form
+            set_default POSTGRES_DB fbif_form_staging
             set_default FEISHU_APP_ID cli_a9f7f8703778dcee
             set_default FEISHU_TABLE_ID tbl0CQ74guMS1IDd
             set_default FEISHU_FIELD_NAME 姓名（问卷题）
@@ -326,7 +325,7 @@ jobs:
             set_default FEISHU_FIELD_SUBMITTED_AT ""
             set_default FEISHU_FIELD_SYNC_STATUS ""
             set_default FEISHU_FIELD_SOURCE ""
-            set_default FEISHU_SUBMISSION_SOURCE 正式环境
+            set_default FEISHU_SUBMISSION_SOURCE 测试环境
             set_default RATE_LIMIT_WINDOW_MS 60000
             set_default RATE_LIMIT_MAX 120
             set_default RATE_LIMIT_BURST 20
@@ -418,19 +417,9 @@ jobs:
               exit 1
             fi
 
-            if command -v pm2 >/dev/null 2>&1; then
-              pm2 delete fbif-web >/dev/null 2>&1 || true
-              pm2 delete fbif-api >/dev/null 2>&1 || true
-              pm2 delete fbif-worker >/dev/null 2>&1 || true
-              pm2 delete fbif-mock-api >/dev/null 2>&1 || true
-              pm2 save >/dev/null 2>&1 || true
-            fi
-
-            docker rm -f fbif-form-web-nginx >/dev/null 2>&1 || true
-
             (
               cd "${RELEASE_DIR}"
-              docker compose --env-file "${BACKEND_ENV_FILE}" -f docker-compose.backend.yml up -d --build --remove-orphans
+              docker compose --env-file "${BACKEND_ENV_FILE}" -f docker-compose.staging.yml up -d --build --remove-orphans
             )
 
             if ! command -v nginx >/dev/null 2>&1; then
@@ -465,11 +454,9 @@ jobs:
             }
             NGINX_CONF
 
-            rm -f /etc/nginx/sites-enabled/default || true
             nginx -t
 
             if command -v systemctl >/dev/null 2>&1; then
-              systemctl enable nginx >/dev/null 2>&1 || true
               systemctl restart nginx
             else
               nginx -s reload || nginx
@@ -499,8 +486,8 @@ jobs:
           REMOTE_SCRIPT
 
           REMOTE_ENV="$(printf \
-            "APP_DIR=%q WEB_PORT=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q FEISHU_FIELD_SOURCE=%q FEISHU_SUBMISSION_SOURCE=%q FEISHU_ALERT_WEBHOOK=%q FEISHU_ALERT_ENABLED=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q" \
-            "${APP_DIR:-}" "${WEB_PORT:-}" "${API_PORT:-}" "${API_PORT_INTERNAL:-}" "${WEB_ORIGIN:-}" "${CSRF_COOKIE_SECURE:-}" "${POSTGRES_USER:-}" "${POSTGRES_PASSWORD:-}" "${POSTGRES_DB:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${ID_VERIFY_ENABLED:-}" "${ID_VERIFY_ALIYUN_HOST:-}" "${ID_VERIFY_ALIYUN_PATH:-}" "${ID_VERIFY_APPCODE:-}" "${ID_VERIFY_TIMEOUT_MS:-}" "${ID_VERIFY_TOKEN_TTL_SECONDS:-}" "${RATE_LIMIT_WINDOW_MS:-}" "${RATE_LIMIT_MAX:-}" "${RATE_LIMIT_BURST:-}" "${SYNC_POLL_TIMEOUT_MS:-}" "${FEISHU_SYNC_ATTEMPTS:-}" "${FEISHU_SYNC_BACKOFF_MS:-}" "${FEISHU_SYNC_BACKOFF_MAX_MS:-}" "${FEISHU_WORKER_CONCURRENCY:-}" "${FEISHU_WORKER_QPS:-}" "${FEISHU_SELECT_WRITE_MODE:-}" "${MAX_PROOF_URLS:-}" "${MAX_PROOF_URL_LENGTH:-}" "${FEISHU_FIELD_SOURCE:-}" "${FEISHU_SUBMISSION_SOURCE:-}" "${FEISHU_ALERT_WEBHOOK:-}" "${FEISHU_ALERT_ENABLED:-}" "${RUN_DB_MIGRATE:-}" "${RUN_WORKER:-}" "${GH_SHA}")"
+            "WEB_PORT=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q FEISHU_FIELD_SOURCE=%q FEISHU_SUBMISSION_SOURCE=%q FEISHU_ALERT_WEBHOOK=%q FEISHU_ALERT_ENABLED=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q" \
+            "${WEB_PORT:-}" "${API_PORT:-}" "${API_PORT_INTERNAL:-}" "${WEB_ORIGIN:-}" "${CSRF_COOKIE_SECURE:-}" "${POSTGRES_USER:-}" "${POSTGRES_PASSWORD:-}" "${POSTGRES_DB:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${ID_VERIFY_ENABLED:-}" "${ID_VERIFY_ALIYUN_HOST:-}" "${ID_VERIFY_ALIYUN_PATH:-}" "${ID_VERIFY_APPCODE:-}" "${ID_VERIFY_TIMEOUT_MS:-}" "${ID_VERIFY_TOKEN_TTL_SECONDS:-}" "${RATE_LIMIT_WINDOW_MS:-}" "${RATE_LIMIT_MAX:-}" "${RATE_LIMIT_BURST:-}" "${SYNC_POLL_TIMEOUT_MS:-}" "${FEISHU_SYNC_ATTEMPTS:-}" "${FEISHU_SYNC_BACKOFF_MS:-}" "${FEISHU_SYNC_BACKOFF_MAX_MS:-}" "${FEISHU_WORKER_CONCURRENCY:-}" "${FEISHU_WORKER_QPS:-}" "${FEISHU_SELECT_WRITE_MODE:-}" "${MAX_PROOF_URLS:-}" "${MAX_PROOF_URL_LENGTH:-}" "${FEISHU_FIELD_SOURCE:-}" "${FEISHU_SUBMISSION_SOURCE:-}" "${FEISHU_ALERT_WEBHOOK:-}" "${FEISHU_ALERT_ENABLED:-}" "${RUN_DB_MIGRATE:-}" "${RUN_WORKER:-}" "${GH_SHA}")"
 
           ssh \
             -i ~/.ssh/id_aliyun \
@@ -512,4 +499,4 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: rm -f ~/.ssh/id_aliyun /tmp/remote_deploy.sh /tmp/release.tgz release.tgz
+        run: rm -f ~/.ssh/id_aliyun /tmp/remote_deploy.sh /tmp/release-staging.tgz release.tgz
