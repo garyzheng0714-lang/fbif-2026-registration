@@ -1,0 +1,14 @@
+# FBIF Form Caddy 反向代理配置
+# 用法: 复制到 /etc/caddy/Caddyfile，替换域名后 systemctl restart caddy
+#
+# Caddy 自动处理 HTTPS 证书 (Let's Encrypt)
+# 只需确保域名 DNS 指向本服务器 IP
+
+fbif2026ticket.foodtalks.cn {
+    reverse_proxy localhost:3001
+}
+
+# 如需测试环境 (可选，取消注释):
+# staging.fbif2026ticket.foodtalks.cn {
+#     reverse_proxy localhost:3003
+# }

@@ -30,7 +30,7 @@ export const options = {
   }
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://112.124.103.65:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
 export default function () {
   const csrfToken = getCachedCsrfToken(BASE_URL, { timeout: __ENV.HTTP_TIMEOUT || '2s' });

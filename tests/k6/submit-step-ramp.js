@@ -5,13 +5,13 @@ import { getCachedCsrfToken } from './lib/csrf.js';
 // Controlled ramp-to-failure test (guardrails for small instances).
 //
 // Example:
-//   BASE_URL=http://112.124.103.65:8080 MAX_RATE=200 STEP=20 STEP_DURATION=20s docker run --rm -i -v "$PWD":/work -w /work grafana/k6:1.6.0 run tests/k6/submit-step-ramp.js
+//   BASE_URL=http://your-server:8080 MAX_RATE=200 STEP=20 STEP_DURATION=20s docker run --rm -i -v "$PWD":/work -w /work grafana/k6:1.6.0 run tests/k6/submit-step-ramp.js
 //
 // Notes:
 // - Each iteration does: POST /api/submissions (consumer)
 // - CSRF token is cached per VU (default TTL 5m).
 
-const BASE_URL = __ENV.BASE_URL || 'http://112.124.103.65:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const HTTP_TIMEOUT = __ENV.HTTP_TIMEOUT || '2s';
 
 const MAX_RATE = Number(__ENV.MAX_RATE || 160);
