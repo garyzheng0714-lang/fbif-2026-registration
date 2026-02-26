@@ -235,9 +235,6 @@ jobs:
 
           cat > /tmp/remote_deploy.sh <<'REMOTE_SCRIPT'
             set -euo pipefail
-            exec > >(tee /tmp/staging-deploy.log) 2>&1
-            trap 'echo "DEPLOY FAILED at line $LINENO" >> /tmp/staging-deploy.log' ERR
-
             APP_ROOT="${APP_DIR:-/opt/web-fbif-form-staging}"
             RELEASES_DIR="${APP_ROOT}/releases"
             CURRENT_LINK="${APP_ROOT}/current"
@@ -288,6 +285,11 @@ jobs:
             if command -v nginx >/dev/null 2>&1; then
               nginx -t >/dev/null 2>&1 && (systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null) || true
             fi
+
+            # --- 导出环境变量供 Docker Compose 插值 ---
+            set -a
+            . "${BACKEND_ENV_FILE}"
+            set +a
 
             # --- 启动全部容器 (web + api + postgres + redis) ---
             (
