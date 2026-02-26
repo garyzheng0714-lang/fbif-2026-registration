@@ -76,10 +76,12 @@ finalize_env_file() {
 
 # --- 设置所有默认值 ---
 apply_defaults() {
+  local web_port_value="${WEB_PORT:-3001}"
   local web_origin_value="${WEB_ORIGIN:-}"
   local api_port_value="${API_PORT:-8080}"
   local api_port_internal_value="${API_PORT_INTERNAL:-8080}"
 
+  set_default WEB_PORT "${web_port_value}"
   set_default NODE_ENV production
   set_default API_PORT "${api_port_value}"
   set_default API_PORT_INTERNAL "${api_port_internal_value}"
@@ -125,6 +127,7 @@ apply_defaults() {
 
 # --- 从环境变量覆盖 (GitHub Secrets → backend.env) ---
 apply_overrides() {
+  set_if_non_empty WEB_PORT "${WEB_PORT:-}"
   set_if_non_empty WEB_ORIGIN "${WEB_ORIGIN:-}"
   set_if_non_empty API_PORT "${API_PORT:-}"
   set_if_non_empty API_PORT_INTERNAL "${API_PORT_INTERNAL:-}"
