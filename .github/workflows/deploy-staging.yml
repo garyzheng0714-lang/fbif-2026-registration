@@ -21,11 +21,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fbif_form_staging
+          POSTGRES_DB: fbif_form
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d fbif_form_staging"
+          --health-cmd "pg_isready -U postgres -d fbif_form"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -61,7 +61,7 @@ jobs:
           API_URL="${VITE_API_URL:-/api}"
 
           npm ci --prefix apps/api
-          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form_staging" npm run prisma:migrate --prefix apps/api
+          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
           npm test --prefix apps/api
           npm run build --prefix apps/api
 
