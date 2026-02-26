@@ -18,6 +18,7 @@ import {
   markSubmissionRetrying,
   markSubmissionSuccess
 } from './services/submissionService.js';
+import { alertSyncFailure } from './services/alertService.js';
 import { feishuApiErrorsTotal, feishuSyncJobsTotal } from './metrics.js';
 
 function computeExponentialBackoffMs(attempt: number, multiplier = 1) {
@@ -98,6 +99,18 @@ const worker = new Worker(
       } else {
         await markSubmissionFailed(submission.id, msg);
         feishuSyncJobsTotal.inc({ result: 'failed' });
+
+        // 发送飞书告警通知
+        await alertSyncFailure(
+          submission.id,
+          submission.traceId,
+          msg,
+          attempt,
+          submission.role,
+          submission.createdAt
+        ).catch((alertErr) => {
+          logger.error({ err: alertErr, submissionId: submission.id }, 'Failed to send sync failure alert');
+        });
       }
 
       feishuApiErrorsTotal.inc({ retryable: retryable ? 'true' : 'false' });

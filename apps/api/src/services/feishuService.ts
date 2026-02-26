@@ -18,7 +18,8 @@ const fieldMap = {
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
-  syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || ''
+  syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || '',
+  source: process.env.FEISHU_FIELD_SOURCE || ''
 };
 
 type TokenCache = { value: string; expiresAt: number };
@@ -328,6 +329,10 @@ function buildReadableFields(input: {
 
   if (fieldMap.syncStatus) {
     fields[fieldMap.syncStatus] = '已同步';
+  }
+
+  if (fieldMap.source) {
+    fields[fieldMap.source] = process.env.FEISHU_SUBMISSION_SOURCE || '正式环境';
   }
 
   return fields;

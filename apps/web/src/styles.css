@@ -13,15 +13,17 @@
   --ok: #4ba254;
   --content-width: 860px;
   --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 9px;
   --control-height-sm: 28px;
   --control-height-md: 32px;
   --control-height-lg: 40px;
   --shadow-soft: 0 8px 24px rgba(31, 35, 41, 0.08);
   --motion: 160ms cubic-bezier(0.3, 0, 0.1, 1);
   --motion-apple: 220ms cubic-bezier(0.3, 0, 0.1, 1);
+  --legal-footer-layer-height: 34px;
+  --submit-dock-layer-height: 118px;
 }
 
 * {
@@ -42,7 +44,7 @@ body {
 
 .page {
   min-height: 100vh;
-  padding: 16px 12px 28px;
+  padding: 16px 12px 0;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -1879,23 +1881,22 @@ select:not(.fs-select):focus {
 }
 
 .legal-footer {
-  width: min(100%, var(--content-width));
-  margin: auto auto 0;
-  padding-top: 10px;
+  /* 使用 flexbox 自然布局，不再使用 fixed 定位 */
+  width: 100%;
+  margin-top: auto; /* 推到底部 */
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .legal-footer-bar {
-  width: 100%;
-  margin: 0;
-  padding: 8px 2px;
+  width: min(100%, var(--content-width));
+  margin: 0 auto;
+  padding: 20px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
 }
 
 .legal-footer-copy {
@@ -1979,7 +1980,7 @@ select:not(.fs-select):focus {
 
 @media (max-width: 599px) {
   .page {
-    padding: 12px 10px 20px;
+    padding: 12px 10px 0; /* footer 不再 fixed */
   }
 
   .card {
@@ -2068,17 +2069,12 @@ select:not(.fs-select):focus {
     height: 7px;
   }
 
-  .legal-footer {
-    margin-top: auto;
-    padding-top: 8px;
-  }
-
   .legal-footer-bar {
-    padding: 6px 2px calc(10px + env(safe-area-inset-bottom));
+    padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
   }
 
   .legal-footer-copy {
@@ -2090,7 +2086,7 @@ select:not(.fs-select):focus {
 
 @media (min-width: 600px) and (max-width: 1023px) {
   .page {
-    padding: 16px 16px 24px;
+    padding: 16px 16px 0; /* footer 不再 fixed */
   }
 
   .card {
@@ -2126,16 +2122,7 @@ body {
 }
 
 .page {
-  padding: 16px 12px 28px;
-}
-
-.page.has-submit-dock {
-  padding-bottom: 116px;
-}
-
-.page.has-submit-dock .legal-footer {
-  margin-bottom: 0;
-  padding-top: 6px;
+  padding: 16px 12px 0; /* footer 不再 fixed，无需额外 padding-bottom */
 }
 
 .frame {
@@ -2145,14 +2132,14 @@ body {
 }
 
 .banner {
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .card {
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   background: #ffffff;
 }
@@ -2160,7 +2147,7 @@ body {
 .stage-head {
   min-height: 108px;
   padding: 18px 22px;
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2169,7 +2156,7 @@ body {
 .stage-back {
   left: 18px;
   padding: 6px 10px;
-  border-radius: 10px;
+  border-radius: 9px;
   color: #2563eb;
   font-weight: 700;
 }
@@ -2209,7 +2196,7 @@ body {
 .form-section-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   padding: 16px;
 }
@@ -2268,7 +2255,7 @@ body {
 .fs-input,
 .fs-select-trigger {
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 9px;
   border-color: #e5e7eb;
   background: #f9fafb;
   color: #111827;
@@ -2294,14 +2281,14 @@ body {
 
 .fs-select-popover {
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
   padding: 6px;
 }
 
 .fs-select-option {
   min-height: 36px;
-  border-radius: 8px;
+  border-radius: 7px;
 }
 
 .fs-select-option:hover:not(:disabled),
@@ -2335,7 +2322,7 @@ body {
 }
 
 .upload-panel {
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
   background: #ffffff;
   padding: 14px;
@@ -2352,7 +2339,7 @@ body {
 .upload-panel-button {
   justify-self: center;
   min-height: 42px;
-  border-radius: 12px;
+  border-radius: 10px;
   border-color: #dbe1ea;
   background: #ffffff;
   color: #374151;
@@ -2372,7 +2359,7 @@ body {
 
 .proof-file-row {
   border-color: #e5e7eb;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 10px 12px;
 }
 
@@ -2401,21 +2388,17 @@ body {
   line-height: 1.35;
 }
 
-.submit-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 30;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.94);
-  border-top: 1px solid #e5e7eb;
-  backdrop-filter: blur(10px);
+.form-submit-section {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
 }
 
 .submit-dock-inner {
-  width: min(100%, var(--content-width));
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   display: grid;
   gap: 8px;
 }
@@ -2507,7 +2490,7 @@ body {
 
 .submit-button {
   min-height: 50px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #1d4ed8;
   border-color: #1d4ed8;
   color: #ffffff;
@@ -2528,16 +2511,16 @@ body {
 }
 
 @media (max-width: 599px) {
-  .page {
-    padding: 10px 10px 18px;
+  :root {
+    --legal-footer-layer-height: 48px;
   }
 
-  .page.has-submit-dock {
-    padding-bottom: 118px;
+  .page {
+    padding: 10px 10px 0; /* footer 不再 fixed */
   }
 
   .card {
-    border-radius: 14px;
+    border-radius: 12px;
     padding: 14px;
   }
 
@@ -2559,7 +2542,7 @@ body {
 
   .form-section-card {
     padding: 14px;
-    border-radius: 14px;
+    border-radius: 12px;
   }
 
   .form-section-head {
@@ -2578,6 +2561,11 @@ body {
 
   .proof-file-actions {
     justify-content: flex-start;
+  }
+
+  .form-submit-section {
+    margin-top: 12px;
+    padding: 10px 12px;
   }
 }
 
@@ -2605,7 +2593,7 @@ body {
     padding: 18px 20px;
   }
 
-  .submit-dock {
+  .form-submit-section {
     padding-left: 20px;
     padding-right: 20px;
   }
@@ -2914,8 +2902,11 @@ body {
 
 .stage-back {
   left: 14px;
+  width: 42px;
+  min-width: 42px;
   min-height: 42px;
-  padding: 6px 12px 6px 8px;
+  padding: 0;
+  gap: 0;
   border-radius: 12px;
   border: 1px solid #dbe7ff;
   background: #f6f9ff;
@@ -2933,7 +2924,7 @@ body {
   justify-content: center;
   background: #e9f0ff;
   color: #2563eb;
-  margin-right: 2px;
+  margin-right: 0;
   flex: 0 0 auto;
 }
 
@@ -2944,8 +2935,7 @@ body {
 }
 
 .stage-back .fs-button-label {
-  line-height: 1;
-  letter-spacing: 0.01em;
+  display: none;
 }
 
 .stage-back:hover:not(:disabled) {
@@ -2972,8 +2962,10 @@ body {
 
   .stage-back {
     left: 10px;
+    width: 36px;
+    min-width: 36px;
     min-height: 36px;
-    padding: 4px 10px 4px 6px;
+    padding: 0;
     border-radius: 10px;
   }
 
@@ -2985,10 +2977,6 @@ body {
   .stage-back .fs-button-icon svg {
     width: 14px;
     height: 14px;
-  }
-
-  .stage-back .fs-button-label {
-    font-size: 0.85rem;
   }
 
   .stage-head {
