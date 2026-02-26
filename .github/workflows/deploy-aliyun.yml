@@ -258,6 +258,7 @@ jobs:
             . "${RELEASE_DIR}/scripts/update-backend-env.sh"
 
             init_env_file
+            migrate_env
             apply_defaults
             apply_overrides
             finalize_env_file

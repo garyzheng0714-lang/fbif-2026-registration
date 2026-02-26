@@ -74,6 +74,14 @@ finalize_env_file() {
   chmod 600 "${BACKEND_ENV_FILE}"
 }
 
+# --- 一次性迁移：修正错误的默认值 ---
+migrate_env() {
+  # FEISHU_FIELD_NAME 实际表字段是 "姓名"，不是 "姓名（问卷题）"
+  if [ "$(get_env_value FEISHU_FIELD_NAME)" = "姓名（问卷题）" ]; then
+    upsert_env FEISHU_FIELD_NAME "姓名"
+  fi
+}
+
 # --- 设置所有默认值 ---
 apply_defaults() {
   local web_port_value="${WEB_PORT:-3001}"
@@ -92,7 +100,7 @@ apply_defaults() {
   set_default POSTGRES_DB "${POSTGRES_DB:-fbif_form}"
   set_default FEISHU_APP_ID cli_a9f7f8703778dcee
   set_default FEISHU_TABLE_ID tbl0CQ74guMS1IDd
-  set_default FEISHU_FIELD_NAME "姓名（问卷题）"
+  set_default FEISHU_FIELD_NAME "姓名"
   set_default FEISHU_FIELD_PHONE "手机号（问卷题）"
   set_default FEISHU_FIELD_TITLE "职位（问卷题）"
   set_default FEISHU_FIELD_COMPANY "公司（问卷题）"

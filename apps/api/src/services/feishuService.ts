@@ -7,7 +7,7 @@ import type { BitableFieldMeta } from './bitableSelect.js';
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
 const fieldMap = {
-  name: process.env.FEISHU_FIELD_NAME || '姓名（问卷题）',
+  name: process.env.FEISHU_FIELD_NAME || '姓名',
   phone: process.env.FEISHU_FIELD_PHONE || '手机号（问卷题）',
   title: process.env.FEISHU_FIELD_TITLE || '职位（问卷题）',
   company: process.env.FEISHU_FIELD_COMPANY || '公司（问卷题）',
