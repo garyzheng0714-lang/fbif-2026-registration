@@ -1,20 +1,20 @@
-name: fbif-form-backend
+name: fbif-form-staging
 
 services:
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: fbif-form-api:latest
+    image: fbif-form-staging-api:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${API_PORT:-8080}:${API_PORT_INTERNAL:-8080}"
+      - "127.0.0.1:${API_PORT:-8083}:${API_PORT_INTERNAL:-8080}"
     environment:
       NODE_ENV: production
       PORT: ${API_PORT_INTERNAL:-8080}
       WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
       CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-true}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-fbif}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-fbif_form}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fbif}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-fbif_form_staging}
       REDIS_URL: redis://redis:6379
       DATA_KEY: ${DATA_KEY:?DATA_KEY is required}
       DATA_HASH_SALT: ${DATA_HASH_SALT:?DATA_HASH_SALT is required}
@@ -35,7 +35,7 @@ services:
       FEISHU_FIELD_SUBMITTED_AT: ${FEISHU_FIELD_SUBMITTED_AT:-}
       FEISHU_FIELD_SYNC_STATUS: ${FEISHU_FIELD_SYNC_STATUS:-}
       FEISHU_FIELD_SOURCE: ${FEISHU_FIELD_SOURCE:-}
-      FEISHU_SUBMISSION_SOURCE: ${FEISHU_SUBMISSION_SOURCE:-}
+      FEISHU_SUBMISSION_SOURCE: ${FEISHU_SUBMISSION_SOURCE:-测试环境}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
       RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}
@@ -83,14 +83,14 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fbif}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
-      POSTGRES_DB: ${POSTGRES_DB:-fbif_form}
+      POSTGRES_DB: ${POSTGRES_DB:-fbif_form_staging}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fbif} -d ${POSTGRES_DB:-fbif_form}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fbif} -d ${POSTGRES_DB:-fbif_form_staging}"]
       interval: 10s
       timeout: 5s
       retries: 8
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - staging_pgdata:/var/lib/postgresql/data
     networks:
       - private
 
@@ -104,13 +104,13 @@ services:
       timeout: 5s
       retries: 8
     volumes:
-      - redisdata:/data
+      - staging_redisdata:/data
     networks:
       - private
 
 volumes:
-  pgdata:
-  redisdata:
+  staging_pgdata:
+  staging_redisdata:
 
 networks:
   edge:
