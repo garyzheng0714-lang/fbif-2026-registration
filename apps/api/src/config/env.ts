@@ -132,7 +132,7 @@ export const env = envSchema.parse({
   ID_VERIFY_TIMEOUT_MS: process.env.ID_VERIFY_TIMEOUT_MS,
   ID_VERIFY_TOKEN_TTL_SECONDS: process.env.ID_VERIFY_TOKEN_TTL_SECONDS,
 
-  FEISHU_ALERT_WEBHOOK: process.env.FEISHU_ALERT_WEBHOOK,
+  FEISHU_ALERT_WEBHOOK: process.env.FEISHU_ALERT_WEBHOOK || undefined,
   FEISHU_ALERT_ENABLED: parseEnvBool(process.env.FEISHU_ALERT_ENABLED, true)
 });
 
