@@ -454,6 +454,16 @@ body {
   text-align: center;
 }
 
+.age-notice-bar {
+  width: min(100%, var(--content-width));
+  margin: -8px auto 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6b7280;
+  text-align: center;
+}
+
 .role-card h2 {
   margin: 0;
   display: flex;
@@ -2967,8 +2977,8 @@ body {
   }
 
   .stage-head {
-    min-height: 112px;
-    padding: 18px 14px 14px;
+    min-height: 76px;
+    padding: 14px;
   }
 
   .stage-current-group {
@@ -2979,6 +2989,12 @@ body {
   .stage-current-note {
     font-size: 12px;
     line-height: 1.4;
+  }
+
+  .age-notice-bar {
+    margin-top: -4px;
+    padding: 6px 14px;
+    font-size: 12px;
   }
 }
 
