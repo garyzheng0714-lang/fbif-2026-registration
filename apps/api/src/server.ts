@@ -78,6 +78,47 @@ export function createServer() {
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  // Temporary: read-only Feishu record verification (remove after testing)
+  app.get('/debug/feishu-records', async (_req, res) => {
+    try {
+      const appId = process.env.FEISHU_APP_ID || '';
+      const appSecret = process.env.FEISHU_APP_SECRET || '';
+      const appToken = process.env.FEISHU_APP_TOKEN || '';
+      const tableId = process.env.FEISHU_TABLE_ID || '';
+      if (!appId || !appSecret || !appToken || !tableId) {
+        return res.status(503).json({ error: 'Missing Feishu credentials' });
+      }
+      const tokenResp = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_id: appId, app_secret: appSecret })
+      });
+      const tokenData = await tokenResp.json() as any;
+      if (!tokenData?.tenant_access_token) {
+        return res.status(502).json({ error: 'Token fetch failed', detail: tokenData });
+      }
+      const recordsResp = await fetch(
+        `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=8`,
+        { headers: { Authorization: `Bearer ${tokenData.tenant_access_token}` } }
+      );
+      const recordsData = await recordsResp.json() as any;
+      const items = (recordsData?.data?.items || []).map((item: any) => ({
+        record_id: item.record_id,
+        fields: Object.fromEntries(
+          Object.entries(item.fields || {}).map(([k, v]: [string, any]) => {
+            if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+              return [k, v.text || v.value || v];
+            }
+            return [k, v];
+          })
+        )
+      }));
+      res.json({ total: items.length, items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
   app.get('/metrics', async (_req, res, next) => {
     try {
       await updateQueueMetrics(feishuSyncQueue);
