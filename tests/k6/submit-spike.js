@@ -31,7 +31,7 @@ export const options = {
   }
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://112.124.103.65:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
 function randomPhone() {
   return `1${Math.floor(3 + Math.random() * 6)}${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`;

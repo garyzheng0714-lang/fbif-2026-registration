@@ -15,12 +15,18 @@ web-fbif-form/
 ├── docs/             # 部署/运维/性能文档
 ├── tests/            # K6 负载测试脚本
 ├── scripts/          # 工具脚本 (local-stack, preview-manager)
-├── docker-compose.yml           # 本地开发 (Postgres + Redis)
-├── docker-compose.backend.yml   # 生产后端 (API + Postgres + Redis)
-├── docker-compose.staging.yml   # 测试环境后端
+├── docker-compose.yml              # 本地开发 (Postgres + Redis)
+├── docker-compose.production.yml   # 生产/测试统一编排 (Web + API + Postgres + Redis)
+├── docker-compose.backend.yml      # [旧] 仅后端编排 (保留供回滚)
+├── docker-compose.staging.yml      # [旧] 测试环境编排 (保留供回滚)
+├── scripts/
+│   ├── bootstrap-server.sh         # 新服务器一键初始化
+│   └── update-backend-env.sh       # 环境变量管理 (CI 共享)
+├── deploy/
+│   └── Caddyfile.template          # Caddy HTTPS 反向代理模板
 └── .github/workflows/
-    ├── deploy-aliyun.yml        # 生产部署 (main → 服务器)
-    └── deploy-staging.yml       # 测试部署 (staging → 服务器)
+    ├── deploy-aliyun.yml           # 生产部署 (main → 服务器)
+    └── deploy-staging.yml          # 测试部署 (staging → 服务器)
 ```
 
 ## 技术栈
@@ -49,30 +55,34 @@ web-fbif-form/
 ## 部署架构
 
 ```
-[客户端] → Caddy (HTTPS) → NGINX (静态文件, :3001) → [后端 Docker 容器, :8080]
-                                                    │
-                                                    ├─→ [PostgreSQL 16] (Docker)
-                                                    └─→ [Redis 7] (Docker)
+[客户端] → Caddy (宿主机, HTTPS) → Docker Web 容器 (NGINX, :3001)
+                                    ├─→ 静态文件 (SPA)
+                                    └─→ proxy /api/ → Docker API 容器 (:8080)
+                                                       ├─→ [PostgreSQL 16] (Docker)
+                                                       └─→ [Redis 7] (Docker)
 ```
 
+所有服务通过 `docker-compose.production.yml` 统一编排，staging 使用相同 compose 文件通过 `COMPOSE_PROJECT_NAME` + `.env` 差异化。
+
 ### 前端部署
-- 路径: `/opt/web-fbif-form/web-current` (symlink → `/opt/web-fbif-form/web-releases/<timestamp>/`)
-- 服务: NGINX at port 3001, SPA 路由 (所有请求 → index.html)
+- 容器: `fbif-form-web-1` (nginx:1.27-alpine)
+- 端口: `${WEB_PORT:-3001}:80`
+- 功能: 静态文件服务 + API 反向代理 (`/api/` → `api:8080`)
 - 缓存: `/assets/` 30 天 immutable, `/` no-store
 - 域名: `fbif2026ticket.foodtalks.cn`
-- Docker: nginx:1.27-alpine, 健康检查 `/healthz`
+- 健康检查: `/healthz`
 
 ### 后端部署
-- 容器: `fbif-form-backend-api-1`
-- 端口: 127.0.0.1:8080
+- 容器: `fbif-form-api-1`
+- 端口: 127.0.0.1:8080 (仅 localhost)
 - 网络: `edge` (对外) + `private` (内部)
 - 入口: `/entrypoint.sh` (自动执行 Prisma 迁移 + 启动 Worker)
 - Docker: node:20-bookworm (全镜像, Prisma 需要 OpenSSL)
 - 健康检查: HTTP GET `/health`
 
 ### 数据库
-- PostgreSQL: `fbif-form-backend-postgres-1`, 用户 `fbif`, 数据库 `fbif_form`
-- Redis: `fbif-form-backend-redis-1`, AOF 持久化
+- PostgreSQL: `fbif-form-postgres-1`, 用户 `fbif`, 数据库 `fbif_form`
+- Redis: `fbif-form-redis-1`, AOF 持久化
 
 ## 关键文件
 
@@ -211,20 +221,17 @@ cd apps/api && npm test             # 后端测试 (node:test + supertest)
 ssh aliyun-prod
 
 # === 生产日志 ===
-ssh aliyun-prod "docker logs fbif-form-backend-api-1 --tail 100"
-ssh aliyun-prod "docker logs fbif-form-backend-api-1 --tail 100 2>&1 | grep -i error"
+ssh aliyun-prod "docker logs fbif-form-api-1 --tail 100"
+ssh aliyun-prod "docker logs fbif-form-api-1 --tail 100 2>&1 | grep -i error"
 
 # === 数据库 ===
-ssh aliyun-prod "docker exec -it fbif-form-backend-postgres-1 psql -U fbif -d fbif_form"
+ssh aliyun-prod "docker exec -it fbif-form-postgres-1 psql -U fbif -d fbif_form"
 
-# === 前端部署 (手动) ===
-cd apps/web && npm run build && \
-TIMESTAMP=$(date +%Y%m%d%H%M%S) && \
-scp -r dist aliyun-prod:/opt/web-fbif-form/web-releases/${TIMESTAMP} && \
-ssh aliyun-prod "cd /opt/web-fbif-form && rm -f web-current && ln -s /opt/web-fbif-form/web-releases/${TIMESTAMP} web-current"
+# === 手动部署 (Docker Compose) ===
+ssh aliyun-prod "cd /opt/web-fbif-form/current && docker compose --env-file /opt/web-fbif-form/shared/backend.env -f docker-compose.production.yml up -d --build"
 
-# === 后端部署 (Docker) ===
-ssh aliyun-prod "cd /opt/web-fbif-form/backend && docker compose -f docker-compose.backend.yml up -d --build"
+# === 新服务器初始化 ===
+ssh root@new-server 'bash -s' < scripts/bootstrap-server.sh
 ```
 
 ## 文档索引 (`docs/`)
@@ -259,12 +266,12 @@ ssh aliyun-prod "cd /opt/web-fbif-form/backend && docker compose -f docker-compo
 |------|------------|---------------|
 | 前端 NGINX | 3001 | 3003 |
 | 后端 API | 8080 | 8083 |
-| Docker 项目名 | `fbif-form-backend` | `fbif-form-staging` |
+| Docker 项目名 | `fbif-form` | `fbif-form-staging` |
 | 服务器路径 | `/opt/web-fbif-form/` | `/opt/web-fbif-form-staging/` |
 | 数据库 | `fbif_form` | `fbif_form_staging` |
-| NGINX 配置 | `fbif-form.conf` | `fbif-form-staging.conf` |
+| Compose 文件 | `docker-compose.production.yml` | `docker-compose.production.yml` (同一文件) |
 
-测试环境使用独立的 PostgreSQL 和 Redis 容器（独立 Docker volumes），完全隔离不影响生产数据。
+生产和测试共用同一个 `docker-compose.production.yml`，通过 `COMPOSE_PROJECT_NAME` 环境变量和 `.env` 文件差异化端口/数据库名/volume。测试环境完全隔离不影响生产数据。
 
 ### 测试环境预览地址
 
@@ -275,7 +282,10 @@ ssh aliyun-prod "cd /opt/web-fbif-form/backend && docker compose -f docker-compo
 
 | 文件 | 用途 |
 |------|------|
-| `docker-compose.staging.yml` | 测试环境 Docker Compose |
+| `docker-compose.production.yml` | 统一生产/测试 Docker Compose (web + api + pg + redis) |
+| `scripts/update-backend-env.sh` | 环境变量管理 (CI 脚本共享) |
+| `scripts/bootstrap-server.sh` | 新服务器一键初始化 |
+| `deploy/Caddyfile.template` | Caddy HTTPS 反向代理模板 |
 | `.github/workflows/deploy-staging.yml` | 测试环境部署工作流 |
 | `.github/workflows/deploy-aliyun.yml` | 生产环境部署工作流 |
 
@@ -322,9 +332,29 @@ git add . && git commit -m "描述" && git push origin staging
 git checkout main && git merge staging && git push origin main
 ```
 
+## 服务器迁移
+
+迁移到新服务器只需 5 步:
+
+```bash
+# 1. 初始化新服务器 (安装 Docker + Caddy)
+ssh root@new-server 'bash -s' < scripts/bootstrap-server.sh
+
+# 2. 复制密钥
+scp old-server:/opt/web-fbif-form/shared/backend.env new-server:/opt/web-fbif-form/shared/backend.env
+
+# 3. 配置 Caddy HTTPS
+ssh new-server "cp deploy/Caddyfile.template /etc/caddy/Caddyfile && systemctl restart caddy"
+
+# 4. 更新 GitHub Secrets: ALIYUN_HOST, ALIYUN_SSH_KEY
+
+# 5. 推送代码触发 CI 自动部署
+```
+
 ## 待办事项
 
 - [x] 增加数据同步失败告警 (飞书机器人通知)
 - [x] 添加 staging 测试环境
+- [x] 前端容器化 + 统一 Docker Compose 编排
 - [ ] 添加管理后台查看失败记录
 - [ ] 定期数据对账脚本
