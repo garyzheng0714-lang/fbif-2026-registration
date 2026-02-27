@@ -282,6 +282,14 @@ jobs:
               pm2 save >/dev/null 2>&1 || true
             fi
 
+            # --- 停止旧项目名容器 (fbif-form-backend → fbif-form 迁移) ---
+            OLD_CONTAINERS="$(docker ps -a --filter 'name=fbif-form-backend' --format '{{.Names}}' 2>/dev/null || true)"
+            if [ -n "${OLD_CONTAINERS}" ]; then
+              echo "Stopping old fbif-form-backend containers..."
+              echo "${OLD_CONTAINERS}" | xargs -r docker stop 2>/dev/null || true
+              echo "${OLD_CONTAINERS}" | xargs -r docker rm 2>/dev/null || true
+            fi
+
             # --- 清理旧的独立 web 容器 (过渡期) ---
             docker rm -f fbif-form-web-nginx >/dev/null 2>&1 || true
 
