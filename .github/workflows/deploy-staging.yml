@@ -322,6 +322,12 @@ jobs:
             wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 40
             wait_http "http://127.0.0.1:${WEB_PORT_VALUE}/healthz" 20
 
+            # --- 验证飞书多维表格 (临时) ---
+            if [ -f "${RELEASE_DIR}/scripts/verify-feishu-records.sh" ]; then
+              echo "--- Verifying Feishu records ---"
+              BACKEND_ENV_FILE="${BACKEND_ENV_FILE}" bash "${RELEASE_DIR}/scripts/verify-feishu-records.sh" 5 || true
+            fi
+
             # --- 清理旧版本 (保留最近 5 个) ---
             ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
           REMOTE_SCRIPT
