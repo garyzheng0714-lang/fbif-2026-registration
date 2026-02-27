@@ -99,7 +99,7 @@ export function createServer() {
         return res.status(502).json({ error: 'Token fetch failed', detail: tokenData });
       }
       const recordsResp = await fetch(
-        `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=8`,
+        `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=20`,
         { headers: { Authorization: `Bearer ${tokenData.tenant_access_token}` } }
       );
       const recordsData = await recordsResp.json() as any;
