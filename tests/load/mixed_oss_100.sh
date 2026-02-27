@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE="${API_BASE:-http://112.124.103.65:8080}"
+API_BASE="${API_BASE:-http://localhost:8080}"
 OUT_JSONL="${OUT_JSONL:-/tmp/fbif-load-results.jsonl}"
 
 INDUSTRY_USERS="${INDUSTRY_USERS:-60}"
