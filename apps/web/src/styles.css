@@ -2897,7 +2897,7 @@ body {
 }
 
 .stage-back {
-  left: 14px;
+  left: 22px;
   padding: 0;
   gap: 0;
   border: none;
@@ -2948,7 +2948,7 @@ body {
   }
 
   .stage-back {
-    left: 10px;
+    left: 16px;
   }
 
   .stage-back .fs-button-icon svg {
