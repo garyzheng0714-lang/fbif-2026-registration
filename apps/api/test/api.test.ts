@@ -202,7 +202,7 @@ test('industry submission requires proofUrls', async () => {
       name: '张三',
       title: '运营负责人',
       company: '测试公司',
-      businessType: '食品相关品牌方',
+      businessType: '食品饮料品牌方',
       department: '高管/战略'
     });
 
@@ -228,7 +228,7 @@ test('industry submission accepts proofUrls array', async () => {
       name: '张三',
       title: '运营负责人',
       company: '测试公司',
-      businessType: '食品相关品牌方',
+      businessType: '食品饮料品牌方',
       department: '高管/战略',
       proofUrls: [
         'https://example.com/a.png'
