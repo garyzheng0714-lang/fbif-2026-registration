@@ -1709,9 +1709,10 @@ export default function App() {
                 <p className="stage-current stage-current-centered">
                   <span className="stage-current-value">{identityLabel}</span>
                 </p>
-                <p className="stage-current-note">{identityAgeNotice}</p>
               </div>
             </FeishuCard>
+
+            <p className="age-notice-bar">{identityAgeNotice}</p>
 
             <FeishuCard
               className={`form-shell ${isSwitching ? 'form-shell-reveal' : ''}`}
