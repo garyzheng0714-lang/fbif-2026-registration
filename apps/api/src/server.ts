@@ -80,7 +80,7 @@ export function createServer() {
   app.get('/health', (_req, res) => res.json({ ok: true }));
 
   // Temporary: read-only Feishu record verification (remove after testing)
-  app.get('/debug/feishu-records', async (_req, res) => {
+  app.get('/api/debug/feishu-records', async (_req, res) => {
     try {
       const appId = process.env.FEISHU_APP_ID || '';
       const appSecret = process.env.FEISHU_APP_SECRET || '';
