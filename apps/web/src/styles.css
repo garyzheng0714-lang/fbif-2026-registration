@@ -2527,6 +2527,9 @@ body {
   }
 
   .stage-back {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     left: 14px;
     font-size: 0.9rem;
     padding: 0;
@@ -2534,6 +2537,13 @@ body {
 
   .stage-current-value {
     font-size: 1rem;
+  }
+
+  .form-shell {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
   }
 
   .form-section-card {
