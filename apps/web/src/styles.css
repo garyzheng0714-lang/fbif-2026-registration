@@ -2056,12 +2056,12 @@ select:not(.fs-select):focus {
   }
 
   .submit-policy-check {
-    gap: 6px;
+    gap: 5px;
   }
 
   .submit-policy-indicator {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
   }
 
   .submit-policy-indicator::after {
@@ -2386,10 +2386,9 @@ body {
 
 .form-submit-section {
   margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .submit-dock-inner {
@@ -2401,9 +2400,9 @@ body {
 
 .submit-policy-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   color: #374151;
   font-size: 0.9rem;
   line-height: 1.45;
@@ -2471,6 +2470,7 @@ body {
   text-decoration-thickness: 1px;
   text-decoration-color: rgba(47, 99, 216, 0.45);
   text-underline-offset: 3px;
+  white-space: nowrap;
 }
 
 .submit-policy-link:hover {
@@ -2527,9 +2527,9 @@ body {
   }
 
   .stage-back {
-    left: 10px;
+    left: 14px;
     font-size: 0.9rem;
-    padding: 4px 8px;
+    padding: 0;
   }
 
   .stage-current-value {
@@ -2561,7 +2561,7 @@ body {
 
   .form-submit-section {
     margin-top: 12px;
-    padding: 10px 12px;
+    padding: 0;
   }
 }
 
@@ -2948,7 +2948,7 @@ body {
   }
 
   .stage-back {
-    left: 16px;
+    left: 14px;
   }
 
   .stage-back .fs-button-icon svg {
@@ -2958,7 +2958,7 @@ body {
 
   .stage-head {
     min-height: 112px;
-    padding: 18px 16px 14px;
+    padding: 18px 14px 14px;
   }
 
   .stage-current-group {
