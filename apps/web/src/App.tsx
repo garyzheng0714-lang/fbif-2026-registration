@@ -1370,11 +1370,23 @@ export default function App() {
 
     if (hasFieldError) {
       setNotice('请先修正表单错误');
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('.fs-field .error');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
       return;
     }
 
     if (!ticketPolicyAccepted) {
       setNotice('请先阅读并同意《FBIF2026 购票及参会协议》');
+      requestAnimationFrame(() => {
+        const policyRow = document.querySelector('.submit-policy-row');
+        if (policyRow) {
+          policyRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
       return;
     }
 
