@@ -1402,7 +1402,7 @@ export default function App() {
       );
 
       if (!canReuseVerifiedToken) {
-        const verifyResult = await verifyCnIdFor(role);
+        const verifyResult = await verifyCnIdFor(identity);
         if (!verifyResult.ok) {
           setNotice(verifyResult.message || '身份证与姓名不匹配');
           return;
@@ -1515,7 +1515,7 @@ export default function App() {
         throw new Error('submit_failed');
       }
 
-      setSubmittedRole(role);
+      setSubmittedRole(identity);
       setPage('submitted');
       setSubmitDialog((prev) => ({
         ...prev,
