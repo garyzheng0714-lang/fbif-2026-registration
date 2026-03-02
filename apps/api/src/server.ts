@@ -75,7 +75,7 @@ export function createServer() {
     next();
   });
 
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
   app.get('/metrics', async (_req, res, next) => {
