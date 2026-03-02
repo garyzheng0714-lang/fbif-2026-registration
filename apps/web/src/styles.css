@@ -2491,7 +2491,21 @@ body {
 .submit-dock-notice {
   margin: 0;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 8px;
+  color: #dc2626;
+  animation: shake-notice 0.4s ease-in-out;
+}
+
+@keyframes shake-notice {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
 }
 
 .submit-button {
