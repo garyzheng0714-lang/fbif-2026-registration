@@ -94,6 +94,14 @@ services:
     networks:
       - edge
       - private
+    mem_limit: 512m
+    cpus: "1.00"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:${API_PORT_INTERNAL:-8080}/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   postgres:
     image: postgres:16
