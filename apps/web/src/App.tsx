@@ -1457,7 +1457,7 @@ export default function App() {
     setSubmitAttempted(true);
 
     if (hasFieldError) {
-      setNotice('无法提交');
+      setNotice('请先修正表单错误');
       requestAnimationFrame(() => {
         const firstError = document.querySelector('.fs-field .error');
         if (firstError) {
@@ -2372,7 +2372,7 @@ export default function App() {
                       <div className="success-step-num">2</div>
                       <div className="success-step-body">
                         <h3>获取门票</h3>
-                        <p>审核通过后，电子门票将于展前 3 天通过短信发放</p>
+                        <p>审核通过后，电子门票将于展前 3 天通过短信/邮件发放</p>
                       </div>
                     </div>
                     <div className="success-step">
@@ -2389,7 +2389,7 @@ export default function App() {
                       <div className="success-step-num">1</div>
                       <div className="success-step-body">
                         <h3>获取门票</h3>
-                        <p>电子门票将于展前 3 天通过短信统一发放</p>
+                        <p>电子门票将于展前 3 天通过短信/邮件统一发放</p>
                       </div>
                     </div>
                     <div className="success-step">
@@ -2505,7 +2505,7 @@ export default function App() {
                 <p className="modal-body-copy">
                   {identity === 'industry' ? '您已提交成功，专业观众将进入人工审核流程（1-3个工作日）。' : '您已提交成功。'}
                   <br />
-                  【入场方式】凭大陆身份证原件+电子门票免签到入场（电子门票会在展前3天通过短信统一发放）
+                  【入场方式】凭大陆身份证原件+电子门票免签到入场（电子门票会在展前3天通过短信/邮件统一发放）
                 </p>
               </>
             )}
