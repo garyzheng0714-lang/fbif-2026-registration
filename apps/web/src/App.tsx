@@ -51,7 +51,7 @@ const TOP_BANNER_URL =
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
 const BOTTOM_LONG_BANNER_URL =
-  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026.webp';
+  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v2.webp';
 const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_4n_OhFZpJMUwWmIfeukVLQ_1771982405432/img_v3_02v8_558254bb-fd95-4e88-8eed-da8e5bc2b20g_1771982405633.jpg';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
@@ -517,48 +517,23 @@ function BackToTopButton() {
 
 function BannerSection() {
   const [loaded, setLoaded] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const img = new Image();
     img.src = BOTTOM_LONG_BANNER_URL;
     if (img.complete) { setLoaded(true); return; }
     img.onload = () => setLoaded(true);
   }, []);
-  const toggle = () => {
-    if (expanded) {
-      setExpanded(false);
-      wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      setExpanded(true);
-    }
-  };
   return (
-    <>
-      <div className={`banner-wrap ${expanded ? 'is-expanded' : 'is-collapsed'}`} ref={wrapRef}>
-        {!loaded && <div className="banner-skeleton" />}
-        <img
-          className={`banner-img${loaded ? ' is-loaded' : ''}`}
-          src={BOTTOM_LONG_BANNER_URL}
-          alt="FBIF 2026 展会亮点"
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-        />
-        {loaded && !expanded && (
-          <div className="banner-glass-overlay">
-            <button className="banner-glass-btn" onClick={toggle}>
-              展开全部
-              <svg className="banner-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-      {expanded && (
-        <button className="banner-collapse-btn" onClick={toggle}>收起 ∧</button>
-      )}
-    </>
+    <div className="banner-wrap is-expanded">
+      {!loaded && <div className="banner-skeleton" />}
+      <img
+        className={`banner-img${loaded ? ' is-loaded' : ''}`}
+        src={BOTTOM_LONG_BANNER_URL}
+        alt="FBIF 2026 展会亮点"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
   );
 }
 
