@@ -332,6 +332,59 @@ git add . && git commit -m "描述" && git push origin staging
 git checkout main && git merge staging && git push origin main
 ```
 
+## 安全规范（最高优先级）
+
+### 禁止提交的敏感信息
+
+以下密钥**绝对禁止**提交到 git 仓库，必须通过环境变量或 Secrets 管理：
+
+| 类型 | 示例 | 正确做法 |
+|------|------|----------|
+| 阿里云 AccessKey | `LTAI5t...` / `HqLN9...` | 服务器 `backend.env` + GitHub Secrets |
+| 飞书密钥 | `FEISHU_APP_SECRET` | 服务器 `backend.env` + GitHub Secrets |
+| 数据库密码 | `POSTGRES_PASSWORD` | 服务器 `backend.env` + GitHub Secrets |
+| 加密密钥 | `DATA_KEY` / `DATA_HASH_SALT` | 服务器 `backend.env` + GitHub Secrets |
+| SSH 私钥 | `-----BEGIN RSA PRIVATE KEY-----` | GitHub Secrets，不落地文件 |
+| API Token / AppCode | `ID_VERIFY_APPCODE` | 服务器 `backend.env` |
+
+### 提交前检查清单
+
+每次 `git commit` 前必须确认：
+
+```bash
+# 1. 检查是否有 .env 文件
+git status | grep "\.env"
+
+# 2. 检查是否有密钥特征码
+git diff --cached | grep -E "LTAI|cli_|bascn_|-----BEGIN"
+
+# 3. 确认 docs/ 中无密钥（用占位符替代）
+grep -r "LTAI\|iqMX8dol\|K0QibNT" docs/ || echo "安全"
+```
+
+### 文档中的密钥处理
+
+所有文档、示例中的密钥必须使用占位符：
+
+```bash
+# 错误 ❌
+OSS_ACCESS_KEY_ID=<YOUR_OSS_ACCESS_KEY_ID>
+FEISHU_APP_SECRET=<YOUR_FEISHU_APP_SECRET>
+
+# 正确 ✅
+OSS_ACCESS_KEY_ID=<从阿里云 RAM 控制台获取>
+FEISHU_APP_SECRET=<从飞书开放平台获取>
+```
+
+### 违规处理
+
+如误提交敏感信息到 git 历史：
+
+1. **立即**通知团队轮换所有泄露的密钥
+2. 使用 `git filter-branch` 或 `git filter-repo` 清除历史中的密钥
+3. 强制推送到远程仓库
+4. 在 GitHub 设置中标记密钥为"已轮换"以解除推送阻止
+
 ## 服务器迁移
 
 迁移到新服务器只需 5 步:
