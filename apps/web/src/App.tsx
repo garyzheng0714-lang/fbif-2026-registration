@@ -517,23 +517,49 @@ function BackToTopButton() {
 
 function BannerSection() {
   const [loaded, setLoaded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const img = new Image();
     img.src = BOTTOM_LONG_BANNER_URL;
     if (img.complete) { setLoaded(true); return; }
     img.onload = () => setLoaded(true);
   }, []);
+  const toggle = () => {
+    if (expanded) {
+      setExpanded(false);
+      wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      setExpanded(true);
+    }
+  };
   return (
-    <div className="banner-wrap">
-      {!loaded && <div className="banner-skeleton" />}
-      <img
-        className={`banner-img${loaded ? ' is-loaded' : ''}`}
-        src={BOTTOM_LONG_BANNER_URL}
-        alt="FBIF 2026 展会亮点"
-        decoding="async"
-        onLoad={() => setLoaded(true)}
-      />
-    </div>
+    <>
+      <div className={`banner-wrap ${expanded ? 'is-expanded' : 'is-collapsed'}`} ref={wrapRef}>
+        {!loaded && <div className="banner-skeleton" />}
+        <img
+          className={`banner-img${loaded ? ' is-loaded' : ''}`}
+          src={BOTTOM_LONG_BANNER_URL}
+          alt="FBIF 2026 展会亮点"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+        />
+        {loaded && !expanded && (
+          <>
+            <div className="banner-fade" />
+            <button className="banner-expand-btn" onClick={toggle}>
+              查看展会亮点
+              <svg className="banner-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+      {expanded && (
+        <button className="banner-collapse-btn" onClick={toggle}>收起 ∧</button>
+      )}
+    </>
   );
 }
 
