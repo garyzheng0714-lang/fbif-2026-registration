@@ -524,22 +524,15 @@ function BannerSection() {
     img.onload = () => setLoaded(true);
   }, []);
   return (
-    <div className="scroll-banner-wrap">
-      <div className="scroll-banner-hint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        <span>下滑查看展会亮点</span>
-      </div>
-      <div className={`scroll-banner-inner${loaded ? ' is-loaded' : ''}`}>
-        {!loaded && <div className="scroll-banner-skeleton" />}
-        <img
-          src={BOTTOM_LONG_BANNER_URL}
-          alt="FBIF 2026 展会亮点"
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-          style={loaded ? undefined : { position: 'absolute', opacity: 0 }}
-        />
-      </div>
-      <div className="scroll-banner-fade" aria-hidden="true" />
+    <div className="banner-wrap">
+      {!loaded && <div className="banner-skeleton" />}
+      <img
+        className={`banner-img${loaded ? ' is-loaded' : ''}`}
+        src={BOTTOM_LONG_BANNER_URL}
+        alt="FBIF 2026 展会亮点"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+      />
     </div>
   );
 }

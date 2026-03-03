@@ -3265,50 +3265,15 @@ body {
 }
 
 /* ===== 滚动长图 ===== */
-.scroll-banner-wrap {
+/* ===== 底部长图 ===== */
+.banner-wrap {
   width: min(100%, var(--content-width));
-  margin-inline: auto;
-  position: relative;
-}
-
-.scroll-banner-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 0;
-  font-size: 0.75rem;
-  color: #8c919e;
-}
-
-.scroll-banner-hint svg {
-  width: 14px;
-  height: 14px;
-  animation: hint-bounce 2s ease-in-out infinite;
-}
-
-@keyframes hint-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(3px); }
-}
-
-.scroll-banner-inner {
-  position: relative;
-  max-height: 480px;
-  overflow-y: auto;
+  margin: 12px auto 0;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-soft);
-  -webkit-overflow-scrolling: touch;
-  min-height: 200px;
-  background: #f3f4f6;
+  overflow: hidden;
 }
 
-.scroll-banner-inner.is-loaded {
-  background: transparent;
-}
-
-.scroll-banner-skeleton {
+.banner-skeleton {
   height: 320px;
   background: linear-gradient(110deg, #f0f1f3 30%, #e8eaed 50%, #f0f1f3 70%);
   background-size: 200% 100%;
@@ -3321,20 +3286,15 @@ body {
   100% { background-position: -200% 0; }
 }
 
-.scroll-banner-inner img {
+.banner-img {
   display: block;
   width: 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.scroll-banner-fade {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 48px;
-  background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
-  pointer-events: none;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+.banner-img.is-loaded {
+  opacity: 1;
 }
 
 /* ===== 回到顶部 ===== */
@@ -3346,18 +3306,20 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--muted);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #6b7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background-color var(--motion), color var(--motion);
+  transition: background-color 0.2s, color 0.2s;
 }
 
-.back-top:hover {
-  background: #f7f9fc;
+.back-top:active {
+  background: rgba(255, 255, 255, 0.95);
   color: var(--deep-blue);
 }
 
