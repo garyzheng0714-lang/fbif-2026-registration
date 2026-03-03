@@ -485,33 +485,114 @@ function proofFileKey(file: File) {
   return `${file.name}::${file.size}::${file.lastModified}`;
 }
 
-function BackToTopButton() {
+function FloatingRegisterTab({ onSelect }: { onSelect: (role: 'industry' | 'consumer') => void }) {
+  const roleCardRef = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pulsing, setPulsing] = useState(false);
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<number>(0);
+  const prevVisible = useRef(false);
+
   useEffect(() => {
-    let ticking = false;
+    const el = document.querySelector('.role-card');
+    if (!el) return;
+    roleCardRef.current = el as HTMLElement;
+    const obs = new IntersectionObserver(([entry]) => {
+      const show = !entry.isIntersecting;
+      setVisible(show);
+      if (!show) {
+        setMenuOpen(false);
+        setPulsing(false);
+        setIdle(false);
+        window.clearTimeout(idleTimer.current);
+      }
+    }, { threshold: 0.05 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (visible && !prevVisible.current) {
+      setEntered(true);
+      const t = setTimeout(() => {
+        setEntered(false);
+        setPulsing(true);
+        startIdle();
+      }, 600);
+      return () => clearTimeout(t);
+    }
+    prevVisible.current = visible;
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
     const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        setVisible(window.scrollY > 300);
-        ticking = false;
-      });
+      if (idle) { setIdle(false); setPulsing(true); startIdle(); }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-  if (!visible) return null;
+  }, [visible, idle]);
+
+  function startIdle() {
+    window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => {
+      setIdle(true);
+      setPulsing(false);
+    }, 6000);
+  }
+
+  function handleOpen() {
+    setMenuOpen(true);
+    setIdle(false);
+    setPulsing(false);
+    window.clearTimeout(idleTimer.current);
+  }
+
+  function handleClose() {
+    setMenuOpen(false);
+    startIdle();
+  }
+
+  function handleSelect(role: 'industry' | 'consumer') {
+    setMenuOpen(false);
+    onSelect(role);
+  }
+
+  if (!visible && !entered) return null;
+
+  const wrapCls = ['fab-wrap',
+    visible ? 'is-visible' : '',
+    entered ? 'is-entering' : '',
+    menuOpen ? 'is-open' : '',
+  ].filter(Boolean).join(' ');
+
+  const tabCls = ['fab-tab',
+    pulsing ? 'is-pulsing' : '',
+    idle ? 'is-idle' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <button
-      type="button"
-      className="back-top"
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      aria-label="回到顶部"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="m18 15-6-6-6 6" />
-      </svg>
-    </button>
+    <>
+      {menuOpen && <div className="fab-overlay" onClick={handleClose} />}
+      <div className={wrapCls}>
+        <div className="fab-menu">
+          <button className="fab-menu-item" onClick={() => handleSelect('industry')}>
+            <span className="mi-icon mi-icon--industry" aria-hidden="true"><IndustryCardIcon /></span>
+            <span className="mi-label">专业观众</span>
+          </button>
+          <button className="fab-menu-item" onClick={() => handleSelect('consumer')}>
+            <span className="mi-icon mi-icon--consumer" aria-hidden="true"><ConsumerCardIcon /></span>
+            <span className="mi-label">消费者</span>
+          </button>
+        </div>
+        <button type="button" className={tabCls} onClick={menuOpen ? handleClose : handleOpen} aria-label="观众注册">
+          <span className="tab-line" aria-hidden="true" />
+          <span className="tab-text">观众注册</span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -2406,7 +2487,9 @@ export default function App() {
         </div>
       </footer>
 
-      <BackToTopButton />
+      {page === 'identity' && (
+        <FloatingRegisterTab onSelect={handleIdentitySelect} />
+      )}
 
       <FeishuDialog
         open={qrDialogOpen}
