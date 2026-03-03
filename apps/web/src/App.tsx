@@ -1382,6 +1382,8 @@ export default function App() {
     setSubmitAttempted(false);
     setTouched({});
     setIsSwitching(true);
+    // 切换页面后滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'instant' });
     switchTimerRef.current = window.setTimeout(() => {
       setIsSwitching(false);
     }, 420);
