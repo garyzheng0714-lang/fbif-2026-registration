@@ -3266,7 +3266,7 @@ body {
   }
 }
 
-/* ===== 底部长图（折叠/展开） ===== */
+/* ===== 底部长图（毛玻璃折叠/展开） ===== */
 .banner-wrap {
   width: min(100%, var(--content-width));
   margin: 12px auto 0;
@@ -3276,53 +3276,53 @@ body {
 }
 
 .banner-wrap.is-collapsed {
-  max-height: 220px;
+  max-height: 200px;
 }
 
 .banner-wrap.is-expanded {
   max-height: none;
 }
 
-.banner-fade {
+.banner-glass-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
-  background: linear-gradient(to bottom, rgba(242,243,245,0) 0%, rgba(242,243,245,0.85) 60%, rgba(242,243,245,1) 100%);
-  pointer-events: none;
-  z-index: 1;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(242,243,245,0.6) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 12px;
+  z-index: 2;
 }
 
-.banner-expand-btn {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
+.banner-glass-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  background: var(--surface);
-  border: 1px solid #dee0e3;
-  border-radius: 20px;
+  gap: 3px;
+  padding: 5px 14px;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: none;
+  border-radius: 16px;
   color: var(--deep-blue);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
 }
 
-.banner-expand-btn:active {
-  background: #f5f7fa;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+.banner-glass-btn:active {
+  background: rgba(255,255,255,0.95);
 }
 
 .banner-chevron {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .banner-collapse-btn {

@@ -545,15 +545,14 @@ function BannerSection() {
           onLoad={() => setLoaded(true)}
         />
         {loaded && !expanded && (
-          <>
-            <div className="banner-fade" />
-            <button className="banner-expand-btn" onClick={toggle}>
-              查看展会亮点
-              <svg className="banner-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="banner-glass-overlay">
+            <button className="banner-glass-btn" onClick={toggle}>
+              展开全部
+              <svg className="banner-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
             </button>
-          </>
+          </div>
         )}
       </div>
       {expanded && (
