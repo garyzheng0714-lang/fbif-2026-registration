@@ -53,7 +53,7 @@ model Submission {
   nextAttemptAt DateTime?
   feishuRecordId String?   @db.VarChar(64)
   clientIp      String?    @db.VarChar(64)
-  userAgent     String?    @db.VarChar(256)
+  userAgent     String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
