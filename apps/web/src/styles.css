@@ -575,13 +575,15 @@ body {
 
 .role-tag {
   display: inline-block;
-  font-size: 0.7rem;
-  padding: 1px 6px;
+  font-size: 0.65rem;
+  padding: 1px 5px;
   border-radius: 3px;
-  margin-left: 4px;
+  margin-left: 6px;
   font-weight: 600;
   vertical-align: middle;
   line-height: 1.5;
+  position: relative;
+  top: -1px;
 }
 .role-tag.need { background: #fff3e0; color: #e67e22; }
 .role-tag.free { background: #ecfdf5; color: #27ae60; }
