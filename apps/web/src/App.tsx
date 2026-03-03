@@ -50,6 +50,8 @@ const TOP_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
+const BOTTOM_LONG_BANNER_URL =
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png';
 const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_4n_OhFZpJMUwWmIfeukVLQ_1771982405432/img_v3_02v8_558254bb-fd95-4e88-8eed-da8e5bc2b20g_1771982405633.jpg';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
@@ -483,6 +485,36 @@ function proofFileKey(file: File) {
   return `${file.name}::${file.size}::${file.lastModified}`;
 }
 
+function BackToTopButton() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setVisible(window.scrollY > 300);
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  if (!visible) return null;
+  return (
+    <button
+      type="button"
+      className="back-top"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="回到顶部"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m18 15-6-6-6 6" />
+      </svg>
+    </button>
+  );
+}
+
 function IndustryCardIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -637,6 +669,15 @@ function ChatRoundIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7l-5 4V6a2 2 0 0 1 2-2zm3 6h10V8H7v2zm0 3h7v-2H7v2z" />
+    </svg>
+  );
+}
+
+function SearchSmallIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+      <path d="m21 21-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -1662,13 +1703,7 @@ export default function App() {
           <>
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
-            <p className="tips">
-              我们将为您发放对应观展票，权益说明如下：
-              <br />
-              【专业观众】需审核，通过后发放 2026 年 4 月 27-29 日展区票（3日票）。
-              <br />
-              【消费者】无需审核，直接发放 2026 年 4 月 29 日展区票（1日票）。
-            </p>
+            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
 
             <div className="role-options">
               <button
@@ -1683,7 +1718,7 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">专业观众注册</span>
-                  <span className="role-desc">需审核身份，通过后发放3日展区票</span>
+                  <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）<span className="role-tag need">需审核</span></span>
                 </span>
               </button>
               <button
@@ -1698,11 +1733,22 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">消费者注册</span>
-                  <span className="role-desc">无需审核，直接发放 1 日展区票</span>
+                  <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）<span className="role-tag free">免审核</span></span>
                 </span>
               </button>
             </div>
             </FeishuCard>
+
+            <div className="scroll-banner-wrap">
+              <div className="scroll-banner-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                <span>下滑查看展会亮点</span>
+              </div>
+              <div className="scroll-banner-inner">
+                <img src={BOTTOM_LONG_BANNER_URL} alt="FBIF 2026 展会亮点" loading="lazy" decoding="async" />
+              </div>
+              <div className="scroll-banner-fade" aria-hidden="true" />
+            </div>
           </>
         )}
 
@@ -2276,16 +2322,12 @@ export default function App() {
                       <div className="success-step-num">1</div>
                       <div className="success-step-body">
                         <h3>等待审核</h3>
-                        <p>审核结果将在 <strong>1-3 个工作日</strong> 内通过短信通知</p>
-                        <a
+                        <p>审核结果将在 <strong>1-3 个工作日</strong> 内通过短信通知，<a
                           className="success-step-link"
                           href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
                           target="_blank"
                           rel="noopener noreferrer"
-                        >
-                          查询审核结果
-                          <OpenInNewSmallIcon />
-                        </a>
+                        ><SearchSmallIcon />查询审核结果</a></p>
                       </div>
                     </div>
                     <div className="success-step">
@@ -2323,25 +2365,19 @@ export default function App() {
                 )}
               </div>
 
-              <div className="success-actions">
+              <div className="success-bottom">
                 <a
                   className="success-cta"
                   href="https://www.foodtalks.cn/news/57680"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  查看展会介绍
                   <OpenInNewSmallIcon />
+                  查看展会介绍
                 </a>
-              </div>
-
-              <div className="success-contact">
-                <SupportAgentRoundIcon />
-                <span>如有疑问，请联系 FBIF 工作人员 Carrie</span>
-                <code>lovelyFBIFer1</code>
                 <button type="button" className="success-qr-btn" onClick={() => setQrDialogOpen(true)}>
                   <QrCodeSmallIcon />
-                  二维码
+                  联系工作人员
                 </button>
               </div>
             </FeishuCard>
@@ -2355,6 +2391,8 @@ export default function App() {
           <p className="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p>
         </div>
       </footer>
+
+      <BackToTopButton />
 
       <FeishuDialog
         open={qrDialogOpen}
