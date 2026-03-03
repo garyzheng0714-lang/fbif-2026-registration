@@ -192,7 +192,7 @@ body {
   border: 1px solid var(--control-line);
   border-radius: var(--radius-sm);
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
   color: var(--ink);
   background: #ffffff;
@@ -239,7 +239,7 @@ body {
   border: 1px solid var(--control-line);
   border-radius: var(--radius-sm);
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
   color: var(--ink);
   background: #ffffff;
@@ -1024,7 +1024,7 @@ select:not(.fs-select) {
   border: 1px solid var(--control-line);
   border-radius: var(--radius-sm);
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
   color: var(--ink);
   background: #ffffff;
@@ -2287,7 +2287,7 @@ body {
   border-color: #e5e7eb;
   background: #f9fafb;
   color: #111827;
-  font-size: 14px;
+  font-size: 16px;
   padding-inline: 12px;
 }
 
@@ -2917,11 +2917,11 @@ body {
 /* Refinements: phone country code dropdown + stage back button */
 .compact-select-text .fs-select-trigger,
 .compact-select-text .fs-select-option {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .phone-country-code-select .fs-select-trigger {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .phone-country-code-select .fs-select-value {
@@ -3293,12 +3293,32 @@ body {
 }
 
 .scroll-banner-inner {
+  position: relative;
   max-height: 480px;
   overflow-y: auto;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-soft);
   -webkit-overflow-scrolling: touch;
+  min-height: 200px;
+  background: #f3f4f6;
+}
+
+.scroll-banner-inner.is-loaded {
+  background: transparent;
+}
+
+.scroll-banner-skeleton {
+  height: 320px;
+  background: linear-gradient(110deg, #f0f1f3 30%, #e8eaed 50%, #f0f1f3 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .scroll-banner-inner img {
