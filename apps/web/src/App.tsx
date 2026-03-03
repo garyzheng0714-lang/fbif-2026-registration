@@ -526,6 +526,11 @@ function BannerSection() {
   return (
     <div className="banner-wrap">
       {!loaded && <div className="banner-skeleton" />}
+      {loaded && (
+        <div className="banner-hint-overlay">
+          <span className="banner-hint-text">&#8595; 下滑查看展会亮点</span>
+        </div>
+      )}
       <img
         className={`banner-img${loaded ? ' is-loaded' : ''}`}
         src={BOTTOM_LONG_BANNER_URL}
