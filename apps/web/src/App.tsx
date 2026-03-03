@@ -1784,6 +1784,7 @@ export default function App() {
                 </span>
               </button>
             </div>
+            <p className="age-notice">16岁以下观众禁止入场，请勿注册！</p>
             </FeishuCard>
 
             <BannerSection />
