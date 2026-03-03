@@ -1,24 +1,6 @@
 name: fbif-form
 
 services:
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-/api}
-    image: fbif-form-web:latest
-    restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-3001}:80"
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - edge
-    mem_limit: 128m
-    cpus: "0.50"
-
   api:
     build:
       context: .
@@ -92,7 +74,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - edge
+      - backend
       - private
     mem_limit: 512m
     cpus: "1.00"
@@ -139,6 +121,6 @@ volumes:
   redisdata:
 
 networks:
-  edge:
+  backend:
   private:
     internal: true

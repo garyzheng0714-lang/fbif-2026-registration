@@ -84,12 +84,10 @@ migrate_env() {
 
 # --- 设置所有默认值 ---
 apply_defaults() {
-  local web_port_value="${WEB_PORT:-3001}"
   local web_origin_value="${WEB_ORIGIN:-}"
   local api_port_value="${API_PORT:-8080}"
   local api_port_internal_value="${API_PORT_INTERNAL:-8080}"
 
-  set_default WEB_PORT "${web_port_value}"
   set_default NODE_ENV production
   set_default API_PORT "${api_port_value}"
   set_default API_PORT_INTERNAL "${api_port_internal_value}"
@@ -102,11 +100,11 @@ apply_defaults() {
   set_default FEISHU_TABLE_ID tbl0CQ74guMS1IDd
   set_default FEISHU_FIELD_NAME "姓名"
   set_default FEISHU_FIELD_PHONE "手机号（问卷题）"
-  set_default FEISHU_FIELD_TITLE "职位（问卷题）"
-  set_default FEISHU_FIELD_COMPANY "公司（问卷题）"
-  set_default FEISHU_FIELD_ID "证件号码（问卷题）"
+  set_default FEISHU_FIELD_TITLE "职位"
+  set_default FEISHU_FIELD_COMPANY "公司"
+  set_default FEISHU_FIELD_ID "证件号码"
   set_default FEISHU_FIELD_BUSINESS_TYPE "贵司的业务类型"
-  set_default FEISHU_FIELD_DEPARTMENT "您所处的部门（问卷题）"
+  set_default FEISHU_FIELD_DEPARTMENT "您所处的部门"
   set_default FEISHU_FIELD_PROOF_URL "专业观众证明（附件链接）"
   set_default FEISHU_FIELD_SUBMITTED_AT ""
   set_default FEISHU_FIELD_SYNC_STATUS ""
@@ -135,7 +133,6 @@ apply_defaults() {
 
 # --- 从环境变量覆盖 (GitHub Secrets → backend.env) ---
 apply_overrides() {
-  set_if_non_empty WEB_PORT "${WEB_PORT:-}"
   set_if_non_empty WEB_ORIGIN "${WEB_ORIGIN:-}"
   set_if_non_empty API_PORT "${API_PORT:-}"
   set_if_non_empty API_PORT_INTERNAL "${API_PORT_INTERNAL:-}"

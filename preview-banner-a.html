@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>方案A 预览 - 截断渐变 + 展开</title>
+<style>
+  :root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1f2329;
+    --muted: #646a73;
+    --deep-blue: #0f5fc2;
+    --radius-lg: 9px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang SC', 'SF Pro Text', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+  .context-hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 16px 0 8px;
+    border-bottom: 1px dashed #dee0e3;
+    margin-bottom: 12px;
+  }
+
+  /* ===== 长图区域 ===== */
+  .banner-wrap {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .banner-img {
+    display: block;
+    width: 100%;
+  }
+
+  /* 折叠态：限制高度 + 渐变遮罩 */
+  .banner-wrap.is-collapsed {
+    max-height: 220px;
+  }
+
+  .banner-wrap.is-collapsed .banner-fade {
+    display: block;
+  }
+
+  /* 展开态：无限制 */
+  .banner-wrap.is-expanded {
+    max-height: none;
+  }
+
+  .banner-wrap.is-expanded .banner-fade {
+    display: none;
+  }
+
+  .banner-wrap.is-expanded .banner-expand-btn {
+    display: none;
+  }
+
+  /* 底部渐变遮罩 */
+  .banner-fade {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, rgba(242,243,245,0) 0%, rgba(242,243,245,0.85) 60%, rgba(242,243,245,1) 100%);
+    pointer-events: none;
+  }
+
+  /* 展开按钮 */
+  .banner-expand-btn {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 16px;
+    background: var(--surface);
+    border: 1px solid #dee0e3;
+    border-radius: 20px;
+    color: var(--deep-blue);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+
+  .banner-expand-btn:active {
+    background: #f5f7fa;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .banner-expand-btn .chevron {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s;
+  }
+
+  /* 收起按钮 */
+  .banner-collapse-btn {
+    display: none;
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  .banner-collapse-btn:active {
+    color: var(--deep-blue);
+  }
+
+  .banner-wrap.is-expanded + .banner-collapse-btn {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="context-hint">-- 上方为表单区域（省略）--</div>
+
+<div class="banner-wrap is-collapsed" id="bannerWrap">
+  <img
+    class="banner-img"
+    src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png"
+    alt="FBIF 2026 展会亮点"
+  />
+  <div class="banner-fade"></div>
+  <button class="banner-expand-btn" id="expandBtn" onclick="toggleBanner()">
+    查看展会亮点
+    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+</div>
+<button class="banner-collapse-btn" id="collapseBtn" onclick="toggleBanner()">收起 ∧</button>
+
+<script>
+function toggleBanner() {
+  const wrap = document.getElementById('bannerWrap');
+  const isCollapsed = wrap.classList.contains('is-collapsed');
+  if (isCollapsed) {
+    wrap.classList.remove('is-collapsed');
+    wrap.classList.add('is-expanded');
+  } else {
+    wrap.classList.remove('is-expanded');
+    wrap.classList.add('is-collapsed');
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+</script>
+
+</body>
+</html>
