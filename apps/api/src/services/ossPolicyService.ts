@@ -57,7 +57,8 @@ export function buildOssUploadPolicy(input: {
 
   const ext = sanitizeExt(input.filename);
   const { y, m } = yyyymm();
-  const key = `${prefix}/${y}/${m}/${crypto.randomUUID()}${ext}`;
+  const token = crypto.randomBytes(32).toString('hex');
+  const key = `${prefix}/${y}/${m}/${token}${ext}`;
 
   const expireSeconds = Math.max(60, Number(env.OSS_POLICY_EXPIRE_SECONDS || 10 * 60));
   const expiration = new Date(Date.now() + expireSeconds * 1000).toISOString();
