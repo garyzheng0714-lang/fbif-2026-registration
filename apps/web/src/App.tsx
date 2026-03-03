@@ -1739,8 +1739,8 @@ export default function App() {
                   <IndustryCardIcon />
                 </span>
                 <span className="role-content">
-                  <span className="role-title">专业观众注册</span>
-                  <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）<span className="role-tag need">需审核</span></span>
+                  <span className="role-title">专业观众注册<span className="role-tag need">需审核</span></span>
+                  <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）</span>
                 </span>
               </button>
               <button
@@ -1754,8 +1754,8 @@ export default function App() {
                   <ConsumerCardIcon />
                 </span>
                 <span className="role-content">
-                  <span className="role-title">消费者注册</span>
-                  <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）<span className="role-tag free">免审核</span></span>
+                  <span className="role-title">消费者注册<span className="role-tag free">免审核</span></span>
+                  <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）</span>
                 </span>
               </button>
             </div>
