@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>预览 - 贴边按钮文字排版方案对比</title>
+<style>
+  :root { --bg: #f2f3f5; --surface: #ffffff; --ink: #1f2329; --muted: #646a73; --deep-blue: #3370ff; --radius-lg: 9px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'PingFang SC', 'SF Pro Text', 'Noto Sans SC', sans-serif; background: var(--bg); color: var(--ink); }
+  .page { max-width: 430px; margin: 0 auto; padding: 12px 12px 0; }
+  .frame { display: grid; gap: 12px; }
+  .banner { width: 100%; border-radius: var(--radius-lg); display: block; }
+  .role-card { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; }
+  .role-card h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+  .tips { margin: 6px 0 0; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+  .role-options { margin-top: 16px; display: grid; gap: 6px; }
+  .role-option {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    border: 1.5px solid #e0e3e8; border-radius: 10px; background: var(--surface);
+    cursor: pointer; text-align: left; font-family: inherit; font-size: inherit; color: inherit; width: 100%;
+  }
+  .role-option.is-active { border-color: var(--deep-blue); background: rgba(51,112,255,0.04); }
+  .role-icon { width: 44px; height: 44px; border-radius: 50%; background: #f0f1f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .role-icon svg { width: 22px; height: 22px; color: #646a73; }
+  .is-active .role-icon { background: #dbeafe; }
+  .is-active .role-icon svg { color: var(--deep-blue); }
+  .role-content { display: flex; flex-direction: column; gap: 2px; }
+  .role-title { font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 6px; line-height: 1.3; }
+  .role-tag { display: inline-flex; align-items: center; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: 600; line-height: 1; white-space: nowrap; }
+  .role-tag.need { background: #fff3e0; color: #e67e22; }
+  .role-tag.free { background: #ecfdf5; color: #27ae60; }
+  .role-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+  .role-num { font-weight: 800; color: var(--deep-blue); font-size: 1.05em; }
+  .age-notice { margin-top: 14px; padding: 8px 12px; border-radius: 6px; background: #fff8f6; border: 1px solid rgba(229,94,85,0.15); font-size: 0.78rem; color: #c54e3a; text-align: center; }
+  .banner-wrap { border-radius: var(--radius-lg); overflow: hidden; }
+  .banner-wrap img { width: 100%; display: block; }
+  .footer { padding: 16px; text-align: center; font-size: 0.72rem; color: var(--muted); }
+
+  /* ===== 方案切换器 ===== */
+  .scheme-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+    background: rgba(30,30,30,0.92); backdrop-filter: blur(8px);
+    display: flex; justify-content: center; gap: 6px; padding: 10px 8px;
+  }
+  .scheme-btn {
+    padding: 6px 12px; border-radius: 20px; border: 1.5px solid rgba(255,255,255,0.25);
+    background: transparent; color: #fff; font-size: 0.72rem; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .scheme-btn.is-active { background: #fff; color: #111; border-color: #fff; }
+
+  /* ===== 贴边按钮 — 仅手机端 ===== */
+  .fab-wrap { display: none; }
+
+  @media (max-width: 768px) {
+    .fab-wrap {
+      display: block;
+      position: fixed;
+      right: 0;
+      bottom: 110px;
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+      opacity: 0;
+    }
+    .fab-wrap.is-visible {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    /* 入场动画 */
+    @keyframes tab-slide-in {
+      0%   { transform: translateX(100%); opacity: 0; }
+      60%  { transform: translateX(-6px); opacity: 1; }
+      80%  { transform: translateX(2px); }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    .fab-wrap.is-entering {
+      animation: tab-slide-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* === 共用按钮基础 === */
+    .fab-tab {
+      border: none; cursor: pointer;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      will-change: transform;
+      background: linear-gradient(135deg, #FFC107 0%, #FFB300 100%);
+      color: #1a3e7a;
+      transition:
+        transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.25s ease;
+    }
+    .fab-tab:active { transform: scale(0.95); }
+
+    /* 呼吸脉动 */
+    @keyframes tab-pulse {
+      0%, 100% { box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15); }
+      50% { box-shadow: -2px 2px 12px rgba(255,179,0,0.5), -6px 4px 24px rgba(255,179,0,0.25); }
+    }
+    .fab-tab.is-pulsing { animation: tab-pulse 2.5s ease-in-out infinite; }
+    .fab-tab.is-idle { opacity: 0.35; animation: none; transition: opacity 0.8s ease; }
+
+    /* ====== 方案 A：竖排文字，窄长条 ====== */
+    .fab-tab--a {
+      border-radius: 12px 0 0 12px;
+      padding: 14px 8px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      line-height: 1;
+      box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15);
+    }
+
+    /* ====== 方案 B：竖排 + 顶部小图标 ====== */
+    .fab-tab--b {
+      border-radius: 14px 0 0 14px;
+      padding: 10px 7px 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15);
+    }
+    .fab-tab--b .tab-icon { width: 18px; height: 18px; flex-shrink: 0; }
+    .fab-tab--b .tab-icon svg { width: 18px; height: 18px; }
+    .fab-tab--b .tab-text {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 2px; line-height: 1;
+    }
+
+    /* ====== 方案 C：竖排大字 + 左侧色条 ====== */
+    .fab-tab--c {
+      border-radius: 16px 0 0 16px;
+      padding: 20px 14px 20px 14px;
+      display: flex; align-items: center; gap: 0;
+      box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15);
+    }
+    .fab-tab--c .tab-line {
+      width: 3.5px; height: 100%; min-height: 72px;
+      background: rgba(255,255,255,0.45);
+      border-radius: 2px;
+      margin-right: 10px; flex-shrink: 0;
+    }
+    .fab-tab--c .tab-text {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: 1rem; font-weight: 800;
+      letter-spacing: 5px; line-height: 1;
+    }
+
+    /* ====== 方案 D：横排"观众注册"宽按钮 ====== */
+    .fab-tab--d {
+      border-radius: 24px 0 0 24px;
+      height: 48px;
+      padding: 0 10px 0 16px;
+      display: flex; align-items: center; gap: 6px;
+      box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15);
+    }
+    .fab-tab--d .tab-icon { width: 20px; height: 20px; flex-shrink: 0; }
+    .fab-tab--d .tab-icon svg { width: 20px; height: 20px; }
+    .fab-tab--d .tab-text {
+      font-size: 0.82rem; font-weight: 700;
+      white-space: nowrap; letter-spacing: 1px;
+    }
+
+    /* === 弹出菜单 === */
+    .fab-menu {
+      position: absolute;
+      bottom: calc(100% + 10px); right: 0;
+      display: flex; flex-direction: column; gap: 8px;
+      align-items: flex-end;
+    }
+    .fab-menu-item {
+      display: flex; align-items: center; gap: 10px;
+      border-radius: 22px 0 0 22px;
+      padding: 10px 12px 10px 14px;
+      background: var(--surface);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.12);
+      border: none; cursor: pointer; font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateX(100%);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .fab-menu-item:active { background: #f8f8f8; }
+    .fab-menu-item .mi-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .fab-menu-item .mi-icon svg { width: 17px; height: 17px; }
+    .fab-menu-item .mi-label { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+    .fab-menu-item[data-role="industry"] .mi-icon { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #2563eb; }
+    .fab-menu-item[data-role="consumer"] .mi-icon { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669; }
+
+    .fab-wrap.is-open .fab-menu-item {
+      opacity: 1; transform: translateX(0); pointer-events: auto;
+      transition: opacity 0.25s ease, transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .fab-wrap.is-open .fab-menu-item:nth-child(1) { transition-delay: 0.05s; }
+    .fab-wrap.is-open .fab-menu-item:nth-child(2) { transition-delay: 0.12s; }
+
+    .fab-overlay {
+      display: none; position: fixed; inset: 0; z-index: 199;
+      background: rgba(0,0,0,0.18); -webkit-tap-highlight-color: transparent;
+    }
+    .fab-overlay.is-active { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scheme-bar">
+  <button class="scheme-btn is-active" data-scheme="a">A 竖排纯文字</button>
+  <button class="scheme-btn" data-scheme="b">B 竖排+图标</button>
+  <button class="scheme-btn" data-scheme="c">C 竖排+色条</button>
+  <button class="scheme-btn" data-scheme="d">D 横排</button>
+</div>
+
+<div class="page" style="margin-top: 44px;">
+  <div class="frame">
+    <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 食品创新展">
+    <div class="role-card" id="roleCard">
+      <h2>请选择您的观展身份</h2>
+      <p class="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+      <div class="role-options">
+        <button class="role-option is-active" type="button">
+          <span class="role-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9.25c0-1.8 1.45-3.25 3.25-3.25h9.5A3.25 3.25 0 0 1 20 9.25v7.5A3.25 3.25 0 0 1 16.75 20h-9.5A3.25 3.25 0 0 1 4 16.75v-7.5Z" stroke="currentColor" stroke-width="1.6"/><path d="M8 6V4.75A1.75 1.75 0 0 1 9.75 3h4.5A1.75 1.75 0 0 1 16 4.75V6" stroke="currentColor" stroke-width="1.6"/><path d="M4 12.5h16" stroke="currentColor" stroke-width="1.6"/></svg></span>
+          <span class="role-content">
+            <span class="role-title">专业观众注册 <span class="role-tag need">需审核</span></span>
+            <span class="role-desc">4 月 27-29 日展区票（<span class="role-num">3</span> 日票）</span>
+          </span>
+        </button>
+        <button class="role-option" type="button">
+          <span class="role-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 19.5c0-3.3 2.95-5.5 7-5.5s7 2.2 7 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+          <span class="role-content">
+            <span class="role-title">消费者注册 <span class="role-tag free">免审核</span></span>
+            <span class="role-desc">4 月 29 日展区票（<span class="role-num">1</span> 日票）</span>
+          </span>
+        </button>
+      </div>
+      <p class="age-notice">16岁以下观众禁止入场，请勿注册！</p>
+    </div>
+    <div class="banner-wrap">
+      <img src="https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v2.webp" alt="FBIF 2026 展会亮点">
+    </div>
+  </div>
+</div>
+<div class="footer">&copy; Copyright 2026 Simba. All rights reserved.</div>
+
+<div class="fab-overlay" id="fabOverlay"></div>
+<div class="fab-wrap" id="fabWrap">
+  <div class="fab-menu" id="fabMenu">
+    <button class="fab-menu-item" data-role="industry">
+      <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9.25c0-1.8 1.45-3.25 3.25-3.25h9.5A3.25 3.25 0 0 1 20 9.25v7.5A3.25 3.25 0 0 1 16.75 20h-9.5A3.25 3.25 0 0 1 4 16.75v-7.5Z" stroke="currentColor" stroke-width="1.6"/><path d="M8 6V4.75A1.75 1.75 0 0 1 9.75 3h4.5A1.75 1.75 0 0 1 16 4.75V6" stroke="currentColor" stroke-width="1.6"/><path d="M4 12.5h16" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="mi-label">专业观众</span>
+    </button>
+    <button class="fab-menu-item" data-role="consumer">
+      <span class="mi-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 19.5c0-3.3 2.95-5.5 7-5.5s7 2.2 7 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="mi-label">消费者</span>
+    </button>
+  </div>
+  <!-- 动态替换的按钮容器 -->
+  <div id="tabContainer"></div>
+</div>
+
+<script>
+const roleCard = document.getElementById('roleCard');
+const fabWrap = document.getElementById('fabWrap');
+const fabOverlay = document.getElementById('fabOverlay');
+const tabContainer = document.getElementById('tabContainer');
+let isOpen = false;
+let idleTimer;
+let wasVisible = false;
+let currentScheme = 'a';
+
+const templates = {
+  a: `<button class="fab-tab fab-tab--a" id="fabTab">观众注册</button>`,
+  b: `<button class="fab-tab fab-tab--b" id="fabTab">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        <span class="tab-text">观众注册</span>
+      </button>`,
+  c: `<button class="fab-tab fab-tab--c" id="fabTab">
+        <span class="tab-line"></span>
+        <span class="tab-text">观众注册</span>
+      </button>`,
+  d: `<button class="fab-tab fab-tab--d" id="fabTab">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        <span class="tab-text">观众注册</span>
+      </button>`,
+};
+
+function renderTab(scheme) {
+  currentScheme = scheme;
+  tabContainer.innerHTML = templates[scheme];
+  document.getElementById('fabTab').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isOpen) closeMenu(); else openMenu();
+  });
+}
+renderTab('a');
+
+// 方案切换
+document.querySelectorAll('.scheme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.scheme-btn').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    if (isOpen) closeMenu();
+    renderTab(btn.dataset.scheme);
+    // 重新触发入场
+    wasVisible = false;
+    fabWrap.classList.remove('is-visible', 'is-entering');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    setTimeout(() => {
+      window.scrollTo({ top: 700, behavior: 'instant' });
+    }, 200);
+  });
+});
+
+const observer = new IntersectionObserver(([entry]) => {
+  const show = !entry.isIntersecting;
+  if (show && !wasVisible) {
+    fabWrap.classList.remove('is-visible');
+    fabWrap.classList.add('is-entering');
+    fabWrap.addEventListener('animationend', () => {
+      fabWrap.classList.remove('is-entering');
+      fabWrap.classList.add('is-visible');
+      const tab = document.getElementById('fabTab');
+      if (tab) { tab.classList.add('is-pulsing'); }
+      startIdle();
+    }, { once: true });
+  } else if (show) {
+    fabWrap.classList.add('is-visible');
+  }
+  if (!show) {
+    fabWrap.classList.remove('is-visible', 'is-entering');
+    if (isOpen) closeMenu();
+    const tab = document.getElementById('fabTab');
+    if (tab) tab.classList.remove('is-pulsing', 'is-idle');
+    clearTimeout(idleTimer);
+  }
+  wasVisible = show;
+}, { threshold: 0.05 });
+observer.observe(roleCard);
+
+function closeMenu() {
+  isOpen = false;
+  fabWrap.classList.remove('is-open');
+  fabOverlay.classList.remove('is-active');
+  startIdle();
+}
+function openMenu() {
+  isOpen = true;
+  fabWrap.classList.add('is-open');
+  fabOverlay.classList.add('is-active');
+  const tab = document.getElementById('fabTab');
+  if (tab) tab.classList.remove('is-idle', 'is-pulsing');
+  clearTimeout(idleTimer);
+}
+
+fabOverlay.addEventListener('click', closeMenu);
+
+document.querySelectorAll('.fab-menu-item').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.title = (btn.dataset.role === 'industry' ? '专业观众' : '消费者') + ' -> 跳转';
+    closeMenu();
+  });
+});
+
+function startIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (!isOpen) {
+      const tab = document.getElementById('fabTab');
+      if (tab) { tab.classList.add('is-idle'); tab.classList.remove('is-pulsing'); }
+    }
+  }, 6000);
+}
+
+window.addEventListener('scroll', () => {
+  const tab = document.getElementById('fabTab');
+  if (tab && tab.classList.contains('is-idle')) {
+    tab.classList.remove('is-idle');
+    tab.classList.add('is-pulsing');
+    startIdle();
+  }
+}, { passive: true });
+</script>
+
+</body>
+</html>

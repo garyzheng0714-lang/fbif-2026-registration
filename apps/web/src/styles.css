@@ -3377,33 +3377,107 @@ body {
   opacity: 1;
 }
 
-/* ===== 回到顶部 ===== */
-.back-top {
-  position: fixed;
-  bottom: 24px;
-  right: 16px;
-  z-index: 900;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #6b7280;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background-color 0.2s, color 0.2s;
-}
+/* ===== 浮动注册按钮 (FAB) — 仅手机端 ===== */
+.fab-wrap { display: none; }
 
-.back-top:active {
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--deep-blue);
-}
+@media (max-width: 768px) {
+  .fab-wrap {
+    display: block;
+    position: fixed;
+    right: 0;
+    bottom: 110px;
+    z-index: 900;
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 0;
+  }
+  .fab-wrap.is-visible { transform: translateX(0); opacity: 1; }
 
-.back-top svg {
-  width: 20px;
-  height: 20px;
+  @keyframes tab-slide-in {
+    0%   { transform: translateX(100%); opacity: 0; }
+    60%  { transform: translateX(-6px); opacity: 1; }
+    80%  { transform: translateX(2px); }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  .fab-wrap.is-entering { animation: tab-slide-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+  /* 主按钮 — 竖排 + 色条 */
+  .fab-tab {
+    border-radius: 16px 0 0 16px;
+    padding: 20px 14px;
+    display: flex; align-items: center; gap: 0;
+    border: none; cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    will-change: transform;
+    background: linear-gradient(135deg, #FFC107 0%, #FFB300 100%);
+    color: #1a3e7a;
+    box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15);
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease;
+  }
+  .fab-tab:active { transform: scale(0.95); }
+
+  .fab-tab .tab-line {
+    width: 3.5px; height: 100%; min-height: 72px;
+    background: rgba(255,255,255,0.45);
+    border-radius: 2px;
+    margin-right: 10px; flex-shrink: 0;
+  }
+  .fab-tab .tab-text {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    font-size: 1rem; font-weight: 800;
+    letter-spacing: 5px; line-height: 1;
+  }
+
+  @keyframes tab-pulse {
+    0%, 100% { box-shadow: -2px 2px 8px rgba(255,179,0,0.3), -4px 4px 16px rgba(255,179,0,0.15); }
+    50% { box-shadow: -2px 2px 12px rgba(255,179,0,0.5), -6px 4px 24px rgba(255,179,0,0.25); }
+  }
+  .fab-tab.is-pulsing { animation: tab-pulse 2.5s ease-in-out infinite; }
+  .fab-tab.is-idle { opacity: 0.35; animation: none; transition: opacity 0.8s ease; }
+
+  /* 弹出菜单 */
+  .fab-menu {
+    position: absolute;
+    bottom: calc(100% + 10px); right: 0;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+  }
+  .fab-menu-item {
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 22px 0 0 22px;
+    padding: 10px 12px 10px 14px;
+    background: var(--surface);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.12);
+    border: none; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(100%);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .fab-menu-item:active { background: #f8f8f8; }
+  .fab-menu-item .mi-icon {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .fab-menu-item .mi-icon svg { width: 17px; height: 17px; }
+  .fab-menu-item .mi-icon--industry { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #2563eb; }
+  .fab-menu-item .mi-icon--consumer { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669; }
+  .fab-menu-item .mi-label { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+
+  .fab-wrap.is-open .fab-menu-item {
+    opacity: 1; transform: translateX(0); pointer-events: auto;
+    transition: opacity 0.25s ease, transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .fab-wrap.is-open .fab-menu-item:nth-child(1) { transition-delay: 0.05s; }
+  .fab-wrap.is-open .fab-menu-item:nth-child(2) { transition-delay: 0.12s; }
+
+  .fab-overlay {
+    position: fixed; inset: 0; z-index: 899;
+    background: rgba(0,0,0,0.18);
+    -webkit-tap-highlight-color: transparent;
+  }
 }
