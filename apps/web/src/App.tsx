@@ -2257,14 +2257,16 @@ export default function App() {
                     <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <h2 className="success-hero-title">
-                  {submittedRole === 'consumer' ? '报名成功' : '申请已提交'}
-                </h2>
-                <p className="success-hero-desc">
-                  {submittedRole === 'consumer'
-                    ? 'FBIF 食品创新展 2026 消费者观展票'
-                    : 'FBIF 食品创新展 2026 专业观众观展票'}
-                </p>
+                <div className="success-hero-text">
+                  <h2 className="success-hero-title">
+                    {submittedRole === 'consumer' ? '报名成功' : '申请已提交'}
+                  </h2>
+                  <p className="success-hero-desc">
+                    {submittedRole === 'consumer'
+                      ? 'FBIF 食品创新展 2026 消费者观展票'
+                      : 'FBIF 食品创新展 2026 专业观众观展票'}
+                  </p>
+                </div>
               </div>
 
               <div className="success-steps">
@@ -2275,6 +2277,15 @@ export default function App() {
                       <div className="success-step-body">
                         <h3>等待审核</h3>
                         <p>审核结果将在 <strong>1-3 个工作日</strong> 内通过短信通知</p>
+                        <a
+                          className="success-step-link"
+                          href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          查询审核结果
+                          <OpenInNewSmallIcon />
+                        </a>
                       </div>
                     </div>
                     <div className="success-step">
@@ -2312,18 +2323,17 @@ export default function App() {
                 )}
               </div>
 
-              {submittedRole === 'industry' && (
-                <div className="success-query-link">
-                  <a
-                    href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    查询审核结果
-                    <OpenInNewSmallIcon />
-                  </a>
-                </div>
-              )}
+              <div className="success-actions">
+                <a
+                  className="success-cta"
+                  href="https://www.foodtalks.cn/news/57680"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  查看展会介绍
+                  <OpenInNewSmallIcon />
+                </a>
+              </div>
 
               <div className="success-contact">
                 <SupportAgentRoundIcon />
@@ -2335,16 +2345,6 @@ export default function App() {
                 </button>
               </div>
             </FeishuCard>
-
-            <a
-              className="success-cta"
-              href="https://www.foodtalks.cn/news/57680"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              查看展会介绍
-              <OpenInNewSmallIcon />
-            </a>
           </>
         )}
       </div>

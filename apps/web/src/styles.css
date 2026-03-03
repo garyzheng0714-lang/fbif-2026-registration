@@ -3029,72 +3029,76 @@ body {
 /* ===== 提交成功页面 ===== */
 
 .success-card {
-  text-align: center;
+  overflow: hidden;
 }
 
+/* Hero 区域 - 横排布局 */
 .success-hero {
-  padding: 32px 24px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-bottom: 1px solid var(--line);
 }
 
 .success-hero-icon {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   background: var(--ok);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
 }
 
 .success-hero-icon svg {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
+}
+
+.success-hero-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .success-hero-title {
-  margin: 0 0 8px;
-  font-size: 22px;
+  margin: 0 0 2px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.4;
 }
 
 .success-hero-desc {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* 步骤流程 */
 .success-steps {
-  padding: 0 24px 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  text-align: left;
+  gap: 20px;
 }
 
 .success-step {
   display: flex;
   gap: 14px;
-  padding: 16px 0;
-  border-top: 1px solid var(--line);
-}
-
-.success-step:last-child {
-  border-bottom: 1px solid var(--line);
 }
 
 .success-step-num {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   border-radius: 50%;
   background: var(--deep-blue);
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -3104,15 +3108,15 @@ body {
 
 .success-step-body h3 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
-  line-height: 28px;
+  line-height: 24px;
 }
 
 .success-step-body p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -3122,29 +3126,59 @@ body {
   color: var(--ink);
 }
 
-/* 审核结果查询链接 */
-.success-query-link {
-  padding: 0 24px 20px;
-}
-
-.success-query-link a {
+/* 步骤内链接 */
+.success-step-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 14px;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--deep-blue);
   text-decoration: none;
 }
 
-.success-query-link a:hover {
+.success-step-link:hover {
   text-decoration: underline;
 }
 
-.success-query-link a svg {
+.success-step-link svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.7;
+}
+
+/* CTA 按钮 - 卡片内 */
+.success-actions {
+  padding: 0 24px 20px;
+}
+
+.success-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 24px;
+  background: var(--deep-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: background var(--motion);
+}
+
+.success-cta:hover {
+  background: var(--deep-blue-strong);
+  color: #fff;
+  text-decoration: none;
+}
+
+.success-cta svg {
   width: 14px;
   height: 14px;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 /* 联系栏 */
@@ -3155,7 +3189,7 @@ body {
   gap: 8px;
   padding: 14px 24px;
   background: var(--bg);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-top: 1px solid var(--line);
   font-size: 13px;
   color: var(--muted);
 }
@@ -3203,63 +3237,20 @@ body {
   height: 14px;
 }
 
-/* CTA 按钮 */
-.success-cta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: min(100%, var(--content-width));
-  margin: 0 auto;
-  padding: 12px 24px;
-  background: var(--deep-blue);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  transition: background var(--motion), transform var(--motion);
-}
-
-.success-cta:hover {
-  background: var(--deep-blue-strong);
-  color: #fff;
-  text-decoration: none;
-}
-
-.success-cta:active {
-  transform: scale(0.98);
-}
-
-.success-cta svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0.85;
-}
-
 /* ===== 响应式设计 - 成功页 ===== */
 
 @media (max-width: 768px) {
   .success-hero {
-    padding: 24px 20px 20px;
-  }
-
-  .success-hero-icon {
-    width: 48px;
-    height: 48px;
-  }
-
-  .success-hero-icon svg {
-    width: 26px;
-    height: 26px;
-  }
-
-  .success-hero-title {
-    font-size: 20px;
+    padding: 20px;
   }
 
   .success-steps {
-    padding: 0 20px 20px;
+    padding: 16px 20px;
+    gap: 16px;
+  }
+
+  .success-actions {
+    padding: 0 20px 16px;
   }
 
   .success-contact {
