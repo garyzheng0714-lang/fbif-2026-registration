@@ -3024,3 +3024,489 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ===== 提交成功页面 - 优雅设计 ===== */
+
+/* 成功页面容器 */
+.submit-success-page {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* 成功卡片 - 现代简约风格 */
+.submit-success-card {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  border: 1px solid #e9eef5;
+}
+
+/* 左侧 Banner 区域 */
+.submit-success-banner {
+  background: linear-gradient(135deg, #1f5fff 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-success-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: shimmer 8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { transform: translate(-10%, -10%) rotate(0deg); }
+  50% { transform: translate(10%, 10%) rotate(180deg); }
+}
+
+.submit-success-banner-img {
+  width: 100%;
+  height: auto;
+  max-height: 480px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+
+/* 右侧内容区域 */
+.submit-success-content {
+  padding: 40px 48px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* 头部标题区域 */
+.submit-success-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 4px;
+}
+
+/* 成功标记图标 */
+.success-checkmark {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.success-checkmark svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* 标题组 */
+.submit-success-title-group {
+  flex: 1;
+}
+
+.submit-success-main-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #151a22;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.submit-success-subtitle {
+  margin: 8px 0 0;
+  font-size: 1.06rem;
+  font-weight: 600;
+  color: #1f5fff;
+  line-height: 1.45;
+}
+
+/* 信息区块 */
+.submit-success-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #e9eef5;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 单个信息块 */
+.success-info-block {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #ffffff;
+}
+
+.success-info-block + .success-info-block {
+  border-top: 1px solid #edf1f5;
+}
+
+.success-info-block.contact-block {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* 信息块图标 */
+.info-block-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.contact-block .info-block-icon {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1f5fff;
+}
+
+.info-block-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* 信息块内容 */
+.info-block-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-block-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.info-block-text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #334155;
+}
+
+.text-emphasis {
+  font-weight: 600;
+  color: #151a22;
+}
+
+/* 内联链接 */
+.info-block-link-text {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #475569;
+}
+
+.inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1f5fff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
+.inline-link:hover {
+  background: rgba(31, 95, 255, 0.08);
+  text-decoration: underline;
+}
+
+.inline-link svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+/* 联系区块 */
+.contact-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.contact-text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #334155;
+}
+
+.contact-detail {
+  display: block;
+  color: #475569;
+}
+
+.wechat-id {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 0.98em;
+  color: #1f5fff;
+  font-weight: 600;
+}
+
+/* 二维码按钮 */
+.qr-action-group {
+  flex-shrink: 0;
+}
+
+.qr-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.qr-preview-btn:hover {
+  border-color: #1f5fff;
+  color: #1f5fff;
+  background: rgba(31, 95, 255, 0.04);
+  box-shadow: 0 4px 12px rgba(31, 95, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.qr-preview-btn:active {
+  transform: translateY(0);
+}
+
+.qr-preview-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.qr-btn-text {
+  display: none;
+}
+
+/* 底部操作区 */
+.submit-success-footer {
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.primary-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #1f5fff 0%, #3b82f6 100%);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(31, 95, 255, 0.25);
+  border: none;
+}
+
+.primary-action-btn:hover {
+  box-shadow: 0 6px 20px rgba(31, 95, 255, 0.35);
+  transform: translateY(-2px);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.primary-action-btn:active {
+  transform: translateY(0);
+}
+
+.primary-action-btn svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+}
+
+/* 二维码弹窗优化 */
+.submit-qr-dialog .fs-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.submit-qr-dialog-body {
+  text-align: center;
+  padding: 8px 8px 4px;
+}
+
+.submit-qr-dialog-image {
+  width: 280px;
+  height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e5e9f0;
+  display: block;
+  margin: 0 auto;
+}
+
+.submit-qr-dialog-caption {
+  margin: 16px 0 8px;
+  font-size: 0.94rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.submit-qr-dialog .fs-modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #151a22;
+  padding: 20px 24px 16px;
+  margin: 0;
+}
+
+.submit-qr-dialog .modal-button {
+  min-width: 100px;
+  padding: 10px 24px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+/* ===== 响应式设计 ===== */
+
+@media (max-width: 768px) {
+  .submit-success-card {
+    grid-template-columns: 1fr;
+  }
+
+  .submit-success-banner {
+    padding: 32px 24px;
+    min-height: 200px;
+  }
+
+  .submit-success-banner-img {
+    max-height: 160px;
+  }
+
+  .submit-success-content {
+    padding: 28px 20px 24px;
+    gap: 22px;
+  }
+
+  .submit-success-header {
+    gap: 12px;
+  }
+
+  .success-checkmark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .success-checkmark svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .submit-success-main-title {
+    font-size: 1.45rem;
+  }
+
+  .submit-success-subtitle {
+    font-size: 0.98rem;
+  }
+
+  .success-info-block {
+    grid-template-columns: 42px 1fr;
+    gap: 12px;
+    padding: 16px 16px;
+  }
+
+  .info-block-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .info-block-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .info-block-title {
+    font-size: 0.86rem;
+  }
+
+  .info-block-text {
+    font-size: 0.94rem;
+  }
+
+  .contact-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .qr-preview-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .qr-btn-text {
+    display: inline;
+  }
+
+  .submit-success-footer {
+    padding-top: 8px;
+  }
+
+  .primary-action-btn {
+    width: 100%;
+    padding: 13px 24px;
+    font-size: 0.98rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .submit-success-content {
+    padding: 24px 16px 20px;
+  }
+
+  .submit-success-main-title {
+    font-size: 1.28rem;
+  }
+
+  .success-info-block {
+    padding: 14px 14px;
+  }
+
+  .submit-qr-dialog-image {
+    width: 240px;
+    height: 240px;
+  }
+}
