@@ -2248,121 +2248,112 @@ export default function App() {
 
         {page === 'submitted' && (
           <div className="submit-success-page">
+            {/* Banner 图 - 全宽，白色背景 */}
+            <div className="submit-success-banner">
+              <img
+                className="submit-success-banner-img"
+                src={SUCCESS_VERTICAL_BANNER_URL}
+                alt=""
+                aria-hidden="true"
+              />
+            </div>
+
+            {/* 主内容卡片 */}
             <div className="submit-success-card">
-              {/* 左侧 Banner 区域 */}
-              <div className="submit-success-banner">
-                <img
-                  className="submit-success-banner-img"
-                  src={SUCCESS_VERTICAL_BANNER_URL}
-                  alt=""
-                  aria-hidden="true"
-                />
+              {/* 成功标题区 */}
+              <div className="submit-success-header">
+                <div className="success-checkmark" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="submit-success-title-group">
+                  <h2 className="submit-success-main-title">提交成功</h2>
+                  <p className="submit-success-subtitle">
+                    {submittedRole === 'consumer'
+                      ? 'FBIF 食品创新展 2026 消费者观展票'
+                      : 'FBIF 食品创新展 2026 行业观众观展票'}
+                  </p>
+                </div>
               </div>
 
-              {/* 右侧内容区域 */}
-              <div className="submit-success-content">
-                {/* 头部标题 */}
-                <div className="submit-success-header">
-                  <div className="success-checkmark">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div className="submit-success-title-group">
-                    <h2 className="submit-success-main-title">感谢您申请</h2>
-                    <p className="submit-success-subtitle">
-                      {submittedRole === 'consumer'
-                        ? 'FBIF 食品创新展 2026 消费者观展票'
-                        : 'FBIF 食品创新展 2026 观展票'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 信息区块 */}
-                <div className="submit-success-info">
-                  {submittedRole === 'industry' ? (
-                    <div className="success-info-block">
-                      <div className="info-block-icon">
-                        <PendingActionsRoundIcon />
-                      </div>
-                      <div className="info-block-content">
-                        <h3 className="info-block-title">审核状态</h3>
-                        <p className="info-block-text">
-                          审核结果将在 <span className="text-emphasis">1-3 个工作日</span> 内发送至您的手机
-                        </p>
-                        <p className="info-block-link-text">
-                          您也可以
-                          <a
-                            href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-link"
-                          >
-                            点击链接查询审核结果
-                            <OpenInNewSmallIcon />
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="success-info-block">
-                      <div className="info-block-icon">
-                        <EventAvailableRoundIcon />
-                      </div>
-                      <div className="info-block-content">
-                        <h3 className="info-block-title">入场说明</h3>
-                        <p className="info-block-text">
-                          您可凭 <span className="text-emphasis">大陆身份证原件</span>，于 <span className="text-emphasis">4 月 29 日</span> 入场观展（不含论坛）
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 联系工作人员 */}
-                  <div className="success-info-block contact-block">
+              {/* 信息块列表 */}
+              <div className="submit-success-info">
+                {submittedRole === 'industry' ? (
+                  <div className="success-info-block">
                     <div className="info-block-icon">
-                      <SupportAgentRoundIcon />
+                      <PendingActionsRoundIcon />
                     </div>
                     <div className="info-block-content">
-                      <h3 className="info-block-title">联系工作人员</h3>
-                      <div className="contact-row">
-                        <p className="contact-text">
-                          如有任何问题，请联系 FBIF 工作人员 Carrie
-                          <span className="contact-detail">
-                            （微信：<span className="wechat-id">lovelyFBIFer1</span>）
-                          </span>
-                        </p>
-                        <div className="qr-action-group">
-                          <button
-                            type="button"
-                            className="qr-preview-btn"
-                            aria-label="查看微信二维码"
-                            title="悬停预览二维码"
-                            onMouseEnter={() => setQrDialogOpen(true)}
-                            onMouseLeave={() => setQrDialogOpen(false)}
-                            onClick={() => setQrDialogOpen(prev => !prev)}
-                          >
-                            <QrCodeSmallIcon />
-                            <span className="qr-btn-text">查看二维码</span>
-                          </button>
-                        </div>
-                      </div>
+                      <h3 className="info-block-title">审核状态</h3>
+                      <p className="info-block-text">
+                        审核结果将在 <span className="text-emphasis">1-3 个工作日</span> 内发送至您的手机
+                      </p>
+                      <p className="info-block-link-text">
+                        您也可以
+                        <a
+                          href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb?from=navigation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-link"
+                        >
+                          点击链接查询审核结果
+                          <OpenInNewSmallIcon />
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="success-info-block">
+                    <div className="info-block-icon">
+                      <EventAvailableRoundIcon />
+                    </div>
+                    <div className="info-block-content">
+                      <h3 className="info-block-title">入场说明</h3>
+                      <p className="info-block-text">
+                        您可凭 <span className="text-emphasis">大陆身份证原件</span>，于 <span className="text-emphasis">4 月 29 日</span> 入场观展（不含论坛）
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 联系工作人员 */}
+                <div className="success-info-block contact-block">
+                  <div className="info-block-icon">
+                    <SupportAgentRoundIcon />
+                  </div>
+                  <div className="info-block-content">
+                    <h3 className="info-block-title">联系工作人员</h3>
+                    <p className="contact-text">
+                      如有任何问题，请联系 FBIF 工作人员 Carrie
+                    </p>
+                    <div className="contact-actions">
+                      <span className="contact-wechat-id">微信：<span className="wechat-id">lovelyFBIFer1</span></span>
+                      <button
+                        type="button"
+                        className="qr-open-btn"
+                        aria-label="点击查看工作人员微信二维码"
+                        onClick={() => setQrDialogOpen(true)}
+                      >
+                        <QrCodeSmallIcon />
+                        <span>查看二维码</span>
+                      </button>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* 底部操作 */}
-                <div className="submit-success-footer">
-                  <a
-                    className="primary-action-btn"
-                    href="https://www.foodtalks.cn/news/57680"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    查看展会介绍
-                    <OpenInNewSmallIcon />
-                  </a>
-                </div>
+              {/* 底部操作 */}
+              <div className="submit-success-footer">
+                <a
+                  className="primary-action-btn"
+                  href="https://www.foodtalks.cn/news/57680"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  查看展会介绍
+                  <OpenInNewSmallIcon />
+                </a>
               </div>
             </div>
           </div>

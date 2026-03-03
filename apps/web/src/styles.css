@@ -3025,83 +3025,48 @@ body {
   }
 }
 
-/* ===== 提交成功页面 - 优雅设计 ===== */
+/* ===== 提交成功页面 ===== */
 
-/* 成功页面容器 */
+/* 页面容器：白色背景，最大宽度居中 */
 .submit-success-page {
   width: 100%;
-  max-width: 900px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 0;
-}
-
-/* 成功卡片 - 现代简约风格 */
-.submit-success-card {
-  display: grid;
-  grid-template-columns: 280px 1fr;
+  padding: 0 0 32px;
   background: #ffffff;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
-  border: 1px solid #e9eef5;
 }
 
-/* 左侧 Banner 区域 */
+/* Banner：图片全宽展示，无背景色叠加 */
 .submit-success-banner {
-  background: linear-gradient(135deg, #1f5fff 0%, #3b82f6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 32px;
-  position: relative;
-  overflow: hidden;
-}
-
-.submit-success-banner::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  animation: shimmer 8s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { transform: translate(-10%, -10%) rotate(0deg); }
-  50% { transform: translate(10%, 10%) rotate(180deg); }
+  width: 100%;
+  line-height: 0; /* 消除图片底部空隙 */
 }
 
 .submit-success-banner-img {
   width: 100%;
   height: auto;
-  max-height: 480px;
-  object-fit: contain;
-  position: relative;
-  z-index: 1;
+  display: block;
+  object-fit: cover;
 }
 
-/* 右侧内容区域 */
-.submit-success-content {
-  padding: 40px 48px 36px;
+/* 内容卡片区：图片下方的信息区 */
+.submit-success-card {
+  padding: 32px 40px 0;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
 }
 
-/* 头部标题区域 */
+/* 标题区 */
 .submit-success-header {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding-bottom: 4px;
+  gap: 14px;
 }
 
-/* 成功标记图标 */
 .success-checkmark {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   display: flex;
@@ -3109,22 +3074,22 @@ body {
   justify-content: center;
   color: #ffffff;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.28);
+  margin-top: 2px;
 }
 
 .success-checkmark svg {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
 }
 
-/* 标题组 */
 .submit-success-title-group {
   flex: 1;
 }
 
 .submit-success-main-title {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #151a22;
   line-height: 1.25;
@@ -3132,14 +3097,22 @@ body {
 }
 
 .submit-success-subtitle {
-  margin: 8px 0 0;
-  font-size: 1.06rem;
-  font-weight: 600;
+  margin: 6px 0 0;
+  font-size: 1rem;
+  font-weight: 500;
   color: #1f5fff;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
-/* 信息区块 */
+/* 分隔线 */
+.submit-success-divider {
+  height: 1px;
+  background: #edf1f5;
+  margin: 0;
+  border: none;
+}
+
+/* 信息区块组 */
 .submit-success-info {
   display: flex;
   flex-direction: column;
@@ -3152,9 +3125,9 @@ body {
 /* 单个信息块 */
 .success-info-block {
   display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 16px;
-  padding: 20px 24px;
+  grid-template-columns: 44px 1fr;
+  gap: 14px;
+  padding: 18px 20px;
   background: #ffffff;
 }
 
@@ -3163,10 +3136,10 @@ body {
 }
 
 .success-info-block.contact-block {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: #fafbfd;
 }
 
-/* 信息块图标 */
+/* 图标 */
 .info-block-icon {
   width: 40px;
   height: 40px;
@@ -3177,10 +3150,11 @@ body {
   justify-content: center;
   color: #475569;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .contact-block .info-block-icon {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: #dbeafe;
   color: #1f5fff;
 }
 
@@ -3193,21 +3167,21 @@ body {
 .info-block-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .info-block-title {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
 }
 
 .info-block-text {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.97rem;
   line-height: 1.65;
   color: #334155;
 }
@@ -3217,110 +3191,99 @@ body {
   color: #151a22;
 }
 
-/* 内联链接 */
 .info-block-link-text {
   margin: 0;
-  font-size: 0.94rem;
-  color: #475569;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 .inline-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   color: #1f5fff;
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.2s ease;
-  padding: 2px 6px;
-  border-radius: 6px;
+  transition: all 0.15s ease;
   margin-left: 4px;
 }
 
 .inline-link:hover {
-  background: rgba(31, 95, 255, 0.08);
   text-decoration: underline;
 }
 
 .inline-link svg {
-  width: 14px;
-  height: 14px;
-  opacity: 0.7;
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
 }
 
-/* 联系区块 */
-.contact-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
+/* 联系工作人员区块 */
 .contact-text {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.97rem;
   line-height: 1.65;
   color: #334155;
 }
 
-.contact-detail {
-  display: block;
+/* 微信 ID + 二维码按钮并排 */
+.contact-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.contact-wechat-id {
+  font-size: 0.94rem;
   color: #475569;
 }
 
 .wechat-id {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-  font-size: 0.98em;
+  font-size: 0.95em;
   color: #1f5fff;
   font-weight: 600;
 }
 
-/* 二维码按钮 */
-.qr-action-group {
-  flex-shrink: 0;
-}
-
-.qr-preview-btn {
+/* 查看二维码按钮 - 清晰的点击按钮 */
+.qr-open-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  color: #334155;
-  font-size: 0.92rem;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #1f5fff;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(31, 95, 255, 0.2);
+  white-space: nowrap;
 }
 
-.qr-preview-btn:hover {
-  border-color: #1f5fff;
-  color: #1f5fff;
-  background: rgba(31, 95, 255, 0.04);
-  box-shadow: 0 4px 12px rgba(31, 95, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.04);
+.qr-open-btn:hover {
+  background: #1a4de0;
+  box-shadow: 0 4px 12px rgba(31, 95, 255, 0.3);
   transform: translateY(-1px);
 }
 
-.qr-preview-btn:active {
+.qr-open-btn:active {
   transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(31, 95, 255, 0.2);
 }
 
-.qr-preview-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.qr-btn-text {
-  display: none;
+.qr-open-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* 底部操作区 */
 .submit-success-footer {
-  padding-top: 12px;
-  border-top: 1px solid #edf1f5;
+  padding-top: 4px;
 }
 
 .primary-action-btn {
@@ -3328,15 +3291,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 32px;
+  padding: 13px 28px;
   background: linear-gradient(135deg, #1f5fff 0%, #3b82f6 100%);
   color: #ffffff;
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 0.97rem;
   font-weight: 600;
-  border-radius: 12px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px rgba(31, 95, 255, 0.25);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 12px rgba(31, 95, 255, 0.22);
   border: none;
 }
 
@@ -3352,12 +3315,12 @@ body {
 }
 
 .primary-action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   opacity: 0.9;
 }
 
-/* 二维码弹窗优化 */
+/* 二维码弹窗 */
 .submit-qr-dialog .fs-modal-content {
   border-radius: 16px;
   overflow: hidden;
@@ -3379,17 +3342,17 @@ body {
 }
 
 .submit-qr-dialog-caption {
-  margin: 16px 0 8px;
+  margin: 14px 0 8px;
   font-size: 0.94rem;
   color: #64748b;
   font-weight: 500;
 }
 
 .submit-qr-dialog .fs-modal-title {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #151a22;
-  padding: 20px 24px 16px;
+  padding: 20px 24px 14px;
   margin: 0;
 }
 
@@ -3400,53 +3363,29 @@ body {
   border-radius: 10px;
 }
 
-/* ===== 响应式设计 ===== */
-
+/* ===== 响应式：768px 以下 ===== */
 @media (max-width: 768px) {
+  .submit-success-page {
+    padding-bottom: 24px;
+  }
+
   .submit-success-card {
-    grid-template-columns: 1fr;
-  }
-
-  .submit-success-banner {
-    padding: 32px 24px;
-    min-height: 200px;
-  }
-
-  .submit-success-banner-img {
-    max-height: 160px;
-  }
-
-  .submit-success-content {
-    padding: 28px 20px 24px;
-    gap: 22px;
-  }
-
-  .submit-success-header {
-    gap: 12px;
-  }
-
-  .success-checkmark {
-    width: 38px;
-    height: 38px;
-  }
-
-  .success-checkmark svg {
-    width: 22px;
-    height: 22px;
+    padding: 24px 20px 0;
+    gap: 20px;
   }
 
   .submit-success-main-title {
-    font-size: 1.45rem;
+    font-size: 1.4rem;
   }
 
   .submit-success-subtitle {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
   }
 
   .success-info-block {
-    grid-template-columns: 42px 1fr;
+    grid-template-columns: 38px 1fr;
     gap: 12px;
-    padding: 16px 16px;
+    padding: 16px;
   }
 
   .info-block-icon {
@@ -3459,50 +3398,64 @@ body {
     height: 20px;
   }
 
-  .info-block-title {
-    font-size: 0.86rem;
+  .contact-actions {
+    flex-direction: row;
+    gap: 10px;
   }
 
-  .info-block-text {
-    font-size: 0.94rem;
-  }
-
-  .contact-row {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .qr-preview-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .qr-btn-text {
-    display: inline;
-  }
-
-  .submit-success-footer {
-    padding-top: 8px;
+  .qr-open-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
   }
 
   .primary-action-btn {
     width: 100%;
-    padding: 13px 24px;
-    font-size: 0.98rem;
+    padding: 13px 20px;
   }
 }
 
+/* ===== 响应式：480px 以下 ===== */
 @media (max-width: 480px) {
-  .submit-success-content {
-    padding: 24px 16px 20px;
+  .submit-success-card {
+    padding: 20px 16px 0;
+    gap: 18px;
+  }
+
+  .submit-success-header {
+    gap: 12px;
+  }
+
+  .success-checkmark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .success-checkmark svg {
+    width: 20px;
+    height: 20px;
   }
 
   .submit-success-main-title {
-    font-size: 1.28rem;
+    font-size: 1.25rem;
+  }
+
+  .submit-success-subtitle {
+    font-size: 0.9rem;
   }
 
   .success-info-block {
-    padding: 14px 14px;
+    padding: 14px;
+  }
+
+  .contact-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .qr-open-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .submit-qr-dialog-image {
