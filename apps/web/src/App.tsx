@@ -1457,7 +1457,7 @@ export default function App() {
     setSubmitAttempted(true);
 
     if (hasFieldError) {
-      setNotice('请先修正表单错误');
+      setNotice('无法提交');
       requestAnimationFrame(() => {
         const firstError = document.querySelector('.fs-field .error');
         if (firstError) {
@@ -1731,7 +1731,7 @@ export default function App() {
           block
           disabled={!identity || isSubmitting}
         >
-          {isSubmitting ? '提交中...' : hasFieldError && submitAttempted ? '无法提交' : '领取观展票'}
+          {isSubmitting ? '提交中...' : '领取观展票'}
         </FeishuButton>
       </div>
     </div>
