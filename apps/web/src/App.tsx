@@ -1478,6 +1478,14 @@ export default function App() {
 
     if (selected.length === 0) return;
 
+    // 只允许图片文件
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const invalidFile = selected.find((f) => !allowedTypes.includes(f.type));
+    if (invalidFile) {
+      setNotice('仅支持上传 JPG、PNG 格式的图片');
+      return;
+    }
+
     // 限制只能上传一张图片
     if (proofUploadsRef.current.length >= 1) {
       setNotice('仅支持上传一张图片');
@@ -2090,7 +2098,6 @@ export default function App() {
                       className="upload-input"
                       type="file"
                       accept=".jpg,.jpeg,.png"
-                      multiple
                       onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                     />
@@ -2113,7 +2120,7 @@ export default function App() {
                             <CloudUploadRoundIcon />
                           </span>
                           <span className="upload-empty-title">点击上传文件</span>
-                          <span className="upload-empty-subtitle">支持 JPG, PNG, PDF (最大 50MB)</span>
+                          <span className="upload-empty-subtitle">支持 JPG, PNG (最大 50MB)</span>
                         </button>
                       ) : (
                         <FeishuButton
