@@ -17,6 +17,8 @@ const fieldMap = {
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
+  clickId: process.env.FEISHU_FIELD_CLICK_ID || '',
+  clickIdSourceKey: process.env.FEISHU_FIELD_CLICK_ID_SOURCE_KEY || '',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || '',
   source: process.env.FEISHU_FIELD_SOURCE || ''
@@ -321,6 +323,14 @@ function buildReadableFields(input: {
   const proofUrls = Array.isArray(submission.proofUrls) ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean) : [];
   if (fieldMap.proofUrl && proofUrls.length > 0) {
     fields[fieldMap.proofUrl] = proofUrls.join(',');
+  }
+
+  if (fieldMap.clickId && submission.clickId) {
+    fields[fieldMap.clickId] = submission.clickId;
+  }
+
+  if (fieldMap.clickIdSourceKey && submission.clickIdSourceKey) {
+    fields[fieldMap.clickIdSourceKey] = submission.clickIdSourceKey;
   }
 
   if (fieldMap.submittedAt) {

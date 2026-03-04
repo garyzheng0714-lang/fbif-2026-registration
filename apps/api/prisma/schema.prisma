@@ -52,11 +52,15 @@ model Submission {
   lastAttemptAt DateTime?
   nextAttemptAt DateTime?
   feishuRecordId String?   @db.VarChar(64)
+  clickId       String?    @db.VarChar(128)
+  clickIdSourceKey String? @db.VarChar(32)
   clientIp      String?    @db.VarChar(64)
   userAgent     String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  @@index([clickId])
+  @@index([clickIdSourceKey])
   @@index([phoneHash])
   @@index([idHash])
   @@index([syncStatus, createdAt])

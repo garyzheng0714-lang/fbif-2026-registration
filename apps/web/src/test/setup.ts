@@ -23,3 +23,29 @@ Object.defineProperty(window, 'localStorage', {
   value: makeStorage(),
   configurable: true
 });
+
+class MockIntersectionObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(window, 'IntersectionObserver', {
+  value: MockIntersectionObserver,
+  configurable: true
+});
+
+Object.defineProperty(globalThis, 'IntersectionObserver', {
+  value: MockIntersectionObserver,
+  configurable: true
+});
+
+Object.defineProperty(window, 'scrollTo', {
+  value: () => {},
+  configurable: true
+});
+
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  value: () => {},
+  configurable: true
+});

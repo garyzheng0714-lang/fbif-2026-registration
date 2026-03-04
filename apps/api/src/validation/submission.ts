@@ -110,10 +110,26 @@ const idTypeSchema = z.enum([
   'hmt_residence_permit',
   'other'
 ]);
+const clickIdSourceKeySchema = z.enum(['click_id', 'qz_gdt', 'gdt_vid']);
+
+function normalizeOptionalString(value: unknown, maxLen: number) {
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+  if (text.length > maxLen) return text;
+  return text;
+}
 
 export const submissionSchema = z.object({
   clientRequestId: z.string().min(8).max(64).optional(),
   idVerifyToken: z.string().max(1024).optional(),
+  clickId: z.preprocess((v) => normalizeOptionalString(v, 128), z.string().max(128).optional()),
+  clickIdSourceKey: z.preprocess(
+    (v) => {
+      const text = String(v ?? '').trim();
+      return text || undefined;
+    },
+    clickIdSourceKeySchema.optional()
+  ),
   role: roleSchema,
   idType: idTypeSchema,
   idNumber: z.string().min(1).max(64),
@@ -125,6 +141,14 @@ export const submissionSchema = z.object({
   department: z.string().optional(),
   proofUrls: z.any().optional().transform((v) => normalizeProofUrls(v))
 }).superRefine((data, ctx) => {
+  if (data.clickIdSourceKey && !data.clickId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['clickId'],
+      message: 'clickId 不能为空'
+    });
+  }
+
   const idType = data.idType;
   const idNumber = String(data.idNumber || '').trim();
 
