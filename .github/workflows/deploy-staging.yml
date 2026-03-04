@@ -262,24 +262,24 @@ jobs:
             if command -v nginx >/dev/null 2>&1; then
               mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
               cat > /etc/nginx/sites-available/fbif-form-staging <<'NGINX_SITE'
-server {
-    listen 3003;
-    listen [::]:3003;
-    server_name _;
+              server {
+                  listen 3003;
+                  listen [::]:3003;
+                  server_name _;
 
-    root /var/www/fbif-form-staging;
-    index index.html;
+                  root /var/www/fbif-form-staging;
+                  index index.html;
 
-    location = /healthz {
-        default_type text/plain;
-        return 200 "ok\n";
-    }
+                  location = /healthz {
+                      default_type text/plain;
+                      return 200 "ok\n";
+                  }
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-NGINX_SITE
+                  location / {
+                      try_files $uri $uri/ /index.html;
+                  }
+              }
+              NGINX_SITE
               ln -sfn /etc/nginx/sites-available/fbif-form-staging /etc/nginx/sites-enabled/fbif-form-staging
               nginx -t
               systemctl reload nginx
