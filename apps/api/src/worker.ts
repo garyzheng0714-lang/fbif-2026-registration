@@ -19,7 +19,6 @@ import {
   markSubmissionSuccess
 } from './services/submissionService.js';
 import { alertSyncFailure } from './services/alertService.js';
-import { reportConversionToGdt } from './services/gdtConversionService.js';
 import { feishuApiErrorsTotal, feishuSyncJobsTotal } from './metrics.js';
 
 function computeExponentialBackoffMs(attempt: number, multiplier = 1) {
@@ -75,21 +74,6 @@ const worker = new Worker(
 
       await markSubmissionSuccess(submission.id, recordId);
       feishuSyncJobsTotal.inc({ result: 'success' });
-
-      // 腾讯广告转化回传
-      if (submission.clickId) {
-        const gdtResult = await reportConversionToGdt(
-          submission.clickId,
-          env.GDT_ACTION_TYPE,
-          env.WEB_ORIGIN
-        );
-        if (!gdtResult.success) {
-          logger.error(
-            { submissionId: submission.id, clickId: submission.clickId, error: gdtResult.error },
-            'GDT conversion report failed after feishu sync success'
-          );
-        }
-      }
     } catch (err) {
       const msg = errorMessage(err);
       const retryable = isRetryableFeishuError(err);

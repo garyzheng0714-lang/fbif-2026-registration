@@ -113,7 +113,6 @@ const idTypeSchema = z.enum([
 
 export const submissionSchema = z.object({
   clientRequestId: z.string().min(8).max(64).optional(),
-  clickId: z.string().min(16).max(64).optional(), // 腾讯广告 click_id
   idVerifyToken: z.string().max(1024).optional(),
   role: roleSchema,
   idType: idTypeSchema,
