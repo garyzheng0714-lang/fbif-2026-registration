@@ -15,13 +15,14 @@ const fieldMap = {
   identity: process.env.FEISHU_FIELD_IDENTITY || '观展身份',
   idType: process.env.FEISHU_FIELD_ID_TYPE || '',
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
-  department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门',
+  department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
-  clickId: process.env.FEISHU_FIELD_CLICK_ID || '',
-  clickIdSourceKey: process.env.FEISHU_FIELD_CLICK_ID_SOURCE_KEY || '',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || '',
-  source: process.env.FEISHU_FIELD_SOURCE || ''
+  source: process.env.FEISHU_FIELD_SOURCE || '',
+  trackingParams: process.env.FEISHU_FIELD_TRACKING_PARAMS || '访问跟踪参数',
+  trackingId: process.env.FEISHU_FIELD_TRACKING_ID || '跟踪ID',
+  trackingIdType: process.env.FEISHU_FIELD_TRACKING_ID_TYPE || '跟踪ID类型'
 };
 
 type TokenCache = { value: string; expiresAt: number };
@@ -285,51 +286,12 @@ export type BitableWriteFields = {
   optionIdFields: Record<string, unknown>;
 };
 
-function isUrlField(meta: BitableFieldMeta | null | undefined) {
-  if (!meta) return false;
-  const uiType = trim(meta.uiType).toLowerCase();
-  return meta.type === 15 || uiType.includes('url') || uiType.includes('link');
-}
-
-function buildProofUrlFieldValue(
-  proofUrls: string[],
-  meta: BitableFieldMeta | null | undefined,
-  ctx: { traceId: string; idSuffix: string }
-) {
-  if (proofUrls.length === 0) return null;
-
-  if (!isUrlField(meta)) {
-    return proofUrls.join(',');
-  }
-
-  if (proofUrls.length > 1) {
-    logger.warn(
-      {
-        traceId: ctx.traceId,
-        idSuffix: ctx.idSuffix,
-        fieldName: meta?.name || fieldMap.proofUrl,
-        urlCount: proofUrls.length
-      },
-      'bitable hyperlink field only supports a single proof url; using the first url'
-    );
-  }
-
-  const firstUrl = proofUrls[0];
-  return {
-    text: firstUrl,
-    link: firstUrl
-  };
-}
-
 function buildReadableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
-  metaByName: Map<string, BitableFieldMeta>;
 }): Record<string, unknown> {
   const submission = input.submission;
   const sensitive = input.sensitive;
-  const metaByName = input.metaByName;
-  const idSuffix = sensitive.idNumber.slice(-4);
 
   const fields: Record<string, unknown> = {
     [fieldMap.name]: submission.name,
@@ -359,24 +321,11 @@ function buildReadableFields(input: {
     fields[fieldMap.department] = normalizeDepartmentOptionText(submission.department);
   }
 
-  const proofUrls = Array.isArray(submission.proofUrls) ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean) : [];
+  const proofUrls = Array.isArray(submission.proofUrls)
+    ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean)
+    : [];
   if (fieldMap.proofUrl && proofUrls.length > 0) {
-    const proofFieldValue = buildProofUrlFieldValue(
-      proofUrls,
-      metaByName.get(fieldMap.proofUrl) || null,
-      { traceId: submission.traceId, idSuffix }
-    );
-    if (proofFieldValue !== null) {
-      fields[fieldMap.proofUrl] = proofFieldValue;
-    }
-  }
-
-  if (fieldMap.clickId && submission.clickId) {
-    fields[fieldMap.clickId] = submission.clickId;
-  }
-
-  if (fieldMap.clickIdSourceKey && submission.clickIdSourceKey) {
-    fields[fieldMap.clickIdSourceKey] = submission.clickIdSourceKey;
+    fields[fieldMap.proofUrl] = proofUrls[0];
   }
 
   if (fieldMap.submittedAt) {
@@ -391,7 +340,29 @@ function buildReadableFields(input: {
     fields[fieldMap.source] = process.env.FEISHU_SUBMISSION_SOURCE || '正式环境';
   }
 
+  if (fieldMap.trackingParams && submission.trackingParams) {
+    fields[fieldMap.trackingParams] = trim(submission.trackingParams);
+  }
+
+  if (fieldMap.trackingId && submission.trackingId) {
+    fields[fieldMap.trackingId] = trim(submission.trackingId);
+  }
+
+  if (fieldMap.trackingIdType && submission.trackingIdType) {
+    fields[fieldMap.trackingIdType] = trim(submission.trackingIdType);
+  }
+
   return fields;
+}
+
+function normalizeFieldValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function fieldsAreDifferent(a: Record<string, unknown>, b: Record<string, unknown>) {
@@ -399,10 +370,7 @@ function fieldsAreDifferent(a: Record<string, unknown>, b: Record<string, unknow
   const bKeys = Object.keys(b);
   if (aKeys.length !== bKeys.length) return true;
   for (const key of aKeys) {
-    const aValue = a[key];
-    const bValue = b[key];
-    if (aValue === bValue) continue;
-    if (JSON.stringify(aValue) !== JSON.stringify(bValue)) return true;
+    if (normalizeFieldValue(a[key]) !== normalizeFieldValue(b[key])) return true;
   }
   return false;
 }
@@ -475,20 +443,29 @@ export async function mapSubmissionToBitableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
 }): Promise<BitableWriteFields> {
-  const metaByName = await getBitableFieldMetaByName();
-  const readableFields = buildReadableFields({
-    ...input,
-    metaByName
-  });
+  const readableFields = buildReadableFields(input);
   const submission = input.submission;
   const sensitive = input.sensitive;
   const idSuffix = sensitive.idNumber.slice(-4);
+  const metaByName = await getBitableFieldMetaByName();
   const optionIdFields = applySingleSelectMappings(
-    { ...readableFields },
+    { ...(readableFields as Record<string, string>) },
     metaByName,
     { traceId: submission.traceId, idSuffix },
     logger
-  );
+  ) as Record<string, unknown>;
+
+  if (fieldMap.proofUrl) {
+    const proofMeta = metaByName.get(fieldMap.proofUrl);
+    const proofUrl = trim(readableFields[fieldMap.proofUrl]);
+    const isUrlField = proofMeta && (proofMeta.uiType === 'Url' || Number(proofMeta.type) === 15);
+    if (isUrlField && proofUrl) {
+      const urlCell = { link: proofUrl, text: '证明链接' };
+      readableFields[fieldMap.proofUrl] = urlCell;
+      optionIdFields[fieldMap.proofUrl] = urlCell;
+    }
+  }
+
   return {
     readableFields,
     optionIdFields

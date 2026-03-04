@@ -52,6 +52,20 @@ export function sanitizeText(value: string): string {
   return String(value || '').replace(/[<>]/g, '').trim();
 }
 
+function sanitizeTrackingParams(value: unknown): string {
+  const text = sanitizeText(String(value || ''));
+  if (!text) return '';
+  return text.replace(/^\?+/, '').slice(0, 4000);
+}
+
+function sanitizeTrackingIdType(value: unknown): string {
+  return sanitizeText(String(value || '')).slice(0, 128);
+}
+
+function sanitizeTrackingId(value: unknown): string {
+  return sanitizeText(String(value || '')).slice(0, 512);
+}
+
 function normalizeUrl(value: unknown) {
   const text = sanitizeText(String(value || ''));
   if (!text) return '';
@@ -139,6 +153,18 @@ export const submissionSchema = z.object({
   company: z.string().min(2, '公司至少 2 个字符').max(64),
   businessType: z.string().optional(),
   department: z.string().optional(),
+  trackingParams: z.string().max(4000).optional().transform((v) => {
+    const normalized = sanitizeTrackingParams(v);
+    return normalized || undefined;
+  }),
+  trackingId: z.string().max(512).optional().transform((v) => {
+    const normalized = sanitizeTrackingId(v);
+    return normalized || undefined;
+  }),
+  trackingIdType: z.string().max(128).optional().transform((v) => {
+    const normalized = sanitizeTrackingIdType(v);
+    return normalized || undefined;
+  }),
   proofUrls: z.any().optional().transform((v) => normalizeProofUrls(v))
 }).superRefine((data, ctx) => {
   if (data.clickIdSourceKey && !data.clickId) {
