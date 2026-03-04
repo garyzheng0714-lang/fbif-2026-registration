@@ -182,7 +182,7 @@ jobs:
           STATIC_DIR: /var/www/fbif-form-staging
           API_PORT: "8083"
           API_PORT_INTERNAL: "8080"
-          WEB_ORIGIN: ${{ secrets.STAGING_WEB_ORIGIN }}
+          WEB_ORIGIN: http://112.124.103.65:3003
           CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -258,6 +258,33 @@ jobs:
             cp -r "${RELEASE_DIR}/apps/web/dist/"* "${STATIC_DIR_VALUE}/"
             echo "Static files deployed to ${STATIC_DIR_VALUE}"
 
+            # --- 确保宿主机 3003 端口由 NGINX 提供 staging 静态站点 ---
+            if command -v nginx >/dev/null 2>&1; then
+              mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+              cat > /etc/nginx/sites-available/fbif-form-staging <<'NGINX_SITE'
+server {
+    listen 3003;
+    listen [::]:3003;
+    server_name _;
+
+    root /var/www/fbif-form-staging;
+    index index.html;
+
+    location = /healthz {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+NGINX_SITE
+              ln -sfn /etc/nginx/sites-available/fbif-form-staging /etc/nginx/sites-enabled/fbif-form-staging
+              nginx -t
+              systemctl reload nginx
+            fi
+
             # --- 环境变量管理 (source 共享脚本) ---
             export BACKEND_ENV_FILE
             . "${RELEASE_DIR}/scripts/update-backend-env.sh"
@@ -314,6 +341,7 @@ jobs:
             }
 
             wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 40
+            wait_http "http://127.0.0.1:3003/healthz" 20
 
             # --- 清理旧版本 (保留最近 5 个) ---
             ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
