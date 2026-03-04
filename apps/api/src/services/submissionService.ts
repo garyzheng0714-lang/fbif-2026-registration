@@ -19,6 +19,9 @@ export async function createSubmission(input: SubmissionInput, meta: { clientIp?
     idNumber: input.idNumber.trim(),
     businessType: sanitizeText(input.businessType || ''),
     department: sanitizeText(input.department || ''),
+    trackingParams: sanitizeText(input.trackingParams || ''),
+    trackingId: sanitizeText(input.trackingId || ''),
+    trackingIdType: sanitizeText(input.trackingIdType || ''),
     proofUrls: Array.isArray(input.proofUrls) ? input.proofUrls : []
   };
 
@@ -38,6 +41,9 @@ export async function createSubmission(input: SubmissionInput, meta: { clientIp?
         idHash: hashField(clean.idNumber),
         businessType: clean.role === 'industry' ? clean.businessType.slice(0, 64) : null,
         department: clean.role === 'industry' ? clean.department.slice(0, 64) : null,
+        trackingParams: clean.trackingParams ? clean.trackingParams.slice(0, 4000) : null,
+        trackingId: clean.trackingId ? clean.trackingId.slice(0, 512) : null,
+        trackingIdType: clean.trackingIdType ? clean.trackingIdType.slice(0, 128) : null,
         proofUrls: clean.role === 'industry' ? clean.proofUrls : undefined,
         clientIp: meta.clientIp?.slice(0, 64),
         userAgent: meta.userAgent?.slice(0, 1024)

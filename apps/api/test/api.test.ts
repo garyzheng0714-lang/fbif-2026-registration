@@ -142,13 +142,21 @@ test('consumer submission is accepted and returns id + traceId', async () => {
       phone: '13800138000',
       name: '张三',
       title: '消费者',
-      company: '个人消费者'
+      company: '个人消费者',
+      trackingParams: 'utm_source=ad&qz_gdt=QZ-123&foo=bar',
+      trackingId: 'QZ-123',
+      trackingIdType: 'qz_gdt'
     });
 
   assert.equal(submitRes.status, 202);
   assert.equal(typeof submitRes.body.id, 'string');
   assert.equal(typeof submitRes.body.traceId, 'string');
   assert.equal(submitRes.body.syncStatus, 'PENDING');
+
+  const saved = await prisma.submission.findUnique({ where: { id: submitRes.body.id } });
+  assert.equal(saved?.trackingParams, 'utm_source=ad&qz_gdt=QZ-123&foo=bar');
+  assert.equal(saved?.trackingId, 'QZ-123');
+  assert.equal(saved?.trackingIdType, 'qz_gdt');
 });
 
 test('clientRequestId is idempotent', async () => {

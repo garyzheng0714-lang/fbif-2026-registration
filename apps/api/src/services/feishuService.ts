@@ -19,7 +19,10 @@ const fieldMap = {
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || '',
-  source: process.env.FEISHU_FIELD_SOURCE || ''
+  source: process.env.FEISHU_FIELD_SOURCE || '',
+  trackingParams: process.env.FEISHU_FIELD_TRACKING_PARAMS || '访问跟踪参数',
+  trackingId: process.env.FEISHU_FIELD_TRACKING_ID || '跟踪ID',
+  trackingIdType: process.env.FEISHU_FIELD_TRACKING_ID_TYPE || '跟踪ID类型'
 };
 
 type TokenCache = { value: string; expiresAt: number };
@@ -333,6 +336,18 @@ function buildReadableFields(input: {
 
   if (fieldMap.source) {
     fields[fieldMap.source] = process.env.FEISHU_SUBMISSION_SOURCE || '正式环境';
+  }
+
+  if (fieldMap.trackingParams && submission.trackingParams) {
+    fields[fieldMap.trackingParams] = trim(submission.trackingParams);
+  }
+
+  if (fieldMap.trackingId && submission.trackingId) {
+    fields[fieldMap.trackingId] = trim(submission.trackingId);
+  }
+
+  if (fieldMap.trackingIdType && submission.trackingIdType) {
+    fields[fieldMap.trackingIdType] = trim(submission.trackingIdType);
   }
 
   return fields;

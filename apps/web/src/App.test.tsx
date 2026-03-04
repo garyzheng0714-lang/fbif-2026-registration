@@ -21,6 +21,7 @@ async function selectFeishuOption(
 
 describe('App dynamic form', () => {
   beforeEach(() => {
+    window.history.replaceState({}, '', '/');
     window.localStorage.clear();
     vi.restoreAllMocks();
     vi.stubGlobal('fetch', vi.fn());
@@ -83,6 +84,7 @@ describe('App dynamic form', () => {
   it('submits consumer payload with backend-compatible mapping', async () => {
     const user = userEvent.setup();
     const fetchMock = vi.mocked(fetch);
+    window.history.replaceState({}, '', '/?utm_source=ad&qz_gdt=QZ-123&foo=bar');
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ csrfToken: 'csrf-token' }))
       .mockResolvedValueOnce(jsonResponse({ id: 'submission-id', traceId: 'trace-id', syncStatus: 'PENDING' }, 202));
@@ -111,6 +113,9 @@ describe('App dynamic form', () => {
     expect(submitBody.company).toBe('个人消费者');
     expect(submitBody.name).toBe('张三');
     expect(submitBody.phone).toBe('+8613800000000');
+    expect(submitBody.trackingParams).toBe('utm_source=ad&qz_gdt=QZ-123&foo=bar');
+    expect(submitBody.trackingId).toBe('QZ-123');
+    expect(submitBody.trackingIdType).toBe('qz_gdt');
 
     expect(await screen.findByText('感谢您申请')).toBeInTheDocument();
     expect(screen.getByText('FBIF食品创新展2026 消费者观展票')).toBeInTheDocument();

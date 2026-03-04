@@ -45,6 +45,9 @@ model Submission {
   idHash        String     @db.VarChar(64)
   businessType  String?    @db.VarChar(64)
   department    String?    @db.VarChar(64)
+  trackingParams String?   @db.Text
+  trackingId    String?    @db.VarChar(512)
+  trackingIdType String?   @db.VarChar(128)
   proofUrls     Json?      @db.JsonB
   syncStatus    SyncStatus @default(PENDING)
   syncError     String?    @db.Text

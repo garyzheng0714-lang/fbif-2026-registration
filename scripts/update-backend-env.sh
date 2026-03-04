@@ -109,6 +109,9 @@ apply_defaults() {
   set_default FEISHU_FIELD_SUBMITTED_AT ""
   set_default FEISHU_FIELD_SYNC_STATUS ""
   set_default FEISHU_FIELD_SOURCE ""
+  set_default FEISHU_FIELD_TRACKING_PARAMS "访问跟踪参数"
+  set_default FEISHU_FIELD_TRACKING_ID "跟踪ID"
+  set_default FEISHU_FIELD_TRACKING_ID_TYPE "跟踪ID类型"
   set_default FEISHU_SUBMISSION_SOURCE "${FEISHU_SUBMISSION_SOURCE:-正式环境}"
   set_default RATE_LIMIT_WINDOW_MS 60000
   set_default RATE_LIMIT_MAX 120
@@ -175,6 +178,9 @@ apply_overrides() {
   set_if_non_empty MAX_PROOF_URLS "${MAX_PROOF_URLS:-}"
   set_if_non_empty MAX_PROOF_URL_LENGTH "${MAX_PROOF_URL_LENGTH:-}"
   set_if_non_empty FEISHU_FIELD_SOURCE "${FEISHU_FIELD_SOURCE:-}"
+  set_if_non_empty FEISHU_FIELD_TRACKING_PARAMS "${FEISHU_FIELD_TRACKING_PARAMS:-}"
+  set_if_non_empty FEISHU_FIELD_TRACKING_ID "${FEISHU_FIELD_TRACKING_ID:-}"
+  set_if_non_empty FEISHU_FIELD_TRACKING_ID_TYPE "${FEISHU_FIELD_TRACKING_ID_TYPE:-}"
   set_if_non_empty FEISHU_SUBMISSION_SOURCE "${FEISHU_SUBMISSION_SOURCE:-}"
   set_if_non_empty FEISHU_ALERT_WEBHOOK "${FEISHU_ALERT_WEBHOOK:-}"
   set_if_non_empty FEISHU_ALERT_ENABLED "${FEISHU_ALERT_ENABLED:-}"

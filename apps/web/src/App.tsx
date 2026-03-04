@@ -255,6 +255,51 @@ const initialIdVerifyState: IdVerifyState = {
 };
 
 const otherIdRegex = /^[A-Za-z0-9-]{6,20}$/;
+const TRACKING_ID_KEYS = ['gdt_vid', 'qz_gdt', 'click_id', 'vid'] as const;
+const MAX_TRACKING_PARAMS_LENGTH = 4000;
+const MAX_TRACKING_ID_LENGTH = 512;
+const MAX_TRACKING_ID_TYPE_LENGTH = 128;
+
+function getTrackingAttribution() {
+  if (typeof window === 'undefined' || !window.location) {
+    return { trackingParams: '', trackingId: '', trackingIdType: '' };
+  }
+
+  const normalizedSearch = String(window.location.search || '').replace(/^\?+/, '').trim();
+  if (!normalizedSearch) {
+    return { trackingParams: '', trackingId: '', trackingIdType: '' };
+  }
+
+  const params = new URLSearchParams(normalizedSearch);
+  let trackingId = '';
+  let trackingIdType = '';
+
+  for (const key of TRACKING_ID_KEYS) {
+    const value = String(params.get(key) || '').trim();
+    if (value) {
+      trackingId = value;
+      trackingIdType = key;
+      break;
+    }
+  }
+
+  if (!trackingId || !trackingIdType) {
+    for (const [key, value] of params.entries()) {
+      const normalizedValue = String(value || '').trim();
+      if (!normalizedValue) continue;
+      if (!/id/i.test(key)) continue;
+      trackingId = normalizedValue;
+      trackingIdType = key;
+      break;
+    }
+  }
+
+  return {
+    trackingParams: normalizedSearch.slice(0, MAX_TRACKING_PARAMS_LENGTH),
+    trackingId: trackingId.slice(0, MAX_TRACKING_ID_LENGTH),
+    trackingIdType: trackingIdType.slice(0, MAX_TRACKING_ID_TYPE_LENGTH)
+  };
+}
 
 async function parseJsonIfPossible(response: Response): Promise<any | null> {
   const contentType = response.headers.get('content-type') || '';
@@ -1588,6 +1633,7 @@ export default function App() {
 
     try {
       let csrfToken = await fetchCsrfToken();
+      const trackingAttribution = getTrackingAttribution();
 
       const payload =
         identity === 'industry'
@@ -1605,6 +1651,9 @@ export default function App() {
               idVerifyToken: industryForm.idType === 'cn_id'
                 ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
                 : undefined,
+              trackingParams: trackingAttribution.trackingParams || undefined,
+              trackingId: trackingAttribution.trackingId || undefined,
+              trackingIdType: trackingAttribution.trackingIdType || undefined,
               proofUrls: [] as string[]
             }
           : {
@@ -1616,6 +1665,9 @@ export default function App() {
               idNumber: consumerForm.idNumber.trim().toUpperCase(),
               role: 'consumer' as const,
               idType: consumerForm.idType,
+              trackingParams: trackingAttribution.trackingParams || undefined,
+              trackingId: trackingAttribution.trackingId || undefined,
+              trackingIdType: trackingAttribution.trackingIdType || undefined,
               idVerifyToken: consumerForm.idType === 'cn_id'
                 ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
                 : undefined
