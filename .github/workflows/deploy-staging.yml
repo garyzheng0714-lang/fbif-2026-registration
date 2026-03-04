@@ -95,9 +95,9 @@ jobs:
       - name: Validate SSH Key
         env:
           ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
-          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
-          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
+          ALIYUN_USER: root
+          ALIYUN_SSH_KEY: ${{ secrets.STAGING_ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.STAGING_ALIYUN_SSH_KEY_B64 }}
         run: |
           set -euo pipefail
           HOST="${ALIYUN_HOST:-112.124.103.65}"
@@ -160,7 +160,7 @@ jobs:
       - name: Upload Release To Server
         env:
           ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_USER: root
         run: |
           set -euo pipefail
           HOST="${ALIYUN_HOST:-112.124.103.65}"
@@ -177,7 +177,7 @@ jobs:
       - name: Deploy On Server
         env:
           ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_USER: root
           APP_DIR: /opt/web-fbif-form-staging
           STATIC_DIR: /var/www/fbif-form-staging
           API_PORT: "8083"
