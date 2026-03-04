@@ -650,6 +650,14 @@ function ConsumerCardIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 function UploadIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1818,12 +1826,15 @@ export default function App() {
                 aria-pressed={identity === 'industry'}
                 aria-label="专业观众注册"
               >
-                <span className="role-icon" aria-hidden="true">
+                <span className="role-icon role-icon--industry" aria-hidden="true">
                   <IndustryCardIcon />
                 </span>
                 <span className="role-content">
                   <span className="role-title">专业观众注册<span className="role-tag need">需审核</span></span>
                   <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）</span>
+                </span>
+                <span className="role-check" aria-hidden="true">
+                  <CheckIcon />
                 </span>
               </button>
               <button
@@ -1833,12 +1844,15 @@ export default function App() {
                 aria-pressed={identity === 'consumer'}
                 aria-label="消费者注册"
               >
-                <span className="role-icon" aria-hidden="true">
+                <span className="role-icon role-icon--consumer" aria-hidden="true">
                   <ConsumerCardIcon />
                 </span>
                 <span className="role-content">
                   <span className="role-title">消费者注册<span className="role-tag free">免审核</span></span>
                   <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）</span>
+                </span>
+                <span className="role-check" aria-hidden="true">
+                  <CheckIcon />
                 </span>
               </button>
             </div>

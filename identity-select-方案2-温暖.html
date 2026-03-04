@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>方案2 - 温暖质感</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
+      background: linear-gradient(180deg, #faf8f5 0%, #f5f0e8 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 640px; margin: 0 auto; padding: 0 24px 48px; }
+    .banner {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; margin-bottom: 40px;
+      border-radius: 0 0 24px 24px;
+    }
+    .header { margin-bottom: 32px; padding: 0 8px; }
+    .header-label { font-size: 12px; font-weight: 600; color: #c17817; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+    .header h1 { font-size: 26px; font-weight: 600; color: #2c2416; letter-spacing: -0.3px; margin-bottom: 8px; }
+    .header p { font-size: 16px; color: #8b7355; }
+
+    .options { display: flex; flex-direction: column; gap: 16px; }
+    .option {
+      padding: 24px;
+      border-radius: 20px;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex; align-items: center; gap: 20px;
+      box-shadow: 0 2px 8px rgba(139, 115, 85, 0.06);
+      border: 2px solid transparent;
+    }
+    .option:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(139, 115, 85, 0.12); }
+    .option.is-selected { border-color: #c17817; box-shadow: 0 4px 20px rgba(193, 120, 23, 0.15); }
+
+    .option-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .option.is-selected .option-icon { transform: scale(1.05); }
+    .option-icon svg { width: 28px; height: 28px; }
+
+    .icon-industry { background: linear-gradient(135deg, #e8f4fd 0%, #d4e9f7 100%); color: #1a5f9e; }
+    .icon-consumer { background: linear-gradient(135deg, #fef3e2 0%, #fde4c4 100%); color: #c17817; }
+
+    .option-content { flex: 1; }
+    .option-title { font-size: 18px; font-weight: 600; color: #2c2416; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .option-tag {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+    }
+    .tag-need { background: #fef3e2; color: #c17817; }
+    .tag-free { background: #e8f5e9; color: #2e7d32; }
+    .option-desc { font-size: 14px; color: #8b7355; }
+
+    .option-indicator {
+      width: 26px; height: 26px; border-radius: 50%; border: 2px solid #d4c4b0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.25s ease;
+    }
+    .option.is-selected .option-indicator { border-color: #c17817; background: #c17817; }
+    .option-indicator svg { width: 13px; height: 13px; color: #fff; opacity: 0; transform: scale(0); transition: all 0.2s ease; }
+    .option.is-selected .option-indicator svg { opacity: 1; transform: scale(1); }
+
+    .notice { margin-top: 36px; text-align: center; }
+    .notice-inner {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 24px; background: #fff; border-radius: 12px;
+      font-size: 14px; color: #8b7355; box-shadow: 0 2px 8px rgba(139, 115, 85, 0.06);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 2026">
+    <div class="header">
+      <div class="header-label">Registration</div>
+      <h1>选择您的观展身份</h1>
+      <p>根据您的身份，为您发放对应的观展票</p>
+    </div>
+    <div class="options">
+      <div class="option is-selected" onclick="select(this)">
+        <div class="option-icon icon-industry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          </svg>
+        </div>
+        <div class="option-content">
+          <div class="option-title">专业观众<span class="option-tag tag-need">需审核</span></div>
+          <div class="option-desc">4月27-29日 · 3日通票</div>
+        </div>
+        <div class="option-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+      <div class="option" onclick="select(this)">
+        <div class="option-icon icon-consumer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div class="option-content">
+          <div class="option-title">消费者<span class="option-tag tag-free">免审核</span></div>
+          <div class="option-desc">4月29日 · 1日票</div>
+        </div>
+        <div class="option-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="notice">
+      <div class="notice-inner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c17817" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r="1"/></svg>
+        16岁以下观众禁止入场
+      </div>
+    </div>
+  </div>
+  <script>
+    function select(el) {
+      document.querySelectorAll('.option').forEach(o => o.classList.remove('is-selected'));
+      el.classList.add('is-selected');
+    }
+  </script>
+</body>
+</html>
