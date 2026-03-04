@@ -288,11 +288,11 @@ jobs:
               systemctl reload nginx
             fi
 
-            # --- 通过 Caddy 暴露 staging 域名入口（HTTP） ---
+            # --- 通过 Caddy 暴露 staging 域名入口（自动 HTTPS） ---
             if command -v caddy >/dev/null 2>&1 && [ -f /etc/caddy/Caddyfile ]; then
-              if ! grep -q '^http://fbif2026ticket2\.foodtalks\.cn[[:space:]]*{' /etc/caddy/Caddyfile; then
+              if ! grep -q '^fbif2026ticket2\.foodtalks\.cn[[:space:]]*{' /etc/caddy/Caddyfile; then
                 printf '\n%s\n%s\n%s\n' \
-                  'http://fbif2026ticket2.foodtalks.cn {' \
+                  'fbif2026ticket2.foodtalks.cn {' \
                   '    reverse_proxy 127.0.0.1:3003' \
                   '}' >> /etc/caddy/Caddyfile
               fi
