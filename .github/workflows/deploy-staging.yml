@@ -182,7 +182,7 @@ jobs:
           STATIC_DIR: /var/www/fbif-form-staging
           API_PORT: "8083"
           API_PORT_INTERNAL: "8080"
-          WEB_ORIGIN: http://112.124.103.65:3003
+          WEB_ORIGIN: http://fbif2026ticket2.foodtalks.cn
           CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -283,6 +283,18 @@ jobs:
               ln -sfn /etc/nginx/sites-available/fbif-form-staging /etc/nginx/sites-enabled/fbif-form-staging
               nginx -t
               systemctl reload nginx
+            fi
+
+            # --- 通过 Caddy 暴露 staging 域名入口（HTTP） ---
+            if command -v caddy >/dev/null 2>&1 && [ -f /etc/caddy/Caddyfile ]; then
+              if ! grep -q '^http://fbif2026ticket2\.foodtalks\.cn[[:space:]]*{' /etc/caddy/Caddyfile; then
+                printf '\n%s\n%s\n%s\n' \
+                  'http://fbif2026ticket2.foodtalks.cn {' \
+                  '    reverse_proxy 127.0.0.1:3003' \
+                  '}' >> /etc/caddy/Caddyfile
+              fi
+              caddy validate --config /etc/caddy/Caddyfile
+              systemctl reload caddy
             fi
 
             # --- 环境变量管理 (source 共享脚本) ---
