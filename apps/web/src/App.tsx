@@ -1478,6 +1478,12 @@ export default function App() {
 
     if (selected.length === 0) return;
 
+    // 限制只能上传一张图片
+    if (proofUploadsRef.current.length >= 1) {
+      setNotice('仅支持上传一张图片');
+      return;
+    }
+
     const existingKeys = new Set(proofUploadsRef.current.map((file) => proofFileKey(file)));
     const nextUploads = [...proofUploadsRef.current];
     const nextPreviews: ProofPreview[] = [];
@@ -2083,7 +2089,7 @@ export default function App() {
                       ref={proofInputRef}
                       className="upload-input"
                       type="file"
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept=".jpg,.jpeg,.png"
                       multiple
                       onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
