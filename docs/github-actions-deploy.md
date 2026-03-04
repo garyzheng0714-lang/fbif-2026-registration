@@ -1,6 +1,6 @@
 # GitHub Actions 自动部署（阿里云）
 
-本仓库已配置工作流：`.github/workflows/deploy-aliyun.yml`  
+本仓库已配置工作流：`.github/workflows/deploy-aliyun.yml`
 触发条件：
 - 推送到 `main`
 - 手动触发 `workflow_dispatch`
@@ -9,6 +9,12 @@
 
 腾讯广告归因字段和 staging/production 多维表规范，统一见：
 - `docs/tencent-ads-attribution-spec.md`
+
+当前冻结规则：
+- `main` -> 生产服务器 `121.40.214.5`
+- `staging` -> 测试服务器 `112.124.103.65`
+- 生产和测试当前共用飞书表 `tbl0CQ74guMS1IDd`
+- 通过 `FEISHU_SUBMISSION_SOURCE` 区分 `正式环境` / `测试环境`
 
 ## 一次性配置（GitHub Secrets）
 在仓库 `Settings -> Secrets and variables -> Actions -> New repository secret` 新增：
@@ -19,11 +25,11 @@
   - `ALIYUN_SSH_KEY_B64`: 私钥文件的 base64 单行字符串（用于规避换行粘贴问题）
 
 - 选填（不填会使用默认值）：
-  - `ALIYUN_HOST`: 默认 `112.124.103.65`
+  - `ALIYUN_HOST`: 生产 workflow 默认 `121.40.214.5`
   - `ALIYUN_USER`: 默认 `root`
   - `APP_DIR`: 默认 `/opt/web-fbif-form`
-  - `WEB_ORIGIN`: 默认 `http://112.124.103.65:3001`
-  - `VITE_API_URL`: 默认 `http://112.124.103.65:8080`
+  - `WEB_ORIGIN`: 建议显式设置为生产域名 `https://fbif2026ticket.foodtalks.cn`
+  - `VITE_API_URL`: 不填时构建默认使用 `/api`
   - `FEISHU_APP_ID`: 默认 `cli_a9f7f8703778dcee`
   - `FEISHU_APP_TOKEN`: 默认 `<YOUR_FEISHU_APP_TOKEN>`
   - `FEISHU_TABLE_ID`: 默认 `tbl0CQ74guMS1IDd`
@@ -58,13 +64,24 @@
    - 如果没有，按 Secrets/默认值生成
 6. 执行数据库迁移：`prisma migrate deploy`
 7. 切换软链到新版本：`/opt/web-fbif-form/current`
-8. 用 `pm2` 重启服务：
-   - `fbif-api`（端口 `8080`）
-   - `fbif-worker`（无端口）
-   - `fbif-web`（端口 `3001`）
-8. 本机健康检查 + 清理旧版本（保留最近 5 个）
+8. 使用 `docker compose.production.yml` 启动/更新容器并执行健康检查
+9. 清理旧版本（保留最近 5 个）
+
+## staging 环境差异
+
+`.github/workflows/deploy-staging.yml` 固定使用以下语义：
+
+- 目标服务器：`112.124.103.65`
+- 应用目录：`/opt/web-fbif-form-staging`
+- Docker 项目名：`fbif-form-staging`
+- 数据库：`fbif_form_staging`
+- 端口：Web `3003`，API `8083`
+- 飞书表：`tbl0CQ74guMS1IDd`
+- 数据来源值：`FEISHU_SUBMISSION_SOURCE=测试环境`
 
 ## 发布后检查
-- 前端：`http://<ALIYUN_HOST>:3001`
-- 后端健康：`http://<ALIYUN_HOST>:8080/health`
-- GitHub Actions 日志：仓库 `Actions -> Deploy To Aliyun`
+- 生产前端：`https://fbif2026ticket.foodtalks.cn`
+- 生产后端健康：`http://127.0.0.1:8080/health`（服务器内）
+- 测试前端：`http://112.124.103.65:3003`
+- 测试后端健康：`http://127.0.0.1:8083/health`（测试服务器内）
+- GitHub Actions 日志：仓库 `Actions -> Deploy To Aliyun` / `Deploy Staging To Aliyun`

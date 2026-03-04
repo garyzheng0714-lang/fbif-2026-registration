@@ -45,7 +45,8 @@ web-fbif-form/
 
 | 项目 | 值 |
 |------|-----|
-| 阿里云公网 IP | 112.124.103.65 |
+| 生产服务器 IP | 121.40.214.5 |
+| 测试服务器 IP | 112.124.103.65 |
 | SSH 别名 | `aliyun-prod` |
 | 主机名 | iZbp17qedrmdkhpr80coo4Z |
 | 系统 | Ubuntu Linux 6.8.0-78-generic |
@@ -294,6 +295,8 @@ ssh root@new-server 'bash -s' < scripts/bootstrap-server.sh
 飞书同步支持写入"数据来源"字段，用于区分生产/测试数据：
 - `FEISHU_FIELD_SOURCE` - 飞书表格中的列名（如 "数据来源"）
 - `FEISHU_SUBMISSION_SOURCE` - 写入值（生产默认 "正式环境"，测试默认 "测试环境"）
+
+当前生产与测试共用同一张飞书表 `tbl0CQ74guMS1IDd`，依赖 `FEISHU_SUBMISSION_SOURCE` 区分来源。
 
 前提：需在飞书多维表格中手动添加"数据来源"列。
 

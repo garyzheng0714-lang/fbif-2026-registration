@@ -6,6 +6,8 @@
 - `FEISHU_APP_TOKEN`（baseid / app token）
 - `FEISHU_TABLE_ID`（当前：`tbl0CQ74guMS1IDd`）
 
+当前生产与 staging 共用同一张表，依赖 `FEISHU_SUBMISSION_SOURCE` 区分 `正式环境` / `测试环境`。
+
 ## 字段映射
 默认字段名：
 - 姓名

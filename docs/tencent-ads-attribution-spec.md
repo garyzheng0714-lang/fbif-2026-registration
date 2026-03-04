@@ -1,37 +1,22 @@
 # 腾讯广告归因与飞书表规范
 
-本文件是腾讯广告归因字段、飞书多维表格字段、以及正式/测试环境表配置的唯一规范文档。
+本文件是腾讯广告归因字段、飞书多维表格字段、以及正式/测试环境配置的唯一规范文档。
 
 ## 部署拓扑
 
-### 备用端仓库
-
-- GitHub 仓库：<https://github.com/garyzheng0714-lang/web-fbif-form.git>
-- 部署服务器：`112.124.103.65`
-- 自动部署
-
-分支与用途：
-
-- `staging`
-  - 用于检查每一次改动
-  - 提交数据必须写入测试飞书表
-- `main`
-  - 备用端主分支
-  - 随时可能替换正式端主分支
-  - 需要尽量与正式端字段规范保持一致
-  - 外部访问域名：<http://fbif2026ticket2.foodtalks.cn>
-
-### 正式端仓库
+### 主仓库
 
 - GitHub 仓库：<https://github.com/garyzheng0714-lang/fbif-2026-registration.git>
-- 部署服务器：`121.40.214.5`
-- 仅 `main` 分支
-- 外部访问域名：<http://fbif2026ticket.foodtalks.cn>
+- `main` -> 生产服务器 `121.40.214.5`
+- `staging` -> 测试服务器 `112.124.103.65`
+- 生产访问域名：<https://fbif2026ticket.foodtalks.cn>
 
-说明：
+### 镜像仓库
 
-- 本仓库只负责备用端代码与自动部署配置
-- 正式端仓库需要与本文档中的字段规范保持一致
+- GitHub 仓库：<https://github.com/garyzheng0714-lang/web-fbif-form.git>
+- 仅保留镜像/备份语义
+- 不再承载独立产品语义
+- 任何部署与配置判断都以主仓库为准
 
 ## 目标
 
@@ -70,7 +55,7 @@
 
 ## 飞书多维表格字段
 
-正式和测试环境的多维表格必须保持以下字段一致：
+生产和测试环境使用同一张飞书表，字段必须保持以下规范：
 
 - `腾讯广告点击ID`
 - `腾讯广告点击ID来源字段`
@@ -89,12 +74,12 @@
 
 ## 环境配置
 
-### 生产环境
+### 生产环境（main 分支）
 
-生产环境继续通过环境变量控制目标表：
+当前固定写入：
 
-- `FEISHU_APP_TOKEN`
-- `FEISHU_TABLE_ID`
+- `FEISHU_APP_TOKEN=<YOUR_FEISHU_APP_TOKEN>`
+- `FEISHU_TABLE_ID=tbl0CQ74guMS1IDd`
 
 字段列名通过以下环境变量控制：
 
@@ -104,34 +89,38 @@
 
 ### 测试环境（staging 分支）
 
-`staging` 分支部署后的数据必须落到以下测试表：
+`staging` 分支部署后的数据当前也写入同一张表：
 
 - Base: `<YOUR_FEISHU_APP_TOKEN>`
-- Table: `tblwMPbX5WBSoP6y`
-- URL: <https://foodtalks.feishu.cn/base/<YOUR_FEISHU_APP_TOKEN>?table=tblwMPbX5WBSoP6y&view=vewlonPheh>
+- Table: `tbl0CQ74guMS1IDd`
+- URL: <https://foodtalks.feishu.cn/base/<YOUR_FEISHU_APP_TOKEN>?table=tbl0CQ74guMS1IDd>
 
 测试环境写入值要求：
 
 - `FEISHU_SUBMISSION_SOURCE=测试环境`
 
-### 备用端 main 分支
+说明：
 
-- 备用端 `main` 分支保持自动部署
-- 它不是测试分支，不使用上述 staging 测试表
-- 其飞书表配置应与正式端保持同一套字段规范
-- 如果备用端 `main` 和正式端 `main` 指向不同表，这两个表也必须保持字段完全一致
+- 当前不再要求“生产表”和“测试表”分离。
+- 生产与测试通过 `FEISHU_SUBMISSION_SOURCE` 区分来源。
+- 如果未来恢复为两张表，必须同步修改 workflow、文档和环境变量。
 
 ## 部署要求
 
 ### staging
 
-- `staging` GitHub Actions 工作流固定写入测试表：
+- `staging` GitHub Actions 工作流固定写入共享表：
   - `FEISHU_APP_TOKEN=<YOUR_FEISHU_APP_TOKEN>`
-  - `FEISHU_TABLE_ID=tblwMPbX5WBSoP6y`
+  - `FEISHU_TABLE_ID=tbl0CQ74guMS1IDd`
+  - `FEISHU_SUBMISSION_SOURCE=测试环境`
 
 ### production
 
-- `main` GitHub Actions 工作流继续从 Secrets 读取生产表配置
+- `main` GitHub Actions 工作流写入同一张表
+- 如果继续从 Secrets 读取配置，其结果必须仍为：
+  - `FEISHU_APP_TOKEN=<YOUR_FEISHU_APP_TOKEN>`
+  - `FEISHU_TABLE_ID=tbl0CQ74guMS1IDd`
+  - `FEISHU_SUBMISSION_SOURCE=正式环境`
 
 ## 变更要求
 
@@ -143,10 +132,15 @@
 
 必须同时更新：
 
-1. 正式环境多维表格
-2. 测试环境多维表格
-3. 本文档
-4. 对应环境变量配置
+1. 当前共享的飞书多维表格
+2. 本文档
+3. 对应环境变量配置
+
+如果未来再次拆成测试专用表，还必须同时更新：
+
+1. `.github/workflows/deploy-staging.yml`
+2. `docs/repo-environment-model.md`
+3. `docs/repo-deploy-truth-map.md`
 
 ## 相关环境变量
 
