@@ -5,6 +5,11 @@
 - 推送到 `main`
 - 手动触发 `workflow_dispatch`
 
+测试环境（`staging` 分支）使用独立工作流：`.github/workflows/deploy-staging.yml`
+
+腾讯广告归因字段和 staging/production 多维表规范，统一见：
+- `docs/tencent-ads-attribution-spec.md`
+
 ## 一次性配置（GitHub Secrets）
 在仓库 `Settings -> Secrets and variables -> Actions -> New repository secret` 新增：
 

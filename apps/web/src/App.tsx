@@ -58,6 +58,7 @@ const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
 type Identity = '' | 'industry' | 'consumer';
 type SubmittedRole = 'industry' | 'consumer';
+type ClickIdSourceKey = '' | 'click_id' | 'qz_gdt' | 'gdt_vid';
 type IdType =
   | ''
   | 'cn_id'
@@ -76,6 +77,29 @@ function createClientRequestId() {
     // Ignore crypto errors and fallback.
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getTencentClickAttribution(): {
+  clickId: string;
+  clickIdSourceKey: ClickIdSourceKey;
+} {
+  if (typeof window === 'undefined' || !window.location) {
+    return { clickId: '', clickIdSourceKey: '' };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const sourceKeys: Exclude<ClickIdSourceKey, ''>[] = ['click_id', 'qz_gdt', 'gdt_vid'];
+
+  for (const key of sourceKeys) {
+    const value = String(params.get(key) || '').trim();
+    if (!value) continue;
+    return {
+      clickId: value,
+      clickIdSourceKey: key
+    };
+  }
+
+  return { clickId: '', clickIdSourceKey: '' };
 }
 
 const industryBusinessOptions = [
@@ -824,6 +848,7 @@ function ChevronLeftSmallIcon() {
 }
 
 export default function App() {
+  const initialClickAttribution = useMemo(() => getTencentClickAttribution(), []);
   const [page, setPage] = useState<'identity' | 'form' | 'submitted'>('identity');
   const [identity, setIdentity] = useState<Identity>('');
   const [submittedRole, setSubmittedRole] = useState<SubmittedRole | null>(null);
@@ -832,6 +857,10 @@ export default function App() {
   const [industryIdVerify, setIndustryIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
   const [consumerIdVerify, setConsumerIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
   const [clientRequestId, setClientRequestId] = useState(() => createClientRequestId());
+  const [clickId, setClickId] = useState(() => initialClickAttribution.clickId);
+  const [clickIdSourceKey, setClickIdSourceKey] = useState<ClickIdSourceKey>(
+    () => initialClickAttribution.clickIdSourceKey
+  );
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [notice, setNotice] = useState<Notice>('');
@@ -875,6 +904,18 @@ export default function App() {
       if (typeof parsed.clientRequestId === 'string' && parsed.clientRequestId.trim()) {
         setClientRequestId(parsed.clientRequestId.trim());
       }
+      const urlAttribution = getTencentClickAttribution();
+      const draftClickId = typeof parsed.clickId === 'string' ? parsed.clickId.trim() : '';
+      const draftClickIdSourceKey = ['click_id', 'qz_gdt', 'gdt_vid'].includes(String(parsed.clickIdSourceKey || ''))
+        ? (String(parsed.clickIdSourceKey) as ClickIdSourceKey)
+        : '';
+      if (urlAttribution.clickId) {
+        setClickId(urlAttribution.clickId);
+        setClickIdSourceKey(urlAttribution.clickIdSourceKey);
+      } else if (draftClickId) {
+        setClickId(draftClickId);
+        setClickIdSourceKey(draftClickIdSourceKey);
+      }
       if (parsed.identity === 'industry' || parsed.identity === 'consumer') {
         setIdentity(parsed.identity);
       }
@@ -905,6 +946,8 @@ export default function App() {
         const draft = {
           clientRequestId,
           identity,
+          clickId,
+          clickIdSourceKey,
           industryForm: { ...industryForm, proofFiles: [] },
           consumerForm
         };
@@ -915,7 +958,7 @@ export default function App() {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [clientRequestId, identity, industryForm, consumerForm]);
+  }, [clientRequestId, identity, clickId, clickIdSourceKey, industryForm, consumerForm]);
 
   useEffect(() => {
     return () => {
@@ -1435,6 +1478,20 @@ export default function App() {
 
     if (selected.length === 0) return;
 
+    // 只允许图片文件
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const invalidFile = selected.find((f) => !allowedTypes.includes(f.type));
+    if (invalidFile) {
+      setNotice('仅支持上传 JPG、PNG 格式的图片');
+      return;
+    }
+
+    // 限制只能上传一张图片
+    if (proofUploadsRef.current.length >= 1) {
+      setNotice('仅支持上传一张图片');
+      return;
+    }
+
     const existingKeys = new Set(proofUploadsRef.current.map((file) => proofFileKey(file)));
     const nextUploads = [...proofUploadsRef.current];
     const nextPreviews: ProofPreview[] = [];
@@ -1593,6 +1650,8 @@ export default function App() {
         identity === 'industry'
           ? {
               clientRequestId,
+              clickId: clickId || undefined,
+              clickIdSourceKey: clickIdSourceKey || undefined,
               phone: composeInternationalPhone(industryForm.phoneCountryCode, industryForm.phone),
               name: industryForm.name.trim(),
               title: industryForm.title.trim(),
@@ -1609,6 +1668,8 @@ export default function App() {
             }
           : {
               clientRequestId,
+              clickId: clickId || undefined,
+              clickIdSourceKey: clickIdSourceKey || undefined,
               phone: composeInternationalPhone(consumerForm.phoneCountryCode, consumerForm.phone),
               name: consumerForm.name.trim(),
               title: '消费者',
@@ -1685,6 +1746,8 @@ export default function App() {
       setConsumerIdVerify(initialIdVerifyState);
       const nextClientRequestId = createClientRequestId();
       setClientRequestId(nextClientRequestId);
+      setClickId('');
+      setClickIdSourceKey('');
       clearProofFiles();
       setTouched({});
       setSubmitAttempted(false);
@@ -1696,6 +1759,8 @@ export default function App() {
           JSON.stringify({
             clientRequestId: nextClientRequestId,
             identity,
+            clickId: '',
+            clickIdSourceKey: '',
             industryForm: initialIndustryForm,
             consumerForm: initialConsumerForm
           })
@@ -2032,8 +2097,7 @@ export default function App() {
                       ref={proofInputRef}
                       className="upload-input"
                       type="file"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      multiple
+                      accept=".jpg,.jpeg,.png"
                       onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                     />
@@ -2056,7 +2120,7 @@ export default function App() {
                             <CloudUploadRoundIcon />
                           </span>
                           <span className="upload-empty-title">点击上传文件</span>
-                          <span className="upload-empty-subtitle">支持 JPG, PNG, PDF (最大 50MB)</span>
+                          <span className="upload-empty-subtitle">支持 JPG, PNG (最大 50MB)</span>
                         </button>
                       ) : (
                         <FeishuButton

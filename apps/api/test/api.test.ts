@@ -136,6 +136,8 @@ test('consumer submission is accepted and returns id + traceId', async () => {
     .set('X-CSRF-Token', token)
     .send({
       clientRequestId: 'req-00000001',
+      clickId: 'click-test-001',
+      clickIdSourceKey: 'qz_gdt',
       role: 'consumer',
       idType: 'passport',
       idNumber: 'ABCDEF-1234',
@@ -149,6 +151,12 @@ test('consumer submission is accepted and returns id + traceId', async () => {
   assert.equal(typeof submitRes.body.id, 'string');
   assert.equal(typeof submitRes.body.traceId, 'string');
   assert.equal(submitRes.body.syncStatus, 'PENDING');
+
+  const row = await prisma.submission.findUnique({
+    where: { id: submitRes.body.id }
+  });
+  assert.equal(row?.clickId, 'click-test-001');
+  assert.equal(row?.clickIdSourceKey, 'qz_gdt');
 });
 
 test('clientRequestId is idempotent', async () => {
@@ -237,4 +245,29 @@ test('industry submission accepts proofUrls array', async () => {
 
   assert.equal(res.status, 202);
   assert.equal(typeof res.body.id, 'string');
+});
+
+test('POST /api/submissions rejects clickIdSourceKey without clickId', async () => {
+  const csrfRes = await request(server).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const res = await request(server)
+    .post('/api/submissions')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .send({
+      clientRequestId: 'req-clickid-invalid',
+      clickIdSourceKey: 'click_id',
+      role: 'consumer',
+      idType: 'passport',
+      idNumber: 'ABCDEFGH',
+      phone: '13800138000',
+      name: '张三',
+      title: '消费者',
+      company: '个人消费者'
+    });
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, 'ValidationError');
 });

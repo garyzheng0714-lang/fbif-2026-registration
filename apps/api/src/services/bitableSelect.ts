@@ -50,7 +50,7 @@ export function resolveSingleSelectOptionId(meta: BitableFieldMeta, rawValue: un
 }
 
 export function applySingleSelectMappings(
-  fields: Record<string, string>,
+  fields: Record<string, unknown>,
   metaByName: Map<string, BitableFieldMeta>,
   ctx: { traceId: string; idSuffix: string },
   logger?: { warn: (obj: any, msg?: string) => void }

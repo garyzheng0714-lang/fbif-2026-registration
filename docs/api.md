@@ -20,6 +20,8 @@ Headers:
 Body:
 ```json
 {
+  "clickId": "test-click-id",
+  "clickIdSourceKey": "click_id",
   "phone": "13800000000",
   "name": "张三",
   "title": "运营负责人",
