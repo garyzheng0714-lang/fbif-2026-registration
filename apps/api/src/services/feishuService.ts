@@ -282,18 +282,18 @@ function getIdTypeLabel(idType: string) {
 }
 
 export type BitableWriteFields = {
-  readableFields: Record<string, string>;
-  optionIdFields: Record<string, string>;
+  readableFields: Record<string, unknown>;
+  optionIdFields: Record<string, unknown>;
 };
 
 function buildReadableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
-}): Record<string, string> {
+}): Record<string, unknown> {
   const submission = input.submission;
   const sensitive = input.sensitive;
 
-  const fields: Record<string, string> = {
+  const fields: Record<string, unknown> = {
     [fieldMap.name]: submission.name,
     [fieldMap.phone]: sensitive.phone,
     [fieldMap.title]: submission.title,
@@ -321,9 +321,11 @@ function buildReadableFields(input: {
     fields[fieldMap.department] = normalizeDepartmentOptionText(submission.department);
   }
 
-  const proofUrls = Array.isArray(submission.proofUrls) ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean) : [];
+  const proofUrls = Array.isArray(submission.proofUrls)
+    ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean)
+    : [];
   if (fieldMap.proofUrl && proofUrls.length > 0) {
-    fields[fieldMap.proofUrl] = proofUrls.join(',');
+    fields[fieldMap.proofUrl] = proofUrls[0];
   }
 
   if (fieldMap.submittedAt) {
@@ -353,12 +355,22 @@ function buildReadableFields(input: {
   return fields;
 }
 
-function fieldsAreDifferent(a: Record<string, string>, b: Record<string, string>) {
+function normalizeFieldValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function fieldsAreDifferent(a: Record<string, unknown>, b: Record<string, unknown>) {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
   if (aKeys.length !== bKeys.length) return true;
   for (const key of aKeys) {
-    if (a[key] !== b[key]) return true;
+    if (normalizeFieldValue(a[key]) !== normalizeFieldValue(b[key])) return true;
   }
   return false;
 }
@@ -437,11 +449,23 @@ export async function mapSubmissionToBitableFields(input: {
   const idSuffix = sensitive.idNumber.slice(-4);
   const metaByName = await getBitableFieldMetaByName();
   const optionIdFields = applySingleSelectMappings(
-    { ...readableFields },
+    { ...(readableFields as Record<string, string>) },
     metaByName,
     { traceId: submission.traceId, idSuffix },
     logger
-  );
+  ) as Record<string, unknown>;
+
+  if (fieldMap.proofUrl) {
+    const proofMeta = metaByName.get(fieldMap.proofUrl);
+    const proofUrl = trim(readableFields[fieldMap.proofUrl]);
+    const isUrlField = proofMeta && (proofMeta.uiType === 'Url' || Number(proofMeta.type) === 15);
+    if (isUrlField && proofUrl) {
+      const urlCell = { link: proofUrl, text: '证明链接' };
+      readableFields[fieldMap.proofUrl] = urlCell;
+      optionIdFields[fieldMap.proofUrl] = urlCell;
+    }
+  }
+
   return {
     readableFields,
     optionIdFields
