@@ -17,6 +17,8 @@ const fieldMap = {
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
   department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
+  clickId: process.env.FEISHU_FIELD_CLICK_ID || '',
+  clickIdSourceKey: process.env.FEISHU_FIELD_CLICK_ID_SOURCE_KEY || '',
   submittedAt: process.env.FEISHU_FIELD_SUBMITTED_AT || '',
   syncStatus: process.env.FEISHU_FIELD_SYNC_STATUS || '',
   source: process.env.FEISHU_FIELD_SOURCE || '',
@@ -328,6 +330,14 @@ function buildReadableFields(input: {
     fields[fieldMap.proofUrl] = proofUrls[0];
   }
 
+  if (fieldMap.clickId && submission.clickId) {
+    fields[fieldMap.clickId] = submission.clickId;
+  }
+
+  if (fieldMap.clickIdSourceKey && submission.clickIdSourceKey) {
+    fields[fieldMap.clickIdSourceKey] = submission.clickIdSourceKey;
+  }
+
   if (fieldMap.submittedAt) {
     fields[fieldMap.submittedAt] = submission.createdAt.toISOString();
   }
@@ -460,7 +470,7 @@ export async function mapSubmissionToBitableFields(input: {
     const proofUrl = trim(readableFields[fieldMap.proofUrl]);
     const isUrlField = proofMeta && (proofMeta.uiType === 'Url' || Number(proofMeta.type) === 15);
     if (isUrlField && proofUrl) {
-      const urlCell = { link: proofUrl, text: '证明链接' };
+      const urlCell = { link: proofUrl, text: proofUrl };
       readableFields[fieldMap.proofUrl] = urlCell;
       optionIdFields[fieldMap.proofUrl] = urlCell;
     }
