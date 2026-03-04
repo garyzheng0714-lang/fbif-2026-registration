@@ -15,7 +15,7 @@ const fieldMap = {
   identity: process.env.FEISHU_FIELD_IDENTITY || '观展身份',
   idType: process.env.FEISHU_FIELD_ID_TYPE || '',
   businessType: process.env.FEISHU_FIELD_BUSINESS_TYPE || '贵司的业务类型',
-  department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门（问卷题）',
+  department: process.env.FEISHU_FIELD_DEPARTMENT || '您所处的部门',
   proofUrl: process.env.FEISHU_FIELD_PROOF_URL || '专业观众证明（附件链接）',
   clickId: process.env.FEISHU_FIELD_CLICK_ID || '',
   clickIdSourceKey: process.env.FEISHU_FIELD_CLICK_ID_SOURCE_KEY || '',

@@ -80,6 +80,11 @@ migrate_env() {
   if [ "$(get_env_value FEISHU_FIELD_NAME)" = "姓名（问卷题）" ]; then
     upsert_env FEISHU_FIELD_NAME "姓名"
   fi
+
+  # 部门字段已统一为“您所处的部门”，兼容旧配置自动迁移。
+  if [ "$(get_env_value FEISHU_FIELD_DEPARTMENT)" = "您所处的部门（问卷题）" ]; then
+    upsert_env FEISHU_FIELD_DEPARTMENT "您所处的部门"
+  fi
 }
 
 # --- 设置所有默认值 ---
@@ -106,7 +111,7 @@ apply_defaults() {
   set_default FEISHU_FIELD_COMPANY "公司（问卷题）"
   set_default FEISHU_FIELD_ID "证件号码（问卷题）"
   set_default FEISHU_FIELD_BUSINESS_TYPE "贵司的业务类型"
-  set_default FEISHU_FIELD_DEPARTMENT "您所处的部门（问卷题）"
+  set_default FEISHU_FIELD_DEPARTMENT "您所处的部门"
   set_default FEISHU_FIELD_PROOF_URL "专业观众证明（附件链接）"
   set_default FEISHU_FIELD_CLICK_ID "腾讯广告点击ID"
   set_default FEISHU_FIELD_CLICK_ID_SOURCE_KEY "腾讯广告点击ID来源字段"
