@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FBIF 2026 - 观展身份选择</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --color-bg: #000000;
+      --color-surface: rgba(255, 255, 255, 0.05);
+      --color-surface-hover: rgba(255, 255, 255, 0.08);
+      --color-surface-active: rgba(255, 255, 255, 0.95);
+      --color-text-primary: #ffffff;
+      --color-text-secondary: rgba(255, 255, 255, 0.5);
+      --color-text-muted: rgba(255, 255, 255, 0.35);
+      --color-accent: #FF6B35;
+      --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
+      background: var(--color-bg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Banner 区域 */
+    .banner-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+
+    .banner {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .banner-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background: linear-gradient(to top, var(--color-bg) 0%, transparent 100%);
+    }
+
+    /* 内容区域 */
+    .content {
+      flex: 1;
+      padding: 8px 24px 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* 标题 */
+    .header {
+      margin-bottom: 32px;
+    }
+
+    .header-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-accent);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .header-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    /* 选项列表 */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option {
+      position: relative;
+      background: var(--color-surface);
+      border-radius: 20px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.4s var(--ease-spring);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .option::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.06), transparent 40%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .option:hover::before {
+      opacity: 1;
+    }
+
+    .option:hover {
+      background: var(--color-surface-hover);
+      transform: scale(1.01);
+    }
+
+    .option.is-selected {
+      background: var(--color-surface-active);
+      border-color: transparent;
+    }
+
+    /* 选项内部布局 */
+    .option-inner {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 图标容器 */
+    .option-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.4s var(--ease-spring);
+      flex-shrink: 0;
+    }
+
+    .option.is-selected .option-icon {
+      background: var(--color-bg);
+    }
+
+    .option-icon svg {
+      width: 28px;
+      height: 28px;
+      color: var(--color-text-primary);
+      transition: all 0.4s var(--ease-spring);
+    }
+
+    .option.is-selected .option-icon svg {
+      color: var(--color-text-primary);
+    }
+
+    /* 文字内容 */
+    .option-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .option-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: 6px;
+      transition: color 0.3s;
+    }
+
+    .option.is-selected .option-title {
+      color: #000;
+    }
+
+    .option-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .option-tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255, 107, 53, 0.2);
+      color: var(--color-accent);
+    }
+
+    .option.is-selected .option-tag {
+      background: rgba(0, 0, 0, 0.08);
+      color: #666;
+    }
+
+    .option-desc {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      transition: color 0.3s;
+    }
+
+    .option.is-selected .option-desc {
+      color: #666;
+    }
+
+    /* 选中指示器 */
+    .option-indicator {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s var(--ease-spring);
+      flex-shrink: 0;
+    }
+
+    .option:hover .option-indicator {
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .option.is-selected .option-indicator {
+      border-color: #000;
+      background: #000;
+    }
+
+    .option-indicator svg {
+      width: 14px;
+      height: 14px;
+      color: #fff;
+      transform: scale(0);
+      opacity: 0;
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .option.is-selected .option-indicator svg {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    /* 底部提示 */
+    .notice {
+      margin-top: 32px;
+      padding: 20px 24px;
+      text-align: center;
+    }
+
+    .notice-text {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .notice-text svg {
+      width: 16px;
+      height: 16px;
+      color: var(--color-accent);
+    }
+
+    /* 响应式 */
+    @media (max-width: 480px) {
+      .content {
+        padding: 8px 16px 32px;
+      }
+
+      .header-title {
+        font-size: 24px;
+      }
+
+      .option {
+        padding: 20px;
+      }
+
+      .option-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Banner -->
+    <div class="banner-wrap">
+      <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 2026">
+      <div class="banner-overlay"></div>
+    </div>
+
+    <!-- 内容 -->
+    <div class="content">
+      <header class="header">
+        <div class="header-label">Registration</div>
+        <h1 class="header-title">选择您的观展身份</h1>
+        <p class="header-subtitle">根据您的身份，我们将为您发放对应的观展票</p>
+      </header>
+
+      <div class="options">
+        <!-- 专业观众 -->
+        <div class="option is-selected" role="radio" aria-checked="true">
+          <div class="option-inner">
+            <div class="option-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+              </svg>
+            </div>
+            <div class="option-text">
+              <div class="option-title">专业观众</div>
+              <div class="option-meta">
+                <span class="option-tag">需审核</span>
+                <span class="option-desc">4月27-29日 · 3日通票</span>
+              </div>
+            </div>
+            <div class="option-indicator">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 消费者 -->
+        <div class="option" role="radio" aria-checked="false">
+          <div class="option-inner">
+            <div class="option-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="option-text">
+              <div class="option-title">消费者</div>
+              <div class="option-meta">
+                <span class="option-tag">免审核</span>
+                <span class="option-desc">4月29日 · 1日票</span>
+              </div>
+            </div>
+            <div class="option-indicator">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice">
+        <div class="notice-text">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          16岁以下观众禁止入场
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 鼠标跟随光效
+    document.querySelectorAll('.option').forEach(option => {
+      option.addEventListener('mousemove', (e) => {
+        const rect = option.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        option.style.setProperty('--mouse-x', `${x}px`);
+        option.style.setProperty('--mouse-y', `${y}px`);
+      });
+
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.option').forEach(opt => {
+          opt.classList.remove('is-selected');
+          opt.setAttribute('aria-checked', 'false');
+        });
+        option.classList.add('is-selected');
+        option.setAttribute('aria-checked', 'true');
+      });
+    });
+  </script>
+</body>
+</html>
