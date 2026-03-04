@@ -95,3 +95,84 @@ test('mapSubmissionToBitableFields includes click attribution fields', async () 
     delete process.env.FEISHU_FIELD_CLICK_ID_SOURCE_KEY;
   }
 });
+
+test('mapSubmissionToBitableFields writes hyperlink object for proof url field', async () => {
+  const originalFetch = global.fetch;
+  ensureTestEnv();
+  process.env.FEISHU_FIELD_PROOF_URL = '专业观众证明（附件链接）';
+
+  global.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/auth/v3/tenant_access_token/internal')) {
+      return jsonResponse({
+        code: 0,
+        tenant_access_token: 'tenant-token',
+        expire: 3600
+      });
+    }
+
+    if (url.includes('/fields?page_size=200')) {
+      return jsonResponse({
+        code: 0,
+        data: {
+          items: [
+            {
+              field_name: '专业观众证明（附件链接）',
+              type: 15,
+              ui_type: 'Url'
+            }
+          ]
+        }
+      });
+    }
+
+    throw new Error(`unexpected fetch url: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const { mapSubmissionToBitableFields } = await import(`../src/services/feishuService.ts?test=${Date.now()}`);
+    const mapped = await mapSubmissionToBitableFields({
+      submission: {
+        id: 'submission-id',
+        clientRequestId: 'client-request-id',
+        traceId: 'trace-id',
+        role: 'industry',
+        idType: 'passport',
+        name: '张三',
+        title: '消费者',
+        company: '个人消费者',
+        phoneEnc: 'enc-phone',
+        phoneHash: 'hash-phone',
+        idEnc: 'enc-id',
+        idHash: 'hash-id',
+        businessType: '食品饮料品牌方',
+        department: '高管、战略部门',
+        proofUrls: ['https://example.com/proof.png'],
+        syncStatus: 'SUCCESS',
+        syncError: null,
+        syncAttempts: 0,
+        lastAttemptAt: null,
+        nextAttemptAt: null,
+        feishuRecordId: null,
+        clickId: null,
+        clickIdSourceKey: null,
+        clientIp: null,
+        userAgent: null,
+        createdAt: new Date('2026-03-04T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-04T00:00:00.000Z')
+      } as any,
+      sensitive: {
+        phone: '+8613800000000',
+        idNumber: 'A1234567'
+      }
+    });
+
+    assert.deepEqual(mapped.readableFields['专业观众证明（附件链接）'], {
+      text: 'https://example.com/proof.png',
+      link: 'https://example.com/proof.png'
+    });
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.FEISHU_FIELD_PROOF_URL;
+  }
+});

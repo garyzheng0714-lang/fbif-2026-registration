@@ -281,18 +281,57 @@ function getIdTypeLabel(idType: string) {
 }
 
 export type BitableWriteFields = {
-  readableFields: Record<string, string>;
-  optionIdFields: Record<string, string>;
+  readableFields: Record<string, unknown>;
+  optionIdFields: Record<string, unknown>;
 };
+
+function isUrlField(meta: BitableFieldMeta | null | undefined) {
+  if (!meta) return false;
+  const uiType = trim(meta.uiType).toLowerCase();
+  return meta.type === 15 || uiType.includes('url') || uiType.includes('link');
+}
+
+function buildProofUrlFieldValue(
+  proofUrls: string[],
+  meta: BitableFieldMeta | null | undefined,
+  ctx: { traceId: string; idSuffix: string }
+) {
+  if (proofUrls.length === 0) return null;
+
+  if (!isUrlField(meta)) {
+    return proofUrls.join(',');
+  }
+
+  if (proofUrls.length > 1) {
+    logger.warn(
+      {
+        traceId: ctx.traceId,
+        idSuffix: ctx.idSuffix,
+        fieldName: meta?.name || fieldMap.proofUrl,
+        urlCount: proofUrls.length
+      },
+      'bitable hyperlink field only supports a single proof url; using the first url'
+    );
+  }
+
+  const firstUrl = proofUrls[0];
+  return {
+    text: firstUrl,
+    link: firstUrl
+  };
+}
 
 function buildReadableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
-}): Record<string, string> {
+  metaByName: Map<string, BitableFieldMeta>;
+}): Record<string, unknown> {
   const submission = input.submission;
   const sensitive = input.sensitive;
+  const metaByName = input.metaByName;
+  const idSuffix = sensitive.idNumber.slice(-4);
 
-  const fields: Record<string, string> = {
+  const fields: Record<string, unknown> = {
     [fieldMap.name]: submission.name,
     [fieldMap.phone]: sensitive.phone,
     [fieldMap.title]: submission.title,
@@ -322,7 +361,14 @@ function buildReadableFields(input: {
 
   const proofUrls = Array.isArray(submission.proofUrls) ? (submission.proofUrls as any[]).map((v) => trim(v)).filter(Boolean) : [];
   if (fieldMap.proofUrl && proofUrls.length > 0) {
-    fields[fieldMap.proofUrl] = proofUrls.join(',');
+    const proofFieldValue = buildProofUrlFieldValue(
+      proofUrls,
+      metaByName.get(fieldMap.proofUrl) || null,
+      { traceId: submission.traceId, idSuffix }
+    );
+    if (proofFieldValue !== null) {
+      fields[fieldMap.proofUrl] = proofFieldValue;
+    }
   }
 
   if (fieldMap.clickId && submission.clickId) {
@@ -348,12 +394,15 @@ function buildReadableFields(input: {
   return fields;
 }
 
-function fieldsAreDifferent(a: Record<string, string>, b: Record<string, string>) {
+function fieldsAreDifferent(a: Record<string, unknown>, b: Record<string, unknown>) {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
   if (aKeys.length !== bKeys.length) return true;
   for (const key of aKeys) {
-    if (a[key] !== b[key]) return true;
+    const aValue = a[key];
+    const bValue = b[key];
+    if (aValue === bValue) continue;
+    if (JSON.stringify(aValue) !== JSON.stringify(bValue)) return true;
   }
   return false;
 }
@@ -426,11 +475,14 @@ export async function mapSubmissionToBitableFields(input: {
   submission: Submission;
   sensitive: { phone: string; idNumber: string };
 }): Promise<BitableWriteFields> {
-  const readableFields = buildReadableFields(input);
+  const metaByName = await getBitableFieldMetaByName();
+  const readableFields = buildReadableFields({
+    ...input,
+    metaByName
+  });
   const submission = input.submission;
   const sensitive = input.sensitive;
   const idSuffix = sensitive.idNumber.slice(-4);
-  const metaByName = await getBitableFieldMetaByName();
   const optionIdFields = applySingleSelectMappings(
     { ...readableFields },
     metaByName,
