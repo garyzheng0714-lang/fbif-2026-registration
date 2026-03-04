@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBIF 2026 表单重设计预览 v3</title>
+<style>
+/* ============================================
+   FBIF 2026 Registration — Redesign v2
+   Using actual FBIF brand colors
+   ============================================ */
+
+:root {
+  /* --- FBIF Brand Palette --- */
+  --fbif-blue: #0f5fc2;          /* FBIF食品创新展 primary */
+  --fbif-navy: #1a2b7d;          /* deep navy for headings */
+  --fbif-steel: #255f89;         /* FBIF brand steel blue */
+  --fbif-gold: #fcc800;          /* brand gold accent */
+  --fbif-blue-hover: #0d4fa6;
+
+  /* --- Surface System --- */
+  --canvas: #f0f2f5;
+  --surface: #ffffff;
+  --surface-tinted: #f7f9fc;     /* subtle blue tint for inset elements */
+
+  /* --- Text Hierarchy --- */
+  --ink: #1a1f2e;
+  --ink-secondary: #5a6070;
+  --ink-tertiary: #8c919e;
+  --ink-placeholder: #b0b5c0;
+
+  /* --- Borders --- */
+  --line: #e3e6ec;
+  --line-soft: #ebedf2;
+  --control-border: #d0d4dc;
+
+  /* --- Semantic --- */
+  --danger: #d63031;
+  --danger-bg: #fef2f2;
+  --ok: #27ae60;
+  --ok-bg: #ecfdf5;
+
+  /* --- Spacing --- */
+  --sp-2: 2px;
+  --sp-4: 4px;
+  --sp-6: 6px;
+  --sp-8: 8px;
+  --sp-10: 10px;
+  --sp-12: 12px;
+  --sp-14: 14px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+
+  /* --- Radius --- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* --- Depth: border-focused, minimal shadow --- */
+  --shadow-sm: 0 1px 2px rgba(26, 43, 125, 0.04);
+
+  /* --- Motion --- */
+  --ease: 140ms ease;
+
+  --content-width: 720px;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { min-height: 100%; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: -apple-system, 'PingFang SC', 'Noto Sans SC', 'Helvetica Neue', sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+/* === Layout === */
+.page { min-height: 100vh; padding: 16px 12px 0; display: flex; flex-direction: column; }
+.frame { max-width: 1040px; width: 100%; margin: 0 auto; display: grid; gap: 14px; flex: 1 0 auto; }
+.frame > * { min-width: 0; }
+
+.banner {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+  display: block;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.card {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-20);
+}
+
+/* ============================================
+   Screen 1: Identity Selection
+   ============================================ */
+
+.role-card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--fbif-navy);
+}
+
+.tips {
+  margin: var(--sp-6) 0 0;
+  color: var(--ink-tertiary);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.role-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+  font-weight: 600;
+  vertical-align: middle;
+  line-height: 1.5;
+}
+.role-tag.need { background: #fff3e0; color: #e67e22; }
+.role-tag.free { background: var(--ok-bg); color: var(--ok); }
+
+.role-options {
+  margin-top: var(--sp-16);
+  display: grid;
+  gap: var(--sp-6);
+}
+
+.role-option {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-14);
+  min-height: 86px;
+  padding: var(--sp-14) var(--sp-16);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--ease), background-color var(--ease), box-shadow var(--ease);
+}
+
+.role-option:hover {
+  border-color: var(--fbif-blue);
+  background: #f4f7fd;
+}
+
+.role-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(15, 95, 194, 0.15);
+}
+
+.role-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+}
+
+.role-icon svg { width: 24px; height: 24px; }
+
+.role-icon.icon-industry {
+  background: linear-gradient(135deg, #0f5fc2, #1a2b7d);
+  color: #fff;
+}
+
+.role-icon.icon-consumer {
+  background: linear-gradient(135deg, #fcc800, #e6b000);
+  color: #1a2b7d;
+}
+
+.role-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.role-desc {
+  font-size: 0.82rem;
+  color: var(--ink-secondary);
+  margin-top: var(--sp-2);
+  line-height: 1.45;
+}
+
+.role-num {
+  display: inline-block;
+  font-weight: 800;
+  color: var(--fbif-blue);
+  font-size: 1.05em;
+}
+
+/* ============================================
+   Screen 2: Form
+   ============================================ */
+
+.stage-head {
+  position: relative;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-12) var(--sp-20);
+  border-bottom: 3px solid var(--fbif-blue);
+}
+
+.stage-back {
+  position: absolute;
+  left: var(--sp-16);
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  padding: var(--sp-4);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  transition: color var(--ease);
+}
+.stage-back:hover { color: var(--fbif-blue); }
+.stage-back svg { width: 20px; height: 20px; }
+
+.stage-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fbif-navy);
+  letter-spacing: 0.02em;
+}
+
+.age-notice {
+  width: min(100%, var(--content-width));
+  margin: -6px auto 0;
+  padding: var(--sp-4) var(--sp-12);
+  font-size: 0.75rem;
+  color: var(--danger);
+  text-align: center;
+  background: var(--danger-bg);
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(214, 48, 49, 0.12);
+  line-height: 1.4;
+}
+
+/* --- Section Cards --- */
+.form-section {
+  width: min(100%, var(--content-width));
+  margin-inline: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-20);
+}
+
+.form-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-16);
+  padding-bottom: var(--sp-12);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.form-section-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--ink-secondary);
+}
+
+.form-section-icon svg { width: 20px; height: 20px; }
+
+.form-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* --- Fields --- */
+.field { display: grid; gap: var(--sp-6); }
+.field + .field { margin-top: var(--sp-14); }
+
+.field-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.field-label .req { color: var(--danger); font-size: 0.8rem; line-height: 1; }
+
+.field-input,
+.field-select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-sm);
+  padding: 0 var(--sp-12);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: inherit;
+  transition: border-color var(--ease), box-shadow var(--ease);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.field-input::placeholder { color: var(--ink-placeholder); }
+.field-input:hover, .field-select:hover { border-color: #a8adb8; }
+
+.field-input:focus, .field-select:focus {
+  outline: none;
+  border-color: var(--fbif-blue);
+  box-shadow: 0 0 0 3px rgba(15, 95, 194, 0.1);
+}
+
+.field-error { color: var(--danger); font-size: 0.78rem; }
+
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--ink-tertiary);
+  pointer-events: none;
+}
+.select-wrap .field-select { padding-right: 32px; }
+
+.phone-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--sp-8);
+}
+
+/* --- Upload --- */
+.upload-zone {
+  border: 2px dashed var(--control-border);
+  border-radius: var(--r-md);
+  min-height: 130px;
+  background: var(--surface-tinted);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-20);
+  cursor: pointer;
+  transition: border-color var(--ease), background-color var(--ease);
+}
+
+.upload-zone:hover {
+  border-color: var(--fbif-blue);
+  background: #f0f5fd;
+}
+
+.upload-zone-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e8f0fc;
+  color: var(--fbif-blue);
+  display: grid;
+  place-items: center;
+}
+.upload-zone-icon svg { width: 20px; height: 20px; }
+
+.upload-zone-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fbif-blue);
+}
+
+.upload-zone-hint {
+  font-size: 0.78rem;
+  color: var(--ink-tertiary);
+}
+
+/* --- Guidelines --- */
+.proof-guidelines {
+  margin-top: var(--sp-12);
+  padding: var(--sp-14);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-tinted);
+  display: grid;
+  gap: var(--sp-10);
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--ink-secondary);
+}
+
+.gl-row { display: flex; gap: var(--sp-8); align-items: flex-start; }
+.gl-icon { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 2px; }
+.gl-icon.accept { color: var(--ok); }
+.gl-icon.reject { color: var(--danger); }
+.gl-label { font-weight: 700; }
+.gl-label.accept { color: var(--ok); }
+.gl-label.reject { color: var(--danger); }
+.gl-link { color: var(--fbif-blue); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+.gl-meta {
+  margin: 0;
+  padding-left: 26px;
+  color: var(--ink-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  display: grid;
+  gap: var(--sp-4);
+}
+.gl-meta .warn { color: var(--danger); }
+
+/* --- Submit --- */
+.submit-section {
+  width: min(100%, var(--content-width));
+  margin: var(--sp-4) auto 0;
+  display: grid;
+  gap: var(--sp-10);
+}
+
+.policy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-size: 0.86rem;
+  color: var(--ink-secondary);
+}
+
+.policy-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--control-border);
+  background: var(--surface);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  transition: border-color var(--ease), background-color var(--ease);
+}
+
+.policy-check:checked {
+  border-color: var(--fbif-blue);
+  background: var(--fbif-blue);
+}
+
+.policy-check:checked::after {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 6px;
+  margin: 4px auto 0;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.policy-link {
+  color: var(--fbif-blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(15, 95, 194, 0.3);
+}
+
+.submit-btn {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--fbif-blue);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background-color var(--ease);
+}
+
+.submit-btn:hover { background: var(--fbif-blue-hover); }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============================================
+   Screen 3: Success
+   ============================================ */
+
+.success-card { overflow: hidden; }
+
+.success-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-14);
+  padding: var(--sp-20) var(--sp-24);
+  background: var(--ok-bg);
+  border-bottom: 1px solid rgba(39, 174, 96, 0.15);
+}
+
+.success-icon {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.success-icon svg { width: 24px; height: 24px; }
+
+.success-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.success-subtitle {
+  font-size: 0.84rem;
+  color: var(--ink-secondary);
+  margin-top: var(--sp-2);
+}
+
+.success-steps {
+  padding: var(--sp-20) var(--sp-24);
+  display: grid;
+  gap: var(--sp-20);
+}
+
+.success-step { display: flex; gap: var(--sp-14); }
+
+.success-step-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: #e8f0fc;
+  color: var(--fbif-blue);
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.success-step-body h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: var(--sp-2);
+}
+
+.success-step-body p {
+  font-size: 0.84rem;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+}
+
+.success-step-body strong { color: var(--ink); font-weight: 600; }
+
+.success-step-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: var(--sp-4);
+  color: var(--fbif-blue);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(15, 95, 194, 0.3);
+}
+.success-step-link:hover { text-decoration-color: var(--fbif-blue); }
+.success-step-link svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+.success-bottom {
+  padding: 0 var(--sp-24) var(--sp-20);
+  display: flex;
+  gap: var(--sp-8);
+}
+
+.success-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 var(--sp-16);
+  border-radius: var(--r-sm);
+  background: var(--fbif-blue);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--ease);
+  flex: 1;
+  justify-content: center;
+}
+.success-cta:hover { background: var(--fbif-blue-hover); }
+.success-cta svg { width: 14px; height: 14px; }
+
+.success-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 var(--sp-16);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color var(--ease), background-color var(--ease);
+  flex: 1;
+  justify-content: center;
+}
+.success-qr-btn:hover { border-color: var(--fbif-blue); background: #f8fafd; }
+.success-qr-btn svg { width: 16px; height: 16px; color: var(--ink-secondary); }
+
+/* QR Modal */
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-20);
+}
+.qr-overlay[hidden] { display: none; }
+
+.qr-modal {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  width: min(340px, 100%);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.qr-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-14) var(--sp-16);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.qr-modal-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.qr-modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--ink-tertiary);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  transition: color var(--ease), background-color var(--ease);
+}
+.qr-modal-close:hover { color: var(--ink); background: var(--surface-tinted); }
+.qr-modal-close svg { width: 18px; height: 18px; }
+
+.qr-modal-body {
+  padding: var(--sp-24);
+  display: grid;
+  place-items: center;
+  gap: var(--sp-12);
+}
+
+.qr-placeholder {
+  width: 180px;
+  height: 180px;
+  background: var(--surface-tinted);
+  border: 2px dashed var(--line);
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  color: var(--ink-tertiary);
+  font-size: 0.82rem;
+}
+
+.qr-label {
+  font-size: 0.86rem;
+  color: var(--ink-secondary);
+  text-align: center;
+}
+
+.qr-label strong {
+  color: var(--ink);
+  display: block;
+  margin-top: var(--sp-2);
+}
+
+.success-contact {
+  display: none; /* replaced by QR button */
+}
+
+/* --- Bottom Banner --- */
+.bottom-banner {
+  width: min(100%, var(--content-width));
+  margin: var(--sp-14) auto 0;
+  display: block;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Footer --- */
+.legal-footer { width: 100%; margin-top: auto; flex-shrink: 0; }
+.legal-footer-bar {
+  width: min(100%, var(--content-width));
+  margin: 0 auto;
+  padding: var(--sp-20) var(--sp-12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-16);
+}
+.legal-footer-copy {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+.legal-footer-icp { white-space: nowrap; }
+
+/* --- Back to Top --- */
+.back-top {
+  position: fixed;
+  bottom: 70px;
+  right: var(--sp-16);
+  z-index: 998;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: opacity var(--ease), transform var(--ease), background-color var(--ease);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+.back-top.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.back-top:hover { background: var(--surface-tinted); color: var(--fbif-blue); }
+.back-top svg { width: 20px; height: 20px; }
+
+/* === Preview Navigation === */
+.preview-switcher {
+  position: fixed;
+  bottom: var(--sp-16);
+  right: var(--sp-16);
+  z-index: 999;
+  display: flex;
+  gap: 4px;
+  background: var(--fbif-navy);
+  padding: 5px;
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 20px rgba(26, 43, 125, 0.3);
+}
+
+.preview-switcher button {
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 120ms ease;
+  white-space: nowrap;
+}
+
+.preview-switcher button.on,
+.preview-switcher button:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.preview-label {
+  position: fixed;
+  top: var(--sp-12);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  background: var(--fbif-navy);
+  color: #fff;
+  padding: 5px 14px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.preview-label span { color: var(--fbif-gold); margin-left: 4px; }
+
+.screen { display: none; }
+.screen.on { display: block; }
+
+/* === Responsive === */
+@media (max-width: 599px) {
+  .page { padding: 10px 10px 0; }
+  .card, .form-section { padding: var(--sp-14); }
+  .role-option { grid-template-columns: 42px minmax(0, 1fr); gap: var(--sp-10); padding: var(--sp-12); }
+  .role-icon { width: 42px; height: 42px; }
+  .phone-row { grid-template-columns: 120px minmax(0, 1fr); }
+  .success-hero { padding: var(--sp-16) var(--sp-16); }
+  .success-steps { padding: var(--sp-16); }
+  .success-bottom { padding: 0 var(--sp-16) var(--sp-16); flex-direction: column; }
+  .legal-footer-bar { flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+  .back-top { bottom: 64px; width: 36px; height: 36px; }
+}
+
+@media (min-width: 768px) {
+  .role-options { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="preview-label">FBIF 2026 Redesign v3 <span>Brand Colors</span></div>
+
+<!-- ===== Screen: Identity ===== -->
+<div id="s-identity" class="screen on">
+<div class="page">
+<div class="frame">
+  <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 食品创新展" />
+  <section class="card role-card">
+    <h2>请选择您的观展身份</h2>
+    <p class="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+    <div class="role-options">
+      <button type="button" class="role-option" onclick="go('form')">
+        <span class="role-icon icon-industry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </span>
+        <span>
+          <span class="role-title">专业观众注册</span>
+          <p class="role-desc">4 月 27-29 日展区票（<span class="role-num">3</span> 日票）<span class="role-tag need">需审核</span></p>
+        </span>
+      </button>
+      <button type="button" class="role-option" onclick="go('consumer')">
+        <span class="role-icon icon-consumer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span>
+          <span class="role-title">消费者注册</span>
+          <p class="role-desc">4 月 29 日展区票（<span class="role-num">1</span> 日票）<span class="role-tag free">免审核</span></p>
+        </span>
+      </button>
+    </div>
+  </section>
+</div>
+<img class="bottom-banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png" alt="FBIF 2026 展会信息" loading="lazy" decoding="async" />
+<footer class="legal-footer"><div class="legal-footer-bar"><p class="legal-footer-copy">&copy; Copyright 2026 Simba. All rights reserved. 上海辛巴商务咨询有限公司 版权所有</p><p class="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p></div></footer>
+</div>
+</div>
+
+<!-- ===== Screen: Industry Form ===== -->
+<div id="s-form" class="screen">
+<div class="page">
+<div class="frame">
+  <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 食品创新展" />
+
+  <section class="card stage-head">
+    <button type="button" class="stage-back" onclick="go('identity')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <span class="stage-title">专业观众注册</span>
+  </section>
+
+  <p class="age-notice">16岁以下观众禁止入场，请勿注册！</p>
+
+  <!-- Personal -->
+  <section class="form-section">
+    <div class="form-section-head">
+      <span class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </span>
+      <h3 class="form-section-title">个人信息</h3>
+    </div>
+    <div class="field">
+      <label class="field-label">姓名 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入姓名" value="张三" />
+    </div>
+    <div class="field">
+      <label class="field-label">证件类型 <span class="req">*</span></label>
+      <div class="select-wrap"><select class="field-select field-input"><option selected>中国居民身份证</option><option>港澳居民来往内地通行证</option><option>护照</option></select></div>
+    </div>
+    <div class="field">
+      <label class="field-label">证件号码 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入证件号码" />
+    </div>
+    <div class="field">
+      <label class="field-label">手机号 <span class="req">*</span></label>
+      <div class="phone-row">
+        <div class="select-wrap"><select class="field-select field-input"><option selected>中国 +86</option><option>中国香港 +852</option></select></div>
+        <input class="field-input" type="tel" placeholder="请输入手机号（不含区号）" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Proof -->
+  <section class="form-section">
+    <div class="form-section-head">
+      <span class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+      </span>
+      <h3 class="form-section-title">专业观众身份审核</h3>
+    </div>
+    <div class="field">
+      <label class="field-label">上传专业观众证明 <span class="req">*</span></label>
+      <div class="upload-zone">
+        <div class="upload-zone-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <span class="upload-zone-title">点击上传文件</span>
+        <span class="upload-zone-hint">支持 JPG, PNG, PDF（最大 50MB）</span>
+      </div>
+      <div class="proof-guidelines">
+        <div class="gl-row">
+          <span class="gl-icon accept"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></span>
+          <p><span class="gl-label accept">请提交：</span>能够体现您为食品行业从业人员的证明材料，包含"姓名公司职位"，包括但不限于：名片、工作软件截图（如钉钉、飞书、企微）、工作证、企业邮箱截图等 <a class="gl-link" href="#">查看示例</a></p>
+        </div>
+        <div class="gl-row">
+          <span class="gl-icon reject"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></span>
+          <p><span class="gl-label reject">请勿提交：</span>证件照片、自拍、形象照、产品图、工厂图、聊天截图等为无效证明，将无法通过审核。</p>
+        </div>
+        <ul class="gl-meta">
+          <li>审核需要 1-3 个工作日，审核通过的出席人员方可入场</li>
+          <li>如有任何问题，请联系工作人员 Carrie（微信：lovelyFBIFer1）</li>
+          <li class="warn">如在现场发现为非专业观众，我们有权请您离开现场</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Work -->
+  <section class="form-section">
+    <div class="form-section-head">
+      <span class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </span>
+      <h3 class="form-section-title">职业信息</h3>
+    </div>
+    <div class="field">
+      <label class="field-label">公司 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入公司名称" />
+    </div>
+    <div class="field">
+      <label class="field-label">职位 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入职位" />
+    </div>
+    <div class="field">
+      <label class="field-label">贵司业务类型 <span class="req">*</span></label>
+      <div class="select-wrap"><select class="field-select field-input"><option value="" disabled selected>请选择业务类型</option><option>食品饮料品牌方</option><option>原材料供应商</option><option>包装与设备公司</option><option>设计营销与咨询策划服务提供商</option><option>线下零售</option><option>线上零售</option><option>进出口贸易</option><option>餐饮及酒店</option><option>其他</option></select></div>
+    </div>
+    <div class="field">
+      <label class="field-label">您所处部门 <span class="req">*</span></label>
+      <div class="select-wrap"><select class="field-select field-input"><option value="" disabled selected>请选择所在部门</option><option>高管、战略部门</option><option>研发、产品、包装</option><option>品牌、市场、营销</option><option>采购、供应链、生产</option><option>渠道、销售、电商</option><option>高校</option><option>其他（如财务、行政等）</option></select></div>
+    </div>
+  </section>
+
+  <div class="submit-section">
+    <label class="policy-row">
+      <input type="checkbox" class="policy-check" />
+      <span>我已阅读并同意</span>
+      <a class="policy-link" href="#">《FBIF2026 购票及参会协议》</a>
+    </label>
+    <button type="button" class="submit-btn">领取观展票</button>
+  </div>
+</div>
+<footer class="legal-footer"><div class="legal-footer-bar"><p class="legal-footer-copy">&copy; Copyright 2026 Simba. All rights reserved. 上海辛巴商务咨询有限公司 版权所有</p><p class="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p></div></footer>
+</div>
+</div>
+
+<!-- ===== Screen: Consumer ===== -->
+<div id="s-consumer" class="screen">
+<div class="page">
+<div class="frame">
+  <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 食品创新展" />
+  <section class="card stage-head">
+    <button type="button" class="stage-back" onclick="go('identity')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <span class="stage-title">消费者注册</span>
+  </section>
+  <p class="age-notice">16岁以下及50岁以上观众禁止入场，请勿注册！</p>
+  <section class="form-section">
+    <div class="form-section-head">
+      <span class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </span>
+      <h3 class="form-section-title">个人信息</h3>
+    </div>
+    <div class="field">
+      <label class="field-label">姓名 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入姓名" />
+    </div>
+    <div class="field">
+      <label class="field-label">证件类型 <span class="req">*</span></label>
+      <div class="select-wrap"><select class="field-select field-input"><option selected>中国居民身份证</option><option>港澳居民来往内地通行证</option><option>护照</option></select></div>
+    </div>
+    <div class="field">
+      <label class="field-label">证件号码 <span class="req">*</span></label>
+      <input class="field-input" type="text" placeholder="请输入证件号码" />
+    </div>
+    <div class="field">
+      <label class="field-label">手机号 <span class="req">*</span></label>
+      <div class="phone-row">
+        <div class="select-wrap"><select class="field-select field-input"><option selected>中国 +86</option></select></div>
+        <input class="field-input" type="tel" placeholder="请输入手机号（不含区号）" />
+      </div>
+    </div>
+  </section>
+  <div class="submit-section">
+    <label class="policy-row">
+      <input type="checkbox" class="policy-check" />
+      <span>我已阅读并同意</span>
+      <a class="policy-link" href="#">《FBIF2026 购票及参会协议》</a>
+    </label>
+    <button type="button" class="submit-btn">领取观展票</button>
+  </div>
+</div>
+<footer class="legal-footer"><div class="legal-footer-bar"><p class="legal-footer-copy">&copy; Copyright 2026 Simba. All rights reserved. 上海辛巴商务咨询有限公司 版权所有</p><p class="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p></div></footer>
+</div>
+</div>
+
+<!-- ===== Screen: Success ===== -->
+<div id="s-success" class="screen">
+<div class="page">
+<div class="frame">
+  <img class="banner" src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg" alt="FBIF 食品创新展" />
+  <section class="card success-card">
+    <div class="success-hero">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div>
+        <h2 class="success-title">申请已提交</h2>
+        <p class="success-subtitle">FBIF 食品创新展 2026 专业观众观展票</p>
+      </div>
+    </div>
+    <div class="success-steps">
+      <div class="success-step">
+        <div class="success-step-num">1</div>
+        <div class="success-step-body">
+          <h3>等待审核</h3>
+          <p>审核结果将在 <strong>1-3 个工作日</strong> 内通过短信通知，<a class="success-step-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>查询审核结果</a></p>
+        </div>
+      </div>
+      <div class="success-step">
+        <div class="success-step-num">2</div>
+        <div class="success-step-body">
+          <h3>获取门票</h3>
+          <p>审核通过后，电子门票将于展前 3 天通过短信/邮件发放</p>
+        </div>
+      </div>
+      <div class="success-step">
+        <div class="success-step-num">3</div>
+        <div class="success-step-body">
+          <h3>入场观展</h3>
+          <p>凭 <strong>大陆身份证原件 + 电子门票</strong> 免签到入场</p>
+        </div>
+      </div>
+    </div>
+    <div class="success-bottom">
+      <a class="success-cta" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        查看展会介绍
+      </a>
+      <button type="button" class="success-qr-btn" onclick="document.getElementById('qr-modal').hidden=false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><path d="M20 14v3h-3"/><path d="M20 20h-3"/></svg>
+        联系工作人员
+      </button>
+    </div>
+  </section>
+
+  <!-- QR Code Modal -->
+  <div id="qr-modal" class="qr-overlay" hidden onclick="if(event.target===this)this.hidden=true">
+    <div class="qr-modal">
+      <div class="qr-modal-head">
+        <span class="qr-modal-title">联系工作人员</span>
+        <button type="button" class="qr-modal-close" onclick="document.getElementById('qr-modal').hidden=true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="qr-modal-body">
+        <div class="qr-placeholder">二维码</div>
+        <p class="qr-label">如有疑问，请添加微信联系<strong>Carrie (lovelyFBIFer1)</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+<footer class="legal-footer"><div class="legal-footer-bar"><p class="legal-footer-copy">&copy; Copyright 2026 Simba. All rights reserved. 上海辛巴商务咨询有限公司 版权所有</p><p class="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p></div></footer>
+</div>
+</div>
+
+<!-- Nav -->
+<nav class="preview-switcher">
+  <button class="on" onclick="go('identity')">选择身份</button>
+  <button onclick="go('form')">专业表单</button>
+  <button onclick="go('consumer')">消费者</button>
+  <button onclick="go('success')">成功页</button>
+</nav>
+
+<button type="button" class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="回到顶部">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+</button>
+
+<script>
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById('s-' + id).classList.add('on');
+  document.querySelectorAll('.preview-switcher button').forEach(b => b.classList.remove('on'));
+  if (event && event.target) event.target.classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+(function() {
+  var btn = document.getElementById('backTop');
+  var last = 0;
+  window.addEventListener('scroll', function() {
+    var now = Date.now();
+    if (now - last < 60) return;
+    last = now;
+    btn.classList.toggle('visible', window.scrollY > 300);
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

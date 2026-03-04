@@ -28,9 +28,9 @@ FEISHU_SUBMISSION_SOURCE=正式环境                       # ⬅ 如需区分�
 
 # ====== 以下全部照抄，不用改 ======
 
-# 加密（自动生成）
-# DATA_KEY=<自动生成>
-# DATA_HASH_SALT=<自动生成>
+# 加密
+DATA_KEY=<YOUR_32_BYTE_BASE64_DATA_KEY>
+DATA_HASH_SALT=<YOUR_DATA_HASH_SALT>
 
 # 数据库
 POSTGRES_USER=fbif
@@ -38,9 +38,9 @@ POSTGRES_DB=fbif_form
 
 # 飞书
 FEISHU_APP_ID=cli_a9f7f8703778dcee
-FEISHU_APP_SECRET=<从飞书开放平台获取>
-FEISHU_APP_TOKEN=<从飞书开放平台获取>
-FEISHU_TABLE_ID=<从飞书多维表格 URL 获取>
+FEISHU_APP_SECRET=<YOUR_FEISHU_APP_SECRET>
+FEISHU_APP_TOKEN=<YOUR_FEISHU_APP_TOKEN>
+FEISHU_TABLE_ID=tbl0CQ74guMS1IDd
 FEISHU_FIELD_NAME=姓名
 FEISHU_FIELD_PHONE=手机号（问卷题）
 FEISHU_FIELD_TITLE=职位
@@ -54,8 +54,8 @@ FEISHU_FIELD_PROOF_URL=专业观众证明（附件链接）
 FEISHU_SELECT_WRITE_MODE=label
 
 # 阿里云 OSS
-OSS_ACCESS_KEY_ID=<从阿里云 RAM 控制台获取>
-OSS_ACCESS_KEY_SECRET=<从阿里云 RAM 控制台获取>
+OSS_ACCESS_KEY_ID=<YOUR_OSS_ACCESS_KEY_ID>
+OSS_ACCESS_KEY_SECRET=<YOUR_OSS_ACCESS_KEY_SECRET>
 OSS_BUCKET=fbif-2026-registration
 OSS_REGION=cn-shanghai
 OSS_UPLOAD_PREFIX=fbif-form/proof
@@ -63,9 +63,9 @@ OSS_MAX_UPLOAD_MB=50
 OSS_POLICY_EXPIRE_SECONDS=600
 OSS_OBJECT_ACL=public-read
 
-# 身份证验证（可选）
-ID_VERIFY_ENABLED=false
-ID_VERIFY_APPCODE=<从阿里云云市场获取>
+# 身份证验证
+ID_VERIFY_ENABLED=true
+ID_VERIFY_APPCODE=<YOUR_ALIYUN_APPCODE>
 ID_VERIFY_ALIYUN_HOST=https://sxidcheck.market.alicloudapi.com
 ID_VERIFY_ALIYUN_PATH=/idcard/check
 ID_VERIFY_TIMEOUT_MS=5000
@@ -159,7 +159,7 @@ curl http://localhost:8080/health
 ```bash
 # 生成部署密钥
 ssh-keygen -t ed25519 -f fbif-deploy-key -N ""
-ssh-copy-id -i fbif-deploy-key.pub root@服务器 IP
+ssh-copy-id -i fbif-deploy-key.pub root@服务器IP
 cat fbif-deploy-key  # 复制内容到 GitHub Secret
 ```
 

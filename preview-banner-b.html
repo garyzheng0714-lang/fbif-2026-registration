@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>长图方案对比</title>
+<style>
+  :root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1f2329;
+    --muted: #646a73;
+    --deep-blue: #0f5fc2;
+    --radius-lg: 9px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang SC', 'SF Pro Text', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+  .divider {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.72rem;
+    padding: 24px 0 10px;
+    border-top: 1px dashed #dee0e3;
+    margin-top: 24px;
+  }
+  .divider:first-child { border-top: none; margin-top: 0; padding-top: 8px; }
+
+  /* ==============================
+     方案 B：卡片入口式
+     ============================== */
+  .card-entry {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid #e8e9ec;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .card-entry:active {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .card-entry-preview {
+    width: 100%;
+    height: 140px;
+    overflow: hidden;
+    position: relative;
+  }
+  .card-entry-preview img {
+    width: 100%;
+    display: block;
+  }
+  .card-entry-preview::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
+  }
+  .card-entry-body {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-entry-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .card-entry-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .card-entry-arrow {
+    width: 20px;
+    height: 20px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* 展开后的全图 */
+  .card-full { display: none; }
+  .card-full.is-open { display: block; }
+  .card-full-wrap {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .card-full-wrap img {
+    width: 100%;
+    display: block;
+  }
+  .card-full-close {
+    display: block;
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  /* ==============================
+     方案 C：毛玻璃浮层按钮
+     ============================== */
+  .glass-wrap {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    max-height: 200px;
+  }
+  .glass-wrap.is-open {
+    max-height: none;
+  }
+  .glass-wrap img {
+    width: 100%;
+    display: block;
+  }
+  .glass-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: linear-gradient(to bottom, transparent 0%, rgba(242,243,245,0.6) 100%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 12px;
+  }
+  .glass-wrap.is-open .glass-overlay { display: none; }
+  .glass-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 14px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: none;
+    border-radius: 16px;
+    color: var(--deep-blue);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  }
+  .glass-btn svg { width: 12px; height: 12px; }
+  .glass-close {
+    display: none;
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .glass-wrap.is-open + .glass-close { display: block; }
+
+  /* ==============================
+     方案 D：标题栏 + 完整展示
+     ============================== */
+  .titled-wrap {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid #e8e9ec;
+  }
+  .titled-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid #f0f1f3;
+  }
+  .titled-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--deep-blue);
+    flex-shrink: 0;
+  }
+  .titled-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .titled-body {
+    max-height: 180px;
+    overflow: hidden;
+    position: relative;
+    transition: max-height 0.4s ease;
+  }
+  .titled-body.is-open {
+    max-height: 5000px;
+  }
+  .titled-body img {
+    width: 100%;
+    display: block;
+  }
+  .titled-body::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--surface));
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .titled-body.is-open::after {
+    opacity: 0;
+  }
+  .titled-toggle {
+    display: block;
+    width: 100%;
+    padding: 8px 0;
+    text-align: center;
+    background: var(--surface);
+    border: none;
+    border-top: 1px solid #f0f1f3;
+    color: var(--deep-blue);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .titled-toggle:active {
+    background: #f8f9fa;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 方案 B ===== -->
+<div class="divider">方案 B — 卡片入口式（点击打开全图）</div>
+<div id="cardEntry" class="card-entry" onclick="toggleCard()">
+  <div class="card-entry-preview">
+    <img src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png" alt="">
+  </div>
+  <div class="card-entry-body">
+    <div>
+      <div class="card-entry-title">FBIF 2026 展会亮点</div>
+      <div class="card-entry-sub">点击查看完整介绍</div>
+    </div>
+    <svg class="card-entry-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+  </div>
+</div>
+<div id="cardFull" class="card-full">
+  <div class="card-full-wrap">
+    <img src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png" alt="">
+  </div>
+  <button class="card-full-close" onclick="toggleCard()">收起 ∧</button>
+</div>
+
+<!-- ===== 方案 C ===== -->
+<div class="divider">方案 C — 毛玻璃浮层（更简洁）</div>
+<div id="glassWrap" class="glass-wrap">
+  <img src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png" alt="">
+  <div class="glass-overlay">
+    <button class="glass-btn" onclick="event.stopPropagation();toggleGlass()">
+      展开全部
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+</div>
+<button id="glassClose" class="glass-close" onclick="toggleGlass()">收起 ∧</button>
+
+<!-- ===== 方案 D ===== -->
+<div class="divider">方案 D — 标题栏卡片（有结构感）</div>
+<div class="titled-wrap">
+  <div class="titled-header">
+    <span class="titled-dot"></span>
+    <span class="titled-label">展会亮点</span>
+  </div>
+  <div id="titledBody" class="titled-body">
+    <img src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png" alt="">
+  </div>
+  <button class="titled-toggle" id="titledBtn" onclick="toggleTitled()">展开查看 ∨</button>
+</div>
+
+<div style="height:40px"></div>
+
+<script>
+function toggleCard() {
+  const entry = document.getElementById('cardEntry');
+  const full = document.getElementById('cardFull');
+  const isOpen = full.classList.contains('is-open');
+  if (isOpen) {
+    full.classList.remove('is-open');
+    entry.style.display = '';
+    entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    entry.style.display = 'none';
+    full.classList.add('is-open');
+  }
+}
+
+function toggleGlass() {
+  const wrap = document.getElementById('glassWrap');
+  const close = document.getElementById('glassClose');
+  const isOpen = wrap.classList.contains('is-open');
+  if (isOpen) {
+    wrap.classList.remove('is-open');
+    close.style.display = 'none';
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    wrap.classList.add('is-open');
+    close.style.display = 'block';
+  }
+}
+
+function toggleTitled() {
+  const body = document.getElementById('titledBody');
+  const btn = document.getElementById('titledBtn');
+  const isOpen = body.classList.contains('is-open');
+  if (isOpen) {
+    body.classList.remove('is-open');
+    btn.textContent = '展开查看 ∨';
+    body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    body.classList.add('is-open');
+    btn.textContent = '收起 ∧';
+  }
+}
+</script>
+</body>
+</html>

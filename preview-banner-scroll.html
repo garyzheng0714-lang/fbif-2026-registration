@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>固定窗口滚动方案</title>
+<style>
+  :root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1f2329;
+    --muted: #646a73;
+    --deep-blue: #0f5fc2;
+    --radius-lg: 9px;
+    --content-width: 860px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang SC', 'SF Pro Text', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+  }
+  .content {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 12px;
+  }
+  .fake-form {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    border: 1px solid #e8e9ec;
+  }
+
+  /* ===== 滚动窗口 ===== */
+  .scroll-banner {
+    width: min(100%, var(--content-width));
+    margin: 0 auto;
+    height: 420px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
+  }
+
+  .scroll-banner-inner {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .scroll-banner-inner::-webkit-scrollbar { display: none; }
+
+  .scroll-banner-inner img {
+    display: block;
+    width: 100%;
+  }
+
+  /* 顶部渐变（滚动后显示，暗示上面还有） */
+  .scroll-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 24px;
+    background: linear-gradient(to bottom, rgba(242,243,245,0.7), transparent);
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .scroll-banner.scrolled::before {
+    opacity: 1;
+  }
+
+  /* 底部渐变（暗示下面还有） */
+  .scroll-banner::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 32px;
+    background: linear-gradient(to top, rgba(242,243,245,0.7), transparent);
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .scroll-banner.at-bottom::after {
+    opacity: 0;
+  }
+
+  /* 滚动进度条 */
+  .scroll-progress {
+    position: absolute;
+    right: 6px;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.06);
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .scroll-banner:hover .scroll-progress,
+  .scroll-banner.touching .scroll-progress {
+    opacity: 1;
+  }
+  .scroll-progress-thumb {
+    width: 100%;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.2);
+    position: absolute;
+    top: 0;
+    transition: top 0.1s ease-out;
+  }
+
+  /* 手机端高度调整 */
+  @media (max-width: 640px) {
+    .scroll-banner {
+      height: 55vh;
+      margin: 0 12px;
+      width: auto;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="content">
+  <div class="fake-form">-- 表单区域（省略）--</div>
+</div>
+
+<div class="content">
+  <div class="scroll-banner" id="scrollBanner">
+    <div class="scroll-banner-inner" id="scrollInner">
+      <img
+        src="https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_9bfWWOLMJCrLLXuXbNBYvw_1772521003101/20260303-145607_1772521004287.png"
+        alt="FBIF 2026 展会亮点"
+      />
+    </div>
+    <div class="scroll-progress" id="scrollProgress">
+      <div class="scroll-progress-thumb" id="scrollThumb"></div>
+    </div>
+  </div>
+</div>
+
+<div style="height: 60px"></div>
+
+<script>
+const banner = document.getElementById('scrollBanner');
+const inner = document.getElementById('scrollInner');
+const thumb = document.getElementById('scrollThumb');
+
+function updateScroll() {
+  const { scrollTop, scrollHeight, clientHeight } = inner;
+  const maxScroll = scrollHeight - clientHeight;
+
+  // 顶部渐变
+  if (scrollTop > 10) {
+    banner.classList.add('scrolled');
+  } else {
+    banner.classList.remove('scrolled');
+  }
+
+  // 底部渐变
+  if (scrollTop >= maxScroll - 5) {
+    banner.classList.add('at-bottom');
+  } else {
+    banner.classList.remove('at-bottom');
+  }
+
+  // 进度条
+  const trackHeight = banner.clientHeight - 24;
+  const ratio = clientHeight / scrollHeight;
+  const thumbH = Math.max(ratio * trackHeight, 20);
+  const thumbTop = (scrollTop / maxScroll) * (trackHeight - thumbH);
+  thumb.style.height = thumbH + 'px';
+  thumb.style.top = thumbTop + 'px';
+}
+
+inner.addEventListener('scroll', updateScroll, { passive: true });
+
+// 触摸时显示进度条
+inner.addEventListener('touchstart', () => banner.classList.add('touching'), { passive: true });
+inner.addEventListener('touchend', () => setTimeout(() => banner.classList.remove('touching'), 1500));
+
+// 初始化
+window.addEventListener('load', updateScroll);
+</script>
+
+</body>
+</html>
