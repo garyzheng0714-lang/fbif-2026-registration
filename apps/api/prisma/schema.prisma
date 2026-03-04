@@ -52,6 +52,7 @@ model Submission {
   lastAttemptAt DateTime?
   nextAttemptAt DateTime?
   feishuRecordId String?   @db.VarChar(64)
+  clickId        String?   @db.VarChar(64) // 腾讯广告 click_id，用于转化回传
   clientIp      String?    @db.VarChar(64)
   userAgent     String?    @db.Text
   createdAt     DateTime   @default(now())

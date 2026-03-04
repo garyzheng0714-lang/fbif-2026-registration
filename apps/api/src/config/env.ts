@@ -73,7 +73,11 @@ const envSchema = z.object({
 
   // 飞书告警 Webhook (用于数据同步失败通知)
   FEISHU_ALERT_WEBHOOK: z.string().url().optional(),
-  FEISHU_ALERT_ENABLED: z.boolean().default(true)
+  FEISHU_ALERT_ENABLED: z.boolean().default(true),
+
+  // 腾讯广告转化回传
+  GDT_CONVERSION_ENABLED: z.boolean().default(false),
+  GDT_ACTION_TYPE: z.enum(['REGISTER', 'RESERVATION']).default('REGISTER')
 });
 
 export const env = envSchema.parse({

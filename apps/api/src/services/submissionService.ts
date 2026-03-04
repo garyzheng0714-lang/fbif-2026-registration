@@ -10,6 +10,7 @@ export async function createSubmission(input: SubmissionInput, meta: { clientIp?
 
   const clean = {
     clientRequestId,
+    clickId: String(input.clickId || '').trim() || null,
     role: input.role,
     idType: input.idType,
     phone: input.phone.trim(),
@@ -39,6 +40,7 @@ export async function createSubmission(input: SubmissionInput, meta: { clientIp?
         businessType: clean.role === 'industry' ? clean.businessType.slice(0, 64) : null,
         department: clean.role === 'industry' ? clean.department.slice(0, 64) : null,
         proofUrls: clean.role === 'industry' ? clean.proofUrls : undefined,
+        clickId: clean.clickId,
         clientIp: meta.clientIp?.slice(0, 64),
         userAgent: meta.userAgent?.slice(0, 1024)
       }

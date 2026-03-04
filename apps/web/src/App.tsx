@@ -824,6 +824,13 @@ function ChevronLeftSmallIcon() {
 }
 
 export default function App() {
+  // 腾讯广告 click_id 提取（gdt_vid=微信流量，qz_gdt=非微信流量）
+  const clickId = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('gdt_vid') || params.get('qz_gdt') || '';
+  }, []);
+
   const [page, setPage] = useState<'identity' | 'form' | 'submitted'>('identity');
   const [identity, setIdentity] = useState<Identity>('');
   const [submittedRole, setSubmittedRole] = useState<SubmittedRole | null>(null);
@@ -1593,6 +1600,7 @@ export default function App() {
         identity === 'industry'
           ? {
               clientRequestId,
+              clickId: clickId || undefined,
               phone: composeInternationalPhone(industryForm.phoneCountryCode, industryForm.phone),
               name: industryForm.name.trim(),
               title: industryForm.title.trim(),
@@ -1609,6 +1617,7 @@ export default function App() {
             }
           : {
               clientRequestId,
+              clickId: clickId || undefined,
               phone: composeInternationalPhone(consumerForm.phoneCountryCode, consumerForm.phone),
               name: consumerForm.name.trim(),
               title: '消费者',
