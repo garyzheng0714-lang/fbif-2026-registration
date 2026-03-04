@@ -505,99 +505,144 @@ body {
 .role-options {
   margin-top: 16px;
   display: grid;
-  gap: 6px;
+  gap: 12px;
 }
 
 .role-option {
   min-height: 86px;
-  border: 1.5px solid var(--line);
-  background: var(--surface);
+  border: 2px solid transparent;
+  background: #ffffff;
   color: var(--ink);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 52px 1fr 24px;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 16px;
+  padding: 16px 20px;
   cursor: pointer;
-  transition:
-    border-color var(--motion),
-    box-shadow var(--motion),
-    background-color var(--motion);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 
 .role-option:hover {
-  border-color: var(--deep-blue);
-  background: #f4f7fd;
+  border-color: #d2d2d7;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .role-option.is-active {
-  border-color: var(--deep-blue);
-  background: #f4f7fd;
-  box-shadow: 0 0 0 3px rgba(15, 95, 194, 0.12);
+  border-color: #0071e3;
+  box-shadow: 0 4px 12px rgba(0,113,227,0.15), 0 0 0 3px rgba(0,113,227,0.08);
+  transform: translateY(-2px);
 }
 
 .role-option:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(18, 64, 143, 0.2);
+  box-shadow: 0 0 0 3px rgba(0,113,227,0.2);
 }
 
 .role-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--deep-blue), #2c62be);
-  color: #ffffff;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.role-icon--industry {
+  background: linear-gradient(135deg, #e8f4fd 0%, #d4e9f7 100%);
+  color: #0071e3;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.8), 0 2px 8px rgba(0,113,227,0.15);
+}
+
+.role-icon--consumer {
+  background: linear-gradient(135deg, #fff4e6 0%, #ffe8cc 100%);
+  color: #ff9500;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.8), 0 2px 8px rgba(255,149,0,0.15);
+}
+
+.role-option.is-active .role-icon {
+  transform: scale(1.05);
 }
 
 .role-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .role-content {
   display: grid;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .role-title {
   color: var(--ink);
-  font-size: 1rem;
-  line-height: 1.5rem;
-  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.2px;
 }
 
 .role-desc {
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
+  color: #86868b;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .role-num {
   display: inline-block;
-  font-weight: 800;
-  color: var(--deep-blue);
-  font-size: 1.05em;
+  font-weight: 600;
+  color: #0071e3;
 }
 
 .role-tag {
   display: inline-block;
-  font-size: 0.65rem;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 6px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
   font-weight: 600;
   vertical-align: middle;
-  line-height: 1.5;
-  position: relative;
-  top: -1px;
 }
-.role-tag.need { background: #fff3e0; color: #e67e22; }
-.role-tag.free { background: #ecfdf5; color: #27ae60; }
+.role-tag.need { background: #fff4e6; color: #e67700; }
+.role-tag.free { background: #e8f5e9; color: #2e7d32; }
+
+.role-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #d2d2d7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.role-option:hover .role-check {
+  border-color: #c7c7cc;
+}
+
+.role-option.is-active .role-check {
+  border-color: #0071e3;
+  background: #0071e3;
+}
+
+.role-check svg {
+  width: 12px;
+  height: 12px;
+  color: white;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.role-option.is-active .role-check svg {
+  opacity: 1;
+  transform: scale(1);
+}
 
 .form-shell {
   min-height: 320px;
@@ -2053,23 +2098,40 @@ select:not(.fs-select):focus {
   }
 
   .role-option {
-    min-height: 88px;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
+    min-height: 80px;
+    grid-template-columns: 48px 1fr 22px;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
   }
 
   .role-icon {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .role-icon svg {
+    width: 24px;
+    height: 24px;
   }
 
   .role-title {
-    font-size: 0.96rem;
+    font-size: 16px;
   }
 
   .role-desc {
-    font-size: 0.8rem;
+    font-size: 13px;
+  }
+
+  .role-check {
+    width: 22px;
+    height: 22px;
+  }
+
+  .role-check svg {
+    width: 11px;
+    height: 11px;
   }
 
   .phone-input-row {

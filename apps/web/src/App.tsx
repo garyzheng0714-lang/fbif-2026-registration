@@ -47,11 +47,11 @@ function apiUrl(path: string) {
 }
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL =
-  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblMQeXvSGd7Hebf_YHcyINOqnzM9YxjJToK2RA_1770366619961/img_v3_02ul_3790aefe-c6b6-473f-9c05-97aa380983bg_1770366621905.jpg';
+  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-top-2026-v2.webp';
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
 const BOTTOM_LONG_BANNER_URL =
-  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v2.webp';
+  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp';
 const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_4n_OhFZpJMUwWmIfeukVLQ_1771982405432/img_v3_02v8_558254bb-fd95-4e88-8eed-da8e5bc2b20g_1771982405633.jpg';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
@@ -646,6 +646,14 @@ function ConsumerCardIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
@@ -1818,12 +1826,15 @@ export default function App() {
                 aria-pressed={identity === 'industry'}
                 aria-label="专业观众注册"
               >
-                <span className="role-icon" aria-hidden="true">
+                <span className="role-icon role-icon--industry" aria-hidden="true">
                   <IndustryCardIcon />
                 </span>
                 <span className="role-content">
                   <span className="role-title">专业观众注册<span className="role-tag need">需审核</span></span>
                   <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）</span>
+                </span>
+                <span className="role-check" aria-hidden="true">
+                  <CheckIcon />
                 </span>
               </button>
               <button
@@ -1833,12 +1844,15 @@ export default function App() {
                 aria-pressed={identity === 'consumer'}
                 aria-label="消费者注册"
               >
-                <span className="role-icon" aria-hidden="true">
+                <span className="role-icon role-icon--consumer" aria-hidden="true">
                   <ConsumerCardIcon />
                 </span>
                 <span className="role-content">
                   <span className="role-title">消费者注册<span className="role-tag free">免审核</span></span>
                   <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）</span>
+                </span>
+                <span className="role-check" aria-hidden="true">
+                  <CheckIcon />
                 </span>
               </button>
             </div>

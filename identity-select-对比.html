@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三方案对比 - 身份选择设计</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
+      background: #f0f0f0;
+      padding: 40px 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 40px;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .scheme-box {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .scheme-header {
+      padding: 16px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .scheme-content {
+      height: 700px;
+      overflow: auto;
+    }
+    .scheme-content iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    @media (max-width: 1200px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+      .scheme-content {
+        height: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="page-title">身份选择设计方案对比</h1>
+  <div class="comparison-grid">
+    <div class="scheme-box">
+      <div class="scheme-header">方案1 - 极简留白（纯白背景 + 高对比）</div>
+      <div class="scheme-content">
+        <iframe src="identity-select-方案1-极简.html"></iframe>
+      </div>
+    </div>
+    <div class="scheme-box">
+      <div class="scheme-header">方案2 - 温暖质感（暖色调 + 食品展氛围）</div>
+      <div class="scheme-content">
+        <iframe src="identity-select-方案2-温暖.html"></iframe>
+      </div>
+    </div>
+    <div class="scheme-box">
+      <div class="scheme-header">方案3 - 现代简约（灰白背景 + 苹果风格）</div>
+      <div class="scheme-content">
+        <iframe src="identity-select-方案3-现代.html"></iframe>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
