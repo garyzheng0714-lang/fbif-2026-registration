@@ -77,7 +77,17 @@ export function createServer() {
 
   app.use(express.json({ limit: '1mb' }));
 
-  app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/health', (_req, res) => {
+    if (app.get('shutting-down')) {
+      return res.status(503).json({ ok: false, reason: 'shutting-down' });
+    }
+    res.json({
+      ok: true,
+      sha: process.env.GH_SHA || 'unknown',
+      env: process.env.NODE_ENV,
+      uptime: process.uptime()
+    });
+  });
   app.get('/metrics', async (_req, res, next) => {
     try {
       await updateQueueMetrics(feishuSyncQueue);

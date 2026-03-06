@@ -201,3 +201,28 @@ worker.on('failed', async (job, err) => {
 worker.on('completed', (job) => {
   logger.info({ jobId: job.id, submissionId: job.data.submissionId }, 'Feishu sync completed');
 });
+
+let workerShuttingDown = false;
+
+function gracefulShutdownWorker(signal: string) {
+  if (workerShuttingDown) return;
+  workerShuttingDown = true;
+
+  logger.info({ signal }, 'Worker received shutdown signal, closing...');
+  clearInterval(sweepTimer);
+  worker.close().then(() => {
+    logger.info('Worker closed gracefully');
+    process.exit(0);
+  }).catch((err) => {
+    logger.error({ err }, 'Worker close error');
+    process.exit(1);
+  });
+
+  setTimeout(() => {
+    logger.warn('Worker graceful shutdown timeout, forcing exit');
+    process.exit(1);
+  }, 12_000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdownWorker('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdownWorker('SIGINT'));
