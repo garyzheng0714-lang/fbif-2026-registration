@@ -87,12 +87,19 @@ apply_defaults() {
   local web_origin_value="${WEB_ORIGIN:-}"
   local api_port_value="${API_PORT:-8080}"
   local api_port_internal_value="${API_PORT_INTERNAL:-8080}"
+  local csrf_cookie_secure_default="true"
+
+  case "${web_origin_value}" in
+    http://localhost*|http://127.0.0.1*|http://*)
+      csrf_cookie_secure_default="false"
+      ;;
+  esac
 
   set_default NODE_ENV production
   set_default API_PORT "${api_port_value}"
   set_default API_PORT_INTERNAL "${api_port_internal_value}"
   set_default WEB_ORIGIN "${web_origin_value}"
-  set_default CSRF_COOKIE_SECURE false
+  set_default CSRF_COOKIE_SECURE "${csrf_cookie_secure_default}"
   set_default POSTGRES_USER fbif
   set_default POSTGRES_PASSWORD change_me
   set_default POSTGRES_DB "${POSTGRES_DB:-fbif_form}"
@@ -106,6 +113,8 @@ apply_defaults() {
   set_default FEISHU_FIELD_BUSINESS_TYPE "贵司的业务类型"
   set_default FEISHU_FIELD_DEPARTMENT "您所处的部门"
   set_default FEISHU_FIELD_PROOF_URL "专业观众证明（附件链接）"
+  set_default FEISHU_FIELD_CLICK_ID ""
+  set_default FEISHU_FIELD_CLICK_ID_SOURCE_KEY ""
   set_default FEISHU_FIELD_SUBMITTED_AT ""
   set_default FEISHU_FIELD_SYNC_STATUS ""
   set_default FEISHU_FIELD_SOURCE ""
@@ -177,6 +186,8 @@ apply_overrides() {
   set_if_non_empty FEISHU_SELECT_WRITE_MODE "${FEISHU_SELECT_WRITE_MODE:-}"
   set_if_non_empty MAX_PROOF_URLS "${MAX_PROOF_URLS:-}"
   set_if_non_empty MAX_PROOF_URL_LENGTH "${MAX_PROOF_URL_LENGTH:-}"
+  set_if_non_empty FEISHU_FIELD_CLICK_ID "${FEISHU_FIELD_CLICK_ID:-}"
+  set_if_non_empty FEISHU_FIELD_CLICK_ID_SOURCE_KEY "${FEISHU_FIELD_CLICK_ID_SOURCE_KEY:-}"
   set_if_non_empty FEISHU_FIELD_SOURCE "${FEISHU_FIELD_SOURCE:-}"
   set_if_non_empty FEISHU_FIELD_TRACKING_PARAMS "${FEISHU_FIELD_TRACKING_PARAMS:-}"
   set_if_non_empty FEISHU_FIELD_TRACKING_ID "${FEISHU_FIELD_TRACKING_ID:-}"
