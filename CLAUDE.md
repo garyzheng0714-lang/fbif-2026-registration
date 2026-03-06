@@ -166,11 +166,12 @@ Worker 同步到飞书多维表格
 ## CI/CD
 
 **GitHub Actions** (`.github/workflows/deploy-aliyun.yml`):
-- 触发: push to `main` / 手动 dispatch
+- 触发: **仅手动 dispatch**（临时降风险措施，等 staging 部署流程跑稳后恢复 push to main 自动部署）
 - 并发: 单实例部署 (取消进行中的)
 - 测试: PostgreSQL 16 + Redis 7 服务容器
 - 步骤: Node 20 → Prisma 迁移 → API 测试 → Web 构建 → 打包 → SSH 部署到阿里云
 - 超时: 45 分钟
+- 部署脚本: `scripts/remote-deploy.sh`（原子静态切换 + 镜像 SHA tag + health check 回滚）
 
 ## 环境变量
 
@@ -354,10 +355,18 @@ ssh new-server "cp deploy/Caddyfile.template /etc/caddy/Caddyfile && systemctl r
 # 5. 推送代码触发 CI 自动部署
 ```
 
+## 数据库迁移规则
+
+**正式环境的 Prisma 迁移必须是向后兼容的**：
+- 只加列（带默认值）、只加表、只加索引
+- 破坏性变更（删列、重命名、改类型）必须在单独维护窗口执行，与应用部署解耦
+- 部署脚本在容器启动时自动执行 `prisma migrate deploy`，不兼容的迁移会导致旧代码报错
+
 ## 待办事项
 
 - [x] 增加数据同步失败告警 (飞书机器人通知)
 - [x] 添加 staging 测试环境
 - [x] 前端容器化 + 统一 Docker Compose 编排
+- [x] 部署安全加固（原子切换 + 回滚 + 前端重试 + 优雅关闭）
 - [ ] 添加管理后台查看失败记录
 - [ ] 定期数据对账脚本
