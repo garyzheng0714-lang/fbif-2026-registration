@@ -230,6 +230,7 @@ jobs:
           FEISHU_ALERT_ENABLED: ${{ secrets.FEISHU_ALERT_ENABLED }}
           RUN_DB_MIGRATE: ${{ secrets.RUN_DB_MIGRATE }}
           RUN_WORKER: ${{ secrets.RUN_WORKER }}
+          FORCE_HEALTH_FAIL: "false"
           GH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
