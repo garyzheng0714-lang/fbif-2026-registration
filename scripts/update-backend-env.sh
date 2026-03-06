@@ -197,4 +197,5 @@ apply_overrides() {
   set_if_non_empty FEISHU_ALERT_ENABLED "${FEISHU_ALERT_ENABLED:-}"
   set_if_non_empty RUN_DB_MIGRATE "${RUN_DB_MIGRATE:-}"
   set_if_non_empty RUN_WORKER "${RUN_WORKER:-}"
+  set_if_non_empty FORCE_HEALTH_FAIL "${FORCE_HEALTH_FAIL:-}"
 }

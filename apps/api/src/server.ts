@@ -78,6 +78,9 @@ export function createServer() {
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_req, res) => {
+    if (process.env.FORCE_HEALTH_FAIL === 'true') {
+      return res.status(503).json({ ok: false, reason: 'forced-fail-for-rollback-test' });
+    }
     if (app.get('shutting-down')) {
       return res.status(503).json({ ok: false, reason: 'shutting-down' });
     }

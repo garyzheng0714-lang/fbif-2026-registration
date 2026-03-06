@@ -75,6 +75,7 @@ services:
       FEISHU_ALERT_ENABLED: ${FEISHU_ALERT_ENABLED:-true}
       RUN_DB_MIGRATE: ${RUN_DB_MIGRATE:-true}
       RUN_WORKER: ${RUN_WORKER:-true}
+      FORCE_HEALTH_FAIL: ${FORCE_HEALTH_FAIL:-false}
     depends_on:
       postgres:
         condition: service_healthy
