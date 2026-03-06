@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -53,7 +53,7 @@ jobs:
             apps/mock-api/package-lock.json
             apps/api/package-lock.json
 
-      - name: Build And Test
+      - name: Install, Test And Build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
@@ -91,6 +91,30 @@ jobs:
             --exclude=".local-stack" \
             .
           cp /tmp/release.tgz release.tgz
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-staging
+          path: release.tgz
+          retention-days: 3
+
+  deploy-staging:
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: true
+
+      - name: Download Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-staging
 
       - name: Validate SSH Key
         env:
