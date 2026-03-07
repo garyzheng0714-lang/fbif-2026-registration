@@ -1901,18 +1901,7 @@ export default function App() {
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
             <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
-            <a
-              className="query-entry"
-              href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <SearchSmallIcon />
-              <span>点击链接，查询注册与审核结果</span>
-              <svg className="query-entry-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
+            <p className="tips"><a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer"><SearchSmallIcon />点击链接，查询注册与审核结果</a></p>
 
             <div className="role-options">
               <button
