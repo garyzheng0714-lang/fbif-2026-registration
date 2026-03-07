@@ -377,11 +377,12 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 2px;
+  align-items: start;
 }
 
 .consumer-optional-row .field {
   gap: 4px;
-  margin-top: 0;
+  margin-top: 0 !important;
 }
 
 .consumer-optional-row .fs-field-label {
