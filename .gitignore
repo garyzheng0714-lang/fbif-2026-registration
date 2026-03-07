@@ -31,19 +31,7 @@ release.tgz
 
 # Local preview artifacts and design screenshots
 .playwright-mcp/
-/preview-*.png
-/preview-*.html
-/staging-*.png
-/success-*.png
-/v3*.png
-/v4*.png
-/identity-select-*.html
-/check-alignment.png
-/consumer-form.png
-/current-page.png
-/current-tags-issue.png
-/form-home.png
-/mobbin-homepage.png
-/mobile-*.png
-/fbif-brand-*.png
-/dribbble-*.png
+
+# Design / preview artifacts should never live at repo root
+/*.html
+/*.png
