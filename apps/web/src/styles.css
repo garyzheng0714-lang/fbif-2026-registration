@@ -372,6 +372,16 @@ body {
   min-width: 0;
 }
 
+.consumer-optional-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.consumer-optional-row .fs-field {
+  margin-bottom: 0;
+}
+
 .fs-loading {
   display: inline-flex;
   align-items: center;

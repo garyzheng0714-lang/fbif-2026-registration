@@ -215,7 +215,9 @@ const initialConsumerForm = {
   idType: 'cn_id' as IdType,
   idNumber: '',
   phoneCountryCode: '+86',
-  phone: ''
+  phone: '',
+  company: '',
+  title: ''
 };
 
 type IndustryForm = typeof initialIndustryForm;
@@ -1040,7 +1042,9 @@ export default function App() {
       idType: consumerForm.idType ? '' : '请选择证件类型',
       idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber, 'consumer'),
       phoneCountryCode: '',
-      phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode)
+      phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode),
+      company: '',
+      title: ''
     };
   }, [consumerForm]);
 
@@ -1682,8 +1686,8 @@ export default function App() {
               clientRequestId,
               phone: composeInternationalPhone(consumerForm.phoneCountryCode, consumerForm.phone),
               name: consumerForm.name.trim(),
-              title: '消费者',
-              company: '个人消费者',
+              title: consumerForm.title.trim() || '消费者',
+              company: consumerForm.company.trim() || '个人消费者',
               idNumber: consumerForm.idNumber.trim().toUpperCase(),
               role: 'consumer' as const,
               idType: consumerForm.idType,
@@ -2492,6 +2496,29 @@ export default function App() {
                       />
                     </div>
                   </FeishuField>
+
+                  <div className="consumer-optional-row">
+                    <FeishuField label="公司" htmlFor="consumer-company">
+                      <FeishuInput
+                        id="consumer-company"
+                        type="text"
+                        autoComplete="organization"
+                        placeholder="选填"
+                        value={consumerForm.company}
+                        onChange={handleConsumerChange('company')}
+                      />
+                    </FeishuField>
+                    <FeishuField label="职位" htmlFor="consumer-title">
+                      <FeishuInput
+                        id="consumer-title"
+                        type="text"
+                        autoComplete="organization-title"
+                        placeholder="选填"
+                        value={consumerForm.title}
+                        onChange={handleConsumerChange('title')}
+                      />
+                    </FeishuField>
+                  </div>
                     </section>
                   </div>
                   {submitActionBlock}
