@@ -245,14 +245,6 @@ export const submissionSchema = z.object({
         message: '贵司的业务类型不能为空'
       });
     }
-    if (!String(data.department || '').trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['department'],
-        message: '您所处的部门不能为空'
-      });
-    }
-
     const urls = Array.isArray(data.proofUrls) ? data.proofUrls : [];
     if (urls.length === 0) {
       ctx.addIssue({

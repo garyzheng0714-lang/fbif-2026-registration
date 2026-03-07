@@ -108,27 +108,10 @@ function getTencentClickAttribution(): {
 }
 
 const industryBusinessOptions = [
-  '食品饮料品牌方',
-  '原材料供应商',
-  '包装与设备公司',
-  '设计营销与咨询策划服务提供商',
-  '线下零售',
-  '线上零售',
-  '新零售',
-  '进出口贸易',
-  '国内贸易',
-  '餐饮及酒店',
+  '品牌',
+  '渠道',
+  '供应商',
   '其他'
-] as const;
-
-const departmentOptions = [
-  '高管、战略部门',
-  '研发、产品、包装',
-  '品牌、市场、营销',
-  '采购、供应链、生产',
-  '渠道、销售、电商',
-  '高校',
-  '其他（如财务、行政等）'
 ] as const;
 
 const idTypeOptions = [
@@ -237,7 +220,6 @@ const initialIndustryForm = {
   company: '',
   title: '',
   businessType: '',
-  department: '',
   proofFiles: [] as string[]
 };
 
@@ -246,7 +228,9 @@ const initialConsumerForm = {
   idType: 'cn_id' as IdType,
   idNumber: '',
   phoneCountryCode: '+86',
-  phone: ''
+  phone: '',
+  company: '',
+  title: ''
 };
 
 type IndustryForm = typeof initialIndustryForm;
@@ -547,12 +531,6 @@ function formatBytes(bytes: number) {
 
 function canPreviewImage(file: File) {
   return Boolean(file.type && file.type.startsWith('image/'));
-}
-
-function isPdfFile(file: File) {
-  const name = (file.name || '').toLowerCase();
-  const type = (file.type || '').toLowerCase();
-  return type === 'application/pdf' || name.endsWith('.pdf');
 }
 
 function proofFileKey(file: File) {
@@ -1079,7 +1057,6 @@ export default function App() {
       company: validateRequired(industryForm.company, '公司', 2, 64),
       title: validateRequired(industryForm.title, '职位', 2, 32),
       businessType: industryForm.businessType ? '' : '请选择业务类型',
-      department: industryForm.department ? '' : '请选择所在部门',
       proofFiles: proofError
     };
   }, [industryForm, proofPreviews]);
@@ -1090,7 +1067,9 @@ export default function App() {
       idType: consumerForm.idType ? '' : '请选择证件类型',
       idNumber: validateIdNumber(consumerForm.idType, consumerForm.idNumber, 'consumer'),
       phoneCountryCode: '',
-      phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode)
+      phone: validatePhone(consumerForm.phone, consumerForm.phoneCountryCode),
+      company: '',
+      title: ''
     };
   }, [consumerForm]);
 
@@ -1130,7 +1109,7 @@ export default function App() {
     (
       event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
     ) => {
-      const value = event.target.value;
+      const value = field === 'phone' ? event.target.value.replace(/\D/g, '') : event.target.value;
       setIndustryForm((prev) => ({ ...prev, [field]: value }));
       if (field === 'name' || field === 'idType' || field === 'idNumber') {
         setIndustryIdVerify(initialIdVerifyState);
@@ -1142,7 +1121,7 @@ export default function App() {
     (
       event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
     ) => {
-      const value = event.target.value;
+      const value = field === 'phone' ? event.target.value.replace(/\D/g, '') : event.target.value;
       setConsumerForm((prev) => ({ ...prev, [field]: value }));
       if (field === 'name' || field === 'idType' || field === 'idNumber') {
         setConsumerIdVerify(initialIdVerifyState);
@@ -1588,7 +1567,7 @@ export default function App() {
         id,
         name: file.name,
         size: file.size,
-        type: file.type || (isPdfFile(file) ? 'application/pdf' : 'application/octet-stream'),
+        type: file.type || 'application/octet-stream',
         previewUrl,
         status: 'pending',
         progress: 0,
@@ -1735,7 +1714,6 @@ export default function App() {
               role: 'industry' as const,
               idType: industryForm.idType,
               businessType: industryForm.businessType,
-              department: industryForm.department,
               idVerifyToken: industryForm.idType === 'cn_id'
                 ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
                 : undefined,
@@ -1750,8 +1728,8 @@ export default function App() {
               clickIdSourceKey: clickIdSourceKey || undefined,
               phone: composeInternationalPhone(consumerForm.phoneCountryCode, consumerForm.phone),
               name: consumerForm.name.trim(),
-              title: '消费者',
-              company: '个人消费者',
+              title: consumerForm.title.trim() || '消费者',
+              company: consumerForm.company.trim() || '个人消费者',
               idNumber: consumerForm.idNumber.trim().toUpperCase(),
               role: 'consumer' as const,
               idType: consumerForm.idType,
@@ -1981,7 +1959,7 @@ export default function App() {
           <>
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
-            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。如已提交，<a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点此查询</a>注册与审核结果</p>
 
             <div className="role-options">
               <button
@@ -2198,6 +2176,7 @@ export default function App() {
                       className="upload-input"
                       type="file"
                       accept=".jpg,.jpeg,.png"
+                      multiple
                       onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
                     />
@@ -2374,45 +2353,27 @@ export default function App() {
                     required
                     error={shouldShowError(fieldKey('industry', 'businessType')) ? industryErrors.businessType : ''}
                   >
-                    <FeishuSelect
-                      id="industry-businessType"
-                      className="compact-select-text"
-                      value={industryForm.businessType}
-                      status={shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? 'error' : 'default'}
-                      onChange={handleIndustryChange('businessType')}
-                      onBlur={() => markTouched(fieldKey('industry', 'businessType'))}
+                    <div
+                      className={`business-type-grid${shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? ' business-type-grid--error' : ''}`}
+                      role="radiogroup"
+                      aria-label="贵司业务类型"
                     >
-                      <option value="">请选择业务类型</option>
                       {industryBusinessOptions.map((option) => (
-                        <option key={option} value={option}>
+                        <button
+                          key={option}
+                          type="button"
+                          className={`business-type-btn${industryForm.businessType === option ? ' business-type-btn--active' : ''}`}
+                          onClick={() => {
+                            handleIndustryChange('businessType')({ target: { value: option } } as React.ChangeEvent<HTMLSelectElement>);
+                            markTouched(fieldKey('industry', 'businessType'));
+                          }}
+                        >
                           {option}
-                        </option>
+                        </button>
                       ))}
-                    </FeishuSelect>
+                    </div>
                   </FeishuField>
 
-                  <FeishuField
-                    label="您所处部门"
-                    htmlFor="industry-department"
-                    required
-                    error={shouldShowError(fieldKey('industry', 'department')) ? industryErrors.department : ''}
-                  >
-                    <FeishuSelect
-                      id="industry-department"
-                      className="compact-select-text"
-                      value={industryForm.department}
-                      status={shouldShowError(fieldKey('industry', 'department')) && industryErrors.department ? 'error' : 'default'}
-                      onChange={handleIndustryChange('department')}
-                      onBlur={() => markTouched(fieldKey('industry', 'department'))}
-                    >
-                      <option value="">请选择所在部门</option>
-                      {departmentOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </FeishuSelect>
-                  </FeishuField>
                     </section>
                   </div>
                   {submitActionBlock}
@@ -2545,6 +2506,30 @@ export default function App() {
                       />
                     </div>
                   </FeishuField>
+
+                  <FeishuField
+                    label={<>公司 / 职位<span className="optional-tag">选填</span></>}
+                    htmlFor="consumer-company"
+                  >
+                    <div className="phone-input-row consumer-work-row">
+                      <FeishuInput
+                        id="consumer-company"
+                        type="text"
+                        autoComplete="organization"
+                        placeholder="公司名称"
+                        value={consumerForm.company}
+                        onChange={handleConsumerChange('company')}
+                      />
+                      <FeishuInput
+                        id="consumer-title"
+                        type="text"
+                        autoComplete="organization-title"
+                        placeholder="职位"
+                        value={consumerForm.title}
+                        onChange={handleConsumerChange('title')}
+                      />
+                    </div>
+                  </FeishuField>
                     </section>
                   </div>
                   {submitActionBlock}
@@ -2625,6 +2610,18 @@ export default function App() {
                     </div>
                   </>
                 )}
+              </div>
+
+              <div className="success-notice">
+                <div className="success-notice-icon" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 3.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 0110 5.5zm0 8a.75.75 0 100-1.5.75.75 0 000 1.5z" fill="currentColor" />
+                  </svg>
+                </div>
+                <div className="success-notice-body">
+                  <h3>温馨提示</h3>
+                  <p>注册成功后，FBIF工作人员将会添加您的微信，同步您入场相关资讯</p>
+                </div>
               </div>
 
               <div className="success-bottom">
