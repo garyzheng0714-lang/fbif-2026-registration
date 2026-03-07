@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -53,7 +53,7 @@ jobs:
             apps/mock-api/package-lock.json
             apps/api/package-lock.json
 
-      - name: Build And Test
+      - name: Install, Test And Build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
@@ -68,7 +68,7 @@ jobs:
           npm ci --prefix apps/mock-api
           npm test --prefix apps/mock-api
           npm ci --prefix apps/web
-          VITE_API_URL="${API_URL}" npm run build --prefix apps/web
+          VITE_API_URL="${API_URL}" VITE_BUILD_SHA="${GITHUB_SHA:-dev}" npm run build --prefix apps/web
 
       - name: Package Release
         run: |
@@ -92,12 +92,37 @@ jobs:
             .
           cp /tmp/release.tgz release.tgz
 
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-staging
+          path: release.tgz
+          retention-days: 3
+
+  deploy-staging:
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+
+    steps:
+      - name: Checkout Scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: true
+
+      - name: Download Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-staging
+
       - name: Validate SSH Key
         env:
-          ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: root
-          ALIYUN_SSH_KEY: ${{ secrets.STAGING_ALIYUN_SSH_KEY }}
-          ALIYUN_SSH_KEY_B64: ${{ secrets.STAGING_ALIYUN_SSH_KEY_B64 }}
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
         run: |
           set -euo pipefail
           HOST="${ALIYUN_HOST:-112.124.103.65}"
@@ -159,8 +184,8 @@ jobs:
 
       - name: Upload Release To Server
         env:
-          ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: root
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
         run: |
           set -euo pipefail
           HOST="${ALIYUN_HOST:-112.124.103.65}"
@@ -176,23 +201,23 @@ jobs:
 
       - name: Deploy On Server
         env:
-          ALIYUN_HOST: 112.124.103.65
-          ALIYUN_USER: root
-          APP_DIR: /opt/web-fbif-form-staging
-          STATIC_DIR: /var/www/fbif-form-staging
-          API_PORT: "8083"
-          API_PORT_INTERNAL: "8080"
-          WEB_ORIGIN: http://fbif2026ticket2.foodtalks.cn
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          STATIC_DIR: ${{ secrets.STATIC_DIR }}
+          API_PORT: ${{ secrets.API_PORT }}
+          API_PORT_INTERNAL: ${{ secrets.API_PORT_INTERNAL }}
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
           CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: fbif_form_staging
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           DATA_KEY: ${{ secrets.DATA_KEY }}
           DATA_HASH_SALT: ${{ secrets.DATA_HASH_SALT }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_APP_TOKEN: ${{ secrets.FEISHU_APP_TOKEN }}
-          FEISHU_TABLE_ID: tbl0CQ74guMS1IDd
+          FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
           OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
           OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
@@ -221,11 +246,13 @@ jobs:
           FEISHU_SELECT_WRITE_MODE: ${{ secrets.FEISHU_SELECT_WRITE_MODE }}
           MAX_PROOF_URLS: ${{ secrets.MAX_PROOF_URLS }}
           MAX_PROOF_URL_LENGTH: ${{ secrets.MAX_PROOF_URL_LENGTH }}
+          FEISHU_FIELD_CLICK_ID: ${{ secrets.FEISHU_FIELD_CLICK_ID }}
+          FEISHU_FIELD_CLICK_ID_SOURCE_KEY: ${{ secrets.FEISHU_FIELD_CLICK_ID_SOURCE_KEY }}
           FEISHU_FIELD_SOURCE: ${{ secrets.FEISHU_FIELD_SOURCE }}
           FEISHU_FIELD_TRACKING_PARAMS: ${{ secrets.FEISHU_FIELD_TRACKING_PARAMS }}
           FEISHU_FIELD_TRACKING_ID: ${{ secrets.FEISHU_FIELD_TRACKING_ID }}
           FEISHU_FIELD_TRACKING_ID_TYPE: ${{ secrets.FEISHU_FIELD_TRACKING_ID_TYPE }}
-          FEISHU_SUBMISSION_SOURCE: "测试环境"
+          FEISHU_SUBMISSION_SOURCE: ${{ secrets.FEISHU_SUBMISSION_SOURCE }}
           FEISHU_ALERT_WEBHOOK: ${{ secrets.FEISHU_ALERT_WEBHOOK }}
           FEISHU_ALERT_ENABLED: ${{ secrets.FEISHU_ALERT_ENABLED }}
           RUN_DB_MIGRATE: ${{ secrets.RUN_DB_MIGRATE }}
@@ -236,147 +263,9 @@ jobs:
           HOST="${ALIYUN_HOST:-112.124.103.65}"
           USER="${ALIYUN_USER:-root}"
 
-          cat > /tmp/remote_deploy.sh <<'REMOTE_SCRIPT'
-            set -euo pipefail
-            APP_ROOT="${APP_DIR:-/opt/web-fbif-form-staging}"
-            RELEASES_DIR="${APP_ROOT}/releases"
-            CURRENT_LINK="${APP_ROOT}/current"
-            RELEASE_DIR="${RELEASES_DIR}/${GH_SHA}"
-            SHARED_DIR="${APP_ROOT}/shared"
-            BACKEND_ENV_FILE="${SHARED_DIR}/backend.env"
-
-            STATIC_DIR_VALUE="${STATIC_DIR:-/var/www/fbif-form-staging}"
-            API_PORT_VALUE="${API_PORT:-8083}"
-
-            mkdir -p "${RELEASES_DIR}" "${SHARED_DIR}"
-            rm -rf "${RELEASE_DIR}"
-            mkdir -p "${RELEASE_DIR}"
-
-            tar -xzf /tmp/release-staging.tgz -C "${RELEASE_DIR}"
-            ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
-
-            # --- 部署前端静态文件到宿主机 NGINX 目录 ---
-            mkdir -p "${STATIC_DIR_VALUE}"
-            rm -rf "${STATIC_DIR_VALUE:?}"/*
-            cp -r "${RELEASE_DIR}/apps/web/dist/"* "${STATIC_DIR_VALUE}/"
-            echo "Static files deployed to ${STATIC_DIR_VALUE}"
-
-            # --- 确保宿主机 3003 端口由 NGINX 提供 staging 静态站点 ---
-            if command -v nginx >/dev/null 2>&1; then
-              mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-              printf '%s\n' \
-                'server {' \
-                '    listen 3003;' \
-                '    listen [::]:3003;' \
-                '    server_name _;' \
-                '' \
-                '    root /var/www/fbif-form-staging;' \
-                '    index index.html;' \
-                '' \
-                '    location = /healthz {' \
-                '        default_type text/plain;' \
-                '        return 200 "ok\n";' \
-                '    }' \
-                '' \
-                '    location /api/ {' \
-                "        proxy_pass http://127.0.0.1:${API_PORT_VALUE};" \
-                '        proxy_http_version 1.1;' \
-                '        proxy_set_header Host $host;' \
-                '        proxy_set_header X-Real-IP $remote_addr;' \
-                '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' \
-                '        proxy_set_header X-Forwarded-Proto $scheme;' \
-                '        proxy_set_header X-Forwarded-Host $host;' \
-                '        proxy_read_timeout 75s;' \
-                '        proxy_send_timeout 75s;' \
-                '    }' \
-                '' \
-                '    location / {' \
-                '        try_files $uri $uri/ /index.html;' \
-                '    }' \
-                '}' \
-                > /etc/nginx/sites-available/fbif-form-staging
-              ln -sfn /etc/nginx/sites-available/fbif-form-staging /etc/nginx/sites-enabled/fbif-form-staging
-              nginx -t
-              systemctl reload nginx
-            fi
-
-            # --- 通过 Caddy 暴露 staging 域名入口（自动 HTTPS） ---
-            if command -v caddy >/dev/null 2>&1 && [ -f /etc/caddy/Caddyfile ]; then
-              if ! grep -q '^fbif2026ticket2\.foodtalks\.cn[[:space:]]*{' /etc/caddy/Caddyfile; then
-                printf '\n%s\n%s\n%s\n' \
-                  'fbif2026ticket2.foodtalks.cn {' \
-                  '    reverse_proxy 127.0.0.1:3003' \
-                  '}' >> /etc/caddy/Caddyfile
-              fi
-              caddy validate --config /etc/caddy/Caddyfile
-              systemctl reload caddy
-            fi
-
-            # --- 环境变量管理 (source 共享脚本) ---
-            export BACKEND_ENV_FILE
-            . "${RELEASE_DIR}/scripts/update-backend-env.sh"
-
-            init_env_file
-            migrate_env
-            apply_defaults
-            apply_overrides
-            finalize_env_file
-
-            # --- Docker 检查 ---
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "Docker not found on server." >&2
-              exit 1
-            fi
-            if ! docker compose version >/dev/null 2>&1; then
-              echo "Docker Compose v2 not found on server." >&2
-              exit 1
-            fi
-
-            # --- 清理旧的 web 容器 (迁移过渡期) ---
-            docker rm -f fbif-form-staging-web-1 >/dev/null 2>&1 || true
-
-            # --- 导出环境变量供 Docker Compose 插值 ---
-            set -a
-            . "${BACKEND_ENV_FILE}"
-            set +a
-
-            # --- 启动后端容器 (api + postgres + redis) ---
-            (
-              cd "${RELEASE_DIR}"
-              COMPOSE_PROJECT_NAME=fbif-form-staging \
-              docker compose \
-                --env-file "${BACKEND_ENV_FILE}" \
-                -f docker-compose.production.yml \
-                up -d --build --remove-orphans
-            )
-
-            # --- 健康检查 ---
-            wait_http() {
-              local url="$1"
-              local retries="${2:-20}"
-              local i=1
-              while [ "${i}" -le "${retries}" ]; do
-                if curl -fsS "${url}" >/dev/null; then
-                  return 0
-                fi
-                sleep 1
-                i=$((i + 1))
-              done
-              echo "Health check failed: ${url}" >&2
-              docker ps || true
-              return 1
-            }
-
-            wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 40
-            wait_http "http://127.0.0.1:3003/healthz" 20
-
-            # --- 清理旧版本 (保留最近 5 个) ---
-            ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +6 | xargs -r rm -rf
-          REMOTE_SCRIPT
-
           REMOTE_ENV="$(printf \
-            "APP_DIR=%q STATIC_DIR=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q FEISHU_FIELD_SOURCE=%q FEISHU_FIELD_TRACKING_PARAMS=%q FEISHU_FIELD_TRACKING_ID=%q FEISHU_FIELD_TRACKING_ID_TYPE=%q FEISHU_SUBMISSION_SOURCE=%q FEISHU_ALERT_WEBHOOK=%q FEISHU_ALERT_ENABLED=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q" \
-            "${APP_DIR:-}" "${STATIC_DIR:-}" "${API_PORT:-}" "${API_PORT_INTERNAL:-}" "${WEB_ORIGIN:-}" "${CSRF_COOKIE_SECURE:-}" "${POSTGRES_USER:-}" "${POSTGRES_PASSWORD:-}" "${POSTGRES_DB:-}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${ID_VERIFY_ENABLED:-}" "${ID_VERIFY_ALIYUN_HOST:-}" "${ID_VERIFY_ALIYUN_PATH:-}" "${ID_VERIFY_APPCODE:-}" "${ID_VERIFY_TIMEOUT_MS:-}" "${ID_VERIFY_TOKEN_TTL_SECONDS:-}" "${RATE_LIMIT_WINDOW_MS:-}" "${RATE_LIMIT_MAX:-}" "${RATE_LIMIT_BURST:-}" "${SYNC_POLL_TIMEOUT_MS:-}" "${FEISHU_SYNC_ATTEMPTS:-}" "${FEISHU_SYNC_BACKOFF_MS:-}" "${FEISHU_SYNC_BACKOFF_MAX_MS:-}" "${FEISHU_WORKER_CONCURRENCY:-}" "${FEISHU_WORKER_QPS:-}" "${FEISHU_SELECT_WRITE_MODE:-}" "${MAX_PROOF_URLS:-}" "${MAX_PROOF_URL_LENGTH:-}" "${FEISHU_FIELD_SOURCE:-}" "${FEISHU_FIELD_TRACKING_PARAMS:-}" "${FEISHU_FIELD_TRACKING_ID:-}" "${FEISHU_FIELD_TRACKING_ID_TYPE:-}" "${FEISHU_SUBMISSION_SOURCE:-}" "${FEISHU_ALERT_WEBHOOK:-}" "${FEISHU_ALERT_ENABLED:-}" "${RUN_DB_MIGRATE:-}" "${RUN_WORKER:-}" "${GH_SHA}")"
+            "APP_DIR=%q STATIC_DIR=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q FEISHU_FIELD_CLICK_ID=%q FEISHU_FIELD_CLICK_ID_SOURCE_KEY=%q FEISHU_FIELD_SOURCE=%q FEISHU_FIELD_TRACKING_PARAMS=%q FEISHU_FIELD_TRACKING_ID=%q FEISHU_FIELD_TRACKING_ID_TYPE=%q FEISHU_SUBMISSION_SOURCE=%q FEISHU_ALERT_WEBHOOK=%q FEISHU_ALERT_ENABLED=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q COMPOSE_PROJECT_NAME=%q RELEASE_TGZ=%q NGINX_LISTEN_PORT=%q NGINX_SITE_NAME=%q CADDY_DOMAIN=%q" \
+            "${APP_DIR:-/opt/web-fbif-form-staging}" "${STATIC_DIR:-/var/www/fbif-form-staging}" "${API_PORT:-8083}" "${API_PORT_INTERNAL:-8080}" "${WEB_ORIGIN:-http://fbif2026ticket2.foodtalks.cn}" "${CSRF_COOKIE_SECURE:-}" "${POSTGRES_USER:-}" "${POSTGRES_PASSWORD:-}" "${POSTGRES_DB:-fbif_form_staging}" "${DATA_KEY:-}" "${DATA_HASH_SALT:-}" "${FEISHU_APP_ID:-}" "${FEISHU_APP_SECRET:-}" "${FEISHU_APP_TOKEN:-}" "${FEISHU_TABLE_ID:-}" "${OSS_ACCESS_KEY_ID:-}" "${OSS_ACCESS_KEY_SECRET:-}" "${OSS_BUCKET:-}" "${OSS_REGION:-}" "${OSS_HOST:-}" "${OSS_PUBLIC_BASE_URL:-}" "${OSS_UPLOAD_PREFIX:-}" "${OSS_MAX_UPLOAD_MB:-}" "${OSS_POLICY_EXPIRE_SECONDS:-}" "${OSS_OBJECT_ACL:-}" "${ID_VERIFY_ENABLED:-}" "${ID_VERIFY_ALIYUN_HOST:-}" "${ID_VERIFY_ALIYUN_PATH:-}" "${ID_VERIFY_APPCODE:-}" "${ID_VERIFY_TIMEOUT_MS:-}" "${ID_VERIFY_TOKEN_TTL_SECONDS:-}" "${RATE_LIMIT_WINDOW_MS:-}" "${RATE_LIMIT_MAX:-}" "${RATE_LIMIT_BURST:-}" "${SYNC_POLL_TIMEOUT_MS:-}" "${FEISHU_SYNC_ATTEMPTS:-}" "${FEISHU_SYNC_BACKOFF_MS:-}" "${FEISHU_SYNC_BACKOFF_MAX_MS:-}" "${FEISHU_WORKER_CONCURRENCY:-}" "${FEISHU_WORKER_QPS:-}" "${FEISHU_SELECT_WRITE_MODE:-}" "${MAX_PROOF_URLS:-}" "${MAX_PROOF_URL_LENGTH:-}" "${FEISHU_FIELD_CLICK_ID:-}" "${FEISHU_FIELD_CLICK_ID_SOURCE_KEY:-}" "${FEISHU_FIELD_SOURCE:-}" "${FEISHU_FIELD_TRACKING_PARAMS:-}" "${FEISHU_FIELD_TRACKING_ID:-}" "${FEISHU_FIELD_TRACKING_ID_TYPE:-}" "${FEISHU_SUBMISSION_SOURCE:-测试环境}" "${FEISHU_ALERT_WEBHOOK:-}" "${FEISHU_ALERT_ENABLED:-}" "${RUN_DB_MIGRATE:-}" "${RUN_WORKER:-}" "${GH_SHA}" "fbif-form-staging" "/tmp/release-staging.tgz" "3003" "fbif-form-staging" "fbif2026ticket2.foodtalks.cn")"
 
           ssh \
             -i ~/.ssh/id_aliyun \
@@ -384,8 +273,8 @@ jobs:
             -o ConnectTimeout=20 \
             -o StrictHostKeyChecking=accept-new \
             "${USER}@${HOST}" \
-            "${REMOTE_ENV} bash -s" < /tmp/remote_deploy.sh
+            "${REMOTE_ENV} bash -s" < scripts/remote-deploy.sh
 
       - name: Cleanup
         if: always()
-        run: rm -f ~/.ssh/id_aliyun /tmp/remote_deploy.sh /tmp/release-staging.tgz release.tgz
+        run: rm -f ~/.ssh/id_aliyun /tmp/release-staging.tgz release.tgz

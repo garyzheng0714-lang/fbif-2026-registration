@@ -70,13 +70,13 @@ VITE_API_URL=https://form.example.com npm run build
 3. 启动后端隔离容器栈：
 ```bash
 cp backend.env.example backend.env
-docker compose --env-file backend.env -f docker-compose.backend.yml up -d --build
+docker compose --env-file backend.env -f docker-compose.production.yml up -d --build
 ```
 
 4. 验证：
 ```bash
-docker compose --env-file backend.env -f docker-compose.backend.yml ps
-curl -i http://127.0.0.1:18080/health
+docker compose --env-file backend.env -f docker-compose.production.yml ps
+curl -i http://127.0.0.1:8080/health
 ```
 
 完整步骤与 NGINX 反向代理示例见 `docs/deployment.md`。
@@ -92,3 +92,4 @@ curl -i http://127.0.0.1:18080/health
 已支持 GitHub Actions 自动部署到阿里云（推送 `main` 自动触发）。
 
 说明文档：`docs/github-actions-deploy.md`
+发布规则：`docs/release-flow.md`

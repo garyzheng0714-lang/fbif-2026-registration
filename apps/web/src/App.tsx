@@ -56,6 +56,11 @@ const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_4n_OhFZpJMUwWmIfeukVLQ_1771982405432/img_v3_02v8_558254bb-fd95-4e88-8eed-da8e5bc2b20g_1771982405633.jpg';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line no-console
+  console.log('[FBIF] build:', __BUILD_SHA__);
+}
+
 type Identity = '' | 'industry' | 'consumer';
 type SubmittedRole = 'industry' | 'consumer';
 type ClickIdSourceKey = '' | 'click_id' | 'qz_gdt' | 'gdt_vid';
@@ -1179,21 +1184,35 @@ export default function App() {
     }
 
     const requestPromise = (async () => {
-      const csrfResp = await fetch(apiUrl('/api/csrf'), {
-        credentials: 'include'
-      });
+      const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        try {
+          const csrfResp = await fetch(apiUrl('/api/csrf'), {
+            credentials: 'include'
+          });
 
-      const csrfData = await parseJsonIfPossible(csrfResp);
-      if (!csrfResp.ok || !csrfData?.csrfToken) {
-        throw new Error('csrf_failed');
+          const csrfData = await parseJsonIfPossible(csrfResp);
+          if (!csrfResp.ok || !csrfData?.csrfToken) {
+            throw new Error('csrf_failed');
+          }
+
+          const token = String(csrfData.csrfToken);
+          csrfTokenCacheRef.current = {
+            token,
+            expiresAt: Date.now() + 3 * 60 * 1000
+          };
+          return token;
+        } catch (err) {
+          const isNetworkError = err instanceof TypeError;
+          const isCsrfFailed = err instanceof Error && err.message === 'csrf_failed';
+          if ((isNetworkError || isCsrfFailed) && attempt < maxRetries - 1) {
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+          throw err;
+        }
       }
-
-      const token = String(csrfData.csrfToken);
-      csrfTokenCacheRef.current = {
-        token,
-        expiresAt: Date.now() + 3 * 60 * 1000
-      };
-      return token;
+      throw new Error('csrf_failed');
     })();
 
     csrfTokenRequestRef.current = requestPromise;
@@ -1344,17 +1363,27 @@ export default function App() {
     try {
       let csrfToken = await fetchCsrfToken();
       let policy: OssPolicy;
-      try {
-        policy = await createOssPolicy(file, csrfToken);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (!message.startsWith('oss_policy_failed:403')) {
+
+      const maxPolicyRetries = 3;
+      for (let policyAttempt = 0; policyAttempt < maxPolicyRetries; policyAttempt += 1) {
+        try {
+          policy = await createOssPolicy(file, csrfToken);
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.startsWith('oss_policy_failed:403') && policyAttempt < maxPolicyRetries - 1) {
+            csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+            csrfToken = await fetchCsrfToken(true);
+            continue;
+          }
+          if (error instanceof TypeError && policyAttempt < maxPolicyRetries - 1) {
+            await new Promise((r) => setTimeout(r, 1500 * (policyAttempt + 1)));
+            continue;
+          }
           throw error;
         }
-        csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
-        csrfToken = await fetchCsrfToken(true);
-        policy = await createOssPolicy(file, csrfToken);
       }
+      policy = policy!;
       const ossUrl = await uploadFileToOss(
         file,
         policy,
@@ -1745,37 +1774,56 @@ export default function App() {
 
       let submitData: any = null;
       let accepted = false;
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const resp = await fetch(apiUrl('/api/submissions'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-        submitData = await parseJsonIfPossible(resp);
+      const maxSubmitAttempts = 4;
+      for (let attempt = 0; attempt < maxSubmitAttempts; attempt += 1) {
+        try {
+          const resp = await fetch(apiUrl('/api/submissions'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
+          submitData = await parseJsonIfPossible(resp);
 
-        if (resp.ok && submitData?.id) {
-          accepted = true;
-          break;
+          if (resp.ok && submitData?.id) {
+            accepted = true;
+            break;
+          }
+
+          // CSRF token stale — refresh and retry
+          if (resp.status === 403 && attempt < maxSubmitAttempts - 1) {
+            csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+            csrfToken = await fetchCsrfToken(true);
+            continue;
+          }
+
+          // 5xx server error — wait and retry with fresh CSRF
+          if (resp.status >= 500 && attempt < maxSubmitAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 1500 * Math.pow(2, attempt)));
+            csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
+            csrfToken = await fetchCsrfToken(true);
+            continue;
+          }
+
+          // 4xx business error — do not retry
+          const errMsg = String(
+            submitData?.message ||
+              submitData?.details?.fieldErrors?.idVerifyToken?.[0] ||
+              submitData?.error ||
+              ''
+          ).trim();
+          throw new Error(errMsg ? `submit_failed:${errMsg}` : 'submit_failed');
+        } catch (err) {
+          // Network error (fetch threw TypeError) — wait and retry
+          if (err instanceof TypeError && attempt < maxSubmitAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 1500 * Math.pow(2, attempt)));
+            continue;
+          }
+          throw err;
         }
-
-        // Token may be stale if cookie rotated. Refresh token once and retry.
-        if (resp.status === 403 && attempt === 0) {
-          csrfTokenCacheRef.current = { token: '', expiresAt: 0 };
-          csrfToken = await fetchCsrfToken(true);
-          continue;
-        }
-
-        const errMsg = String(
-          submitData?.message ||
-            submitData?.details?.fieldErrors?.idVerifyToken?.[0] ||
-            submitData?.error ||
-            ''
-        ).trim();
-        throw new Error(errMsg ? `submit_failed:${errMsg}` : 'submit_failed');
       }
 
       if (!accepted || !submitData?.id) {
@@ -2710,6 +2758,10 @@ export default function App() {
           {toast.message}
         </div>
       )}
+
+      <div className="build-badge" aria-hidden="true">
+        {__BUILD_SHA__ === 'dev' ? 'dev' : __BUILD_SHA__.slice(0, 7)}
+      </div>
     </div>
   );
 }

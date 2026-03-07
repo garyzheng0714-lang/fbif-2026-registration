@@ -1970,6 +1970,19 @@ select:not(.fs-select):focus {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
 }
 
+.build-badge {
+  position: fixed;
+  bottom: 4px;
+  right: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  font-family: monospace;
+}
+
 .legal-footer {
   /* 使用 flexbox 自然布局，不再使用 fixed 定位 */
   width: 100%;

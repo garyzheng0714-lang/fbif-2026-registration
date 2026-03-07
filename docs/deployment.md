@@ -36,12 +36,12 @@ cp backend.env.example backend.env
 2. 按真实值填写 `backend.env`（尤其是 Feishu 凭据与密钥）。
 3. 启动容器：
 ```bash
-docker compose --env-file backend.env -f docker-compose.backend.yml up -d --build
+docker compose --env-file backend.env -f docker-compose.production.yml up -d --build
 ```
 
 说明：
-- `docker-compose.backend.yml` 会同时启动 `api + postgres:16 + redis:7`。
-- 默认只对外暴露 `API_PORT`（默认 `18080`）。
+- `docker-compose.production.yml` 会同时启动 `api + postgres:16 + redis:7`。
+- 默认只对外暴露 `API_PORT`（默认 `8080`）。
 - `postgres/redis` 仅连入内部网络 `private`，不会占用宿主机 `5432/6379`。
 - `api` 容器会在启动时自动执行 `prisma migrate deploy`，并在同容器内启动 Worker。
 
@@ -64,7 +64,7 @@ server {
   }
 
   location /api/ {
-    proxy_pass http://127.0.0.1:18080;
+    proxy_pass http://127.0.0.1:8080;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -73,7 +73,7 @@ server {
   }
 
   location = /health {
-    proxy_pass http://127.0.0.1:18080/health;
+    proxy_pass http://127.0.0.1:8080/health;
   }
 }
 ```
@@ -81,22 +81,22 @@ server {
 ## 4) 验证与运维
 查看容器状态：
 ```bash
-docker compose --env-file backend.env -f docker-compose.backend.yml ps
+docker compose --env-file backend.env -f docker-compose.production.yml ps
 ```
 
 查看日志：
 ```bash
-docker compose --env-file backend.env -f docker-compose.backend.yml logs -f api
+docker compose --env-file backend.env -f docker-compose.production.yml logs -f api
 ```
 
 健康检查：
 ```bash
-curl -i http://127.0.0.1:18080/health
+curl -i http://127.0.0.1:8080/health
 ```
 
 停止栈：
 ```bash
-docker compose --env-file backend.env -f docker-compose.backend.yml down
+docker compose --env-file backend.env -f docker-compose.production.yml down
 ```
 
 ## 5) 关键环境变量（后端）
