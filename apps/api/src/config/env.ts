@@ -60,7 +60,7 @@ const envSchema = z.object({
   OSS_HOST: z.string().optional(),
   OSS_PUBLIC_BASE_URL: z.string().optional(),
   OSS_UPLOAD_PREFIX: z.string().optional(),
-  OSS_MAX_UPLOAD_MB: z.coerce.number().default(50),
+  OSS_MAX_UPLOAD_MB: z.coerce.number().default(20),
   OSS_POLICY_EXPIRE_SECONDS: z.coerce.number().default(600),
   OSS_OBJECT_ACL: z.string().optional(),
 
