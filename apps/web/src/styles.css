@@ -3008,6 +3008,41 @@ body {
   font-size: 16px;
 }
 
+/* Business type grid - 2x2 layout */
+.business-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.business-type-grid--error .business-type-btn {
+  border-color: var(--error-color, #f54a45);
+}
+
+.business-type-btn {
+  padding: 10px 0;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 15px;
+  color: #1f2329;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.business-type-btn:hover {
+  border-color: #3370ff;
+  color: #3370ff;
+}
+
+.business-type-btn--active {
+  border-color: #3370ff;
+  background: #f0f4ff;
+  color: #3370ff;
+  font-weight: 500;
+}
+
 .phone-country-code-select .fs-select-trigger {
   font-size: 16px;
 }

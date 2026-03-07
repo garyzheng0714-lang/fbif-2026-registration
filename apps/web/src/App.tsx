@@ -84,16 +84,9 @@ function createClientRequestId() {
 }
 
 const industryBusinessOptions = [
-  '食品饮料品牌方',
-  '原材料供应商',
-  '包装与设备公司',
-  '设计营销与咨询策划服务提供商',
-  '线下零售',
-  '线上零售',
-  '新零售',
-  '进出口贸易',
-  '国内贸易',
-  '餐饮及酒店',
+  '品牌',
+  '渠道',
+  '供应商',
   '其他'
 ] as const;
 
@@ -2324,21 +2317,25 @@ export default function App() {
                     required
                     error={shouldShowError(fieldKey('industry', 'businessType')) ? industryErrors.businessType : ''}
                   >
-                    <FeishuSelect
-                      id="industry-businessType"
-                      className="compact-select-text"
-                      value={industryForm.businessType}
-                      status={shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? 'error' : 'default'}
-                      onChange={handleIndustryChange('businessType')}
-                      onBlur={() => markTouched(fieldKey('industry', 'businessType'))}
+                    <div
+                      className={`business-type-grid${shouldShowError(fieldKey('industry', 'businessType')) && industryErrors.businessType ? ' business-type-grid--error' : ''}`}
+                      role="radiogroup"
+                      aria-label="贵司业务类型"
                     >
-                      <option value="">请选择业务类型</option>
                       {industryBusinessOptions.map((option) => (
-                        <option key={option} value={option}>
+                        <button
+                          key={option}
+                          type="button"
+                          className={`business-type-btn${industryForm.businessType === option ? ' business-type-btn--active' : ''}`}
+                          onClick={() => {
+                            handleIndustryChange('businessType')({ target: { value: option } } as React.ChangeEvent<HTMLSelectElement>);
+                            markTouched(fieldKey('industry', 'businessType'));
+                          }}
+                        >
                           {option}
-                        </option>
+                        </button>
                       ))}
-                    </FeishuSelect>
+                    </div>
                   </FeishuField>
 
                   <FeishuField
