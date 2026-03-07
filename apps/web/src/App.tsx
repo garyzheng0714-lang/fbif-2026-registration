@@ -392,7 +392,7 @@ function formatUploadError(message: string) {
   if (raw.startsWith('oss_policy_failed')) {
     // Common case: oversize / OSS not configured / CSRF failure.
     if (raw.includes('too large') || raw.includes('max=')) {
-      return '文件过大（单个文件最大 50MB），请压缩后重试';
+      return '文件过大（单个文件最大 20MB），请压缩后重试';
     }
     return '获取上传签名失败，请刷新页面后重试';
   }
@@ -507,12 +507,6 @@ function formatBytes(bytes: number) {
 
 function canPreviewImage(file: File) {
   return Boolean(file.type && file.type.startsWith('image/'));
-}
-
-function isPdfFile(file: File) {
-  const name = (file.name || '').toLowerCase();
-  const type = (file.type || '').toLowerCase();
-  return type === 'application/pdf' || name.endsWith('.pdf');
 }
 
 function proofFileKey(file: File) {
@@ -1516,7 +1510,7 @@ export default function App() {
         id,
         name: file.name,
         size: file.size,
-        type: file.type || (isPdfFile(file) ? 'application/pdf' : 'application/octet-stream'),
+        type: file.type || 'application/octet-stream',
         previewUrl,
         status: 'pending',
         progress: 0,
@@ -2116,7 +2110,7 @@ export default function App() {
                       ref={proofInputRef}
                       className="upload-input"
                       type="file"
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept=".jpg,.jpeg,.png"
                       multiple
                       onChange={(event) => addProofFiles(event.target.files)}
                       onBlur={() => markTouched(fieldKey('industry', 'proofFiles'))}
@@ -2140,7 +2134,7 @@ export default function App() {
                             <CloudUploadRoundIcon />
                           </span>
                           <span className="upload-empty-title">点击上传文件</span>
-                          <span className="upload-empty-subtitle">支持 JPG, PNG, PDF (最大 50MB)</span>
+                          <span className="upload-empty-subtitle">支持 JPG, PNG (最大 20MB)</span>
                         </button>
                       ) : (
                         <FeishuButton

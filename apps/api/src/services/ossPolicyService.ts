@@ -48,7 +48,7 @@ export function buildOssUploadPolicy(input: {
   const publicBase = trim(env.OSS_PUBLIC_BASE_URL) || host;
   const prefix = (trim(env.OSS_UPLOAD_PREFIX) || 'fbif-form/proof').replace(/^\/+|\/+$/g, '');
 
-  const maxMb = Math.max(1, Number(env.OSS_MAX_UPLOAD_MB || 50));
+  const maxMb = Math.max(1, Number(env.OSS_MAX_UPLOAD_MB || 20));
   const maxBytes = maxMb * 1024 * 1024;
   const requestedSize = Number(input.sizeBytes || 0);
   if (requestedSize && requestedSize > maxBytes) {
