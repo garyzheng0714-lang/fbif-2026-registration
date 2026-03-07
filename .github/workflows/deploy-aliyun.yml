@@ -1,18 +1,20 @@
 name: Deploy To Aliyun
 
 on:
-  # push to main auto-deploy disabled for safety; re-enable after staging stabilises
-  # push:
-  #   branches:
-  #     - main
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: '输入 "deploy" 确认部署到生产环境'
+        required: true
+        type: string
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-test:
+    if: github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

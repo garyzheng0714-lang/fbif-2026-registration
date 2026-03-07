@@ -3,7 +3,7 @@ name: Deploy Staging To Aliyun
 on:
   push:
     branches:
-      - staging
+      - main
   workflow_dispatch:
 
 concurrency:
