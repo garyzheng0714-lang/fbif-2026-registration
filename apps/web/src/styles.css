@@ -3046,11 +3046,11 @@ body {
   font-size: 16px;
 }
 
-/* Business type grid - 2x2 layout */
+/* Business type inline options */
 .business-type-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .business-type-grid--error .business-type-btn {
@@ -3058,20 +3058,22 @@ body {
 }
 
 .business-type-btn {
-  padding: 10px 0;
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
+  padding: 7px 20px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 20px;
   background: #fff;
-  font-size: 15px;
-  color: #1f2329;
+  font-size: 14px;
+  color: #646a73;
   cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .business-type-btn:hover {
   border-color: #3370ff;
   color: #3370ff;
+  background: #f5f8ff;
 }
 
 .business-type-btn--active {
