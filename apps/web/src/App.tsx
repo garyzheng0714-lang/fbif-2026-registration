@@ -90,16 +90,6 @@ const industryBusinessOptions = [
   '其他'
 ] as const;
 
-const departmentOptions = [
-  '高管、战略部门',
-  '研发、产品、包装',
-  '品牌、市场、营销',
-  '采购、供应链、生产',
-  '渠道、销售、电商',
-  '高校',
-  '其他（如财务、行政等）'
-] as const;
-
 const idTypeOptions = [
   { value: 'cn_id', label: '中国居民身份证' },
   { value: 'hk_macao_mainland_permit', label: '港澳居民来往内地通行证' },
@@ -206,7 +196,6 @@ const initialIndustryForm = {
   company: '',
   title: '',
   businessType: '',
-  department: '',
   proofFiles: [] as string[]
 };
 
@@ -1031,7 +1020,6 @@ export default function App() {
       company: validateRequired(industryForm.company, '公司', 2, 64),
       title: validateRequired(industryForm.title, '职位', 2, 32),
       businessType: industryForm.businessType ? '' : '请选择业务类型',
-      department: industryForm.department ? '' : '请选择所在部门',
       proofFiles: proofError
     };
   }, [industryForm, proofPreviews]);
@@ -1673,7 +1661,6 @@ export default function App() {
               role: 'industry' as const,
               idType: industryForm.idType,
               businessType: industryForm.businessType,
-              department: industryForm.department,
               idVerifyToken: industryForm.idType === 'cn_id'
                 ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
                 : undefined,
@@ -2353,28 +2340,6 @@ export default function App() {
                     </div>
                   </FeishuField>
 
-                  <FeishuField
-                    label="您所处部门"
-                    htmlFor="industry-department"
-                    required
-                    error={shouldShowError(fieldKey('industry', 'department')) ? industryErrors.department : ''}
-                  >
-                    <FeishuSelect
-                      id="industry-department"
-                      className="compact-select-text"
-                      value={industryForm.department}
-                      status={shouldShowError(fieldKey('industry', 'department')) && industryErrors.department ? 'error' : 'default'}
-                      onChange={handleIndustryChange('department')}
-                      onBlur={() => markTouched(fieldKey('industry', 'department'))}
-                    >
-                      <option value="">请选择所在部门</option>
-                      {departmentOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </FeishuSelect>
-                  </FeishuField>
                     </section>
                   </div>
                   {submitActionBlock}
