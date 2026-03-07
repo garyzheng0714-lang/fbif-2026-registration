@@ -1072,7 +1072,7 @@ export default function App() {
     (
       event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
     ) => {
-      const value = event.target.value;
+      const value = field === 'phone' ? event.target.value.replace(/\D/g, '') : event.target.value;
       setIndustryForm((prev) => ({ ...prev, [field]: value }));
       if (field === 'name' || field === 'idType' || field === 'idNumber') {
         setIndustryIdVerify(initialIdVerifyState);
@@ -1084,7 +1084,7 @@ export default function App() {
     (
       event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>
     ) => {
-      const value = event.target.value;
+      const value = field === 'phone' ? event.target.value.replace(/\D/g, '') : event.target.value;
       setConsumerForm((prev) => ({ ...prev, [field]: value }));
       if (field === 'name' || field === 'idType' || field === 'idNumber') {
         setConsumerIdVerify(initialIdVerifyState);
