@@ -2455,28 +2455,29 @@ export default function App() {
                     </div>
                   </FeishuField>
 
-                  <div className="consumer-optional-row">
-                    <FeishuField label="公司" htmlFor="consumer-company">
+                  <FeishuField
+                    label={<>公司 / 职位<span className="optional-tag">选填</span></>}
+                    htmlFor="consumer-company"
+                  >
+                    <div className="phone-input-row consumer-work-row">
                       <FeishuInput
                         id="consumer-company"
                         type="text"
                         autoComplete="organization"
-                        placeholder="选填"
+                        placeholder="公司名称"
                         value={consumerForm.company}
                         onChange={handleConsumerChange('company')}
                       />
-                    </FeishuField>
-                    <FeishuField label="职位" htmlFor="consumer-title">
                       <FeishuInput
                         id="consumer-title"
                         type="text"
                         autoComplete="organization-title"
-                        placeholder="选填"
+                        placeholder="职位"
                         value={consumerForm.title}
                         onChange={handleConsumerChange('title')}
                       />
-                    </FeishuField>
-                  </div>
+                    </div>
+                  </FeishuField>
                     </section>
                   </div>
                   {submitActionBlock}

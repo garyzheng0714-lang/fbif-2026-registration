@@ -372,23 +372,15 @@ body {
   min-width: 0;
 }
 
-.consumer-optional-row {
-  display: grid;
+.consumer-work-row {
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 2px;
-  align-items: start;
 }
 
-.consumer-optional-row .field {
-  gap: 4px;
-  margin-top: 0 !important;
-}
-
-.consumer-optional-row .fs-field-label {
-  font-weight: 500;
-  font-size: 0.85rem;
-  color: #6b7280;
+.optional-tag {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .fs-loading {
