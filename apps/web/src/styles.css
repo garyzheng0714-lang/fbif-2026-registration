@@ -512,7 +512,8 @@ body {
 .tips-link {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  vertical-align: baseline;
+  gap: 2px;
   color: var(--deep-blue);
   text-decoration: underline;
   text-underline-offset: 2px;
