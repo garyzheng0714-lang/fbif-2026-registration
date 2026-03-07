@@ -1917,6 +1917,7 @@ export default function App() {
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
             <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+            <p className="tips"><a href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点击链接，查询注册与审核结果</a></p>
 
             <div className="role-options">
               <button
@@ -2555,6 +2556,13 @@ export default function App() {
                         <p>凭 <strong>大陆身份证原件 + 电子门票</strong> 免签到入场</p>
                       </div>
                     </div>
+                    <div className="success-step">
+                      <div className="success-step-num">4</div>
+                      <div className="success-step-body">
+                        <h3>温馨提示</h3>
+                        <p>注册成功后，FBIF工作人员将会添加您的微信，同步您入场相关资讯</p>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -2570,6 +2578,13 @@ export default function App() {
                       <div className="success-step-body">
                         <h3>入场观展</h3>
                         <p>凭 <strong>大陆身份证原件 + 电子门票</strong>，于 <strong>4 月 29 日</strong> 入场观展（不含论坛）</p>
+                      </div>
+                    </div>
+                    <div className="success-step">
+                      <div className="success-step-num">3</div>
+                      <div className="success-step-body">
+                        <h3>温馨提示</h3>
+                        <p>注册成功后，FBIF工作人员将会添加您的微信，同步您入场相关资讯</p>
                       </div>
                     </div>
                   </>
