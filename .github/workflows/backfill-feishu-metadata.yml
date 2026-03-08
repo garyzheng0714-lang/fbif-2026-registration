@@ -39,6 +39,22 @@ jobs:
     environment: production
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Build API Dist
+        run: |
+          set -euo pipefail
+          npm ci --prefix apps/api
+          npm run build --prefix apps/api
+
       - name: Validate SSH Key
         env:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
@@ -94,6 +110,22 @@ jobs:
           HOST="${ALIYUN_HOST:-121.40.214.5}"
           USER="${ALIYUN_USER:-root}"
 
+          scp \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            apps/api/dist/scripts/backfill-feishu-metadata.js \
+            "${USER}@${HOST}:/tmp/backfill-feishu-metadata.js"
+
+          scp \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            apps/api/dist/services/feishuService.js \
+            "${USER}@${HOST}:/tmp/feishuService.js"
+
           REMOTE_ENV="$(printf \
             'APP_DIR=%q MODE=%q LIMIT=%q BATCH_SIZE=%q LIST_PAGE_SIZE=%q COMPOSE_PROJECT_NAME=%q' \
             "${APP_DIR:-/opt/web-fbif-form}" "${MODE}" "${LIMIT}" "${BATCH_SIZE}" "${LIST_PAGE_SIZE}" "fbif-form")"
@@ -144,6 +176,9 @@ jobs:
             CMD="${CMD} --dry-run"
           fi
 
+          docker cp /tmp/backfill-feishu-metadata.js "${TARGET_CONTAINER}:/app/dist/scripts/backfill-feishu-metadata.js"
+          docker cp /tmp/feishuService.js "${TARGET_CONTAINER}:/app/dist/services/feishuService.js"
+
           echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
           echo "RUN_MODE=${MODE}"
           docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
@@ -151,4 +186,4 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: rm -f ~/.ssh/id_aliyun
+        run: rm -f ~/.ssh/id_aliyun /tmp/backfill-feishu-metadata.js /tmp/feishuService.js
