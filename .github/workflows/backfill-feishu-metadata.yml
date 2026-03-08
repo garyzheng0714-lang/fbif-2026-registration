@@ -176,6 +176,7 @@ jobs:
             CMD="${CMD} --dry-run"
           fi
 
+          docker exec "${TARGET_CONTAINER}" sh -lc "mkdir -p /app/dist/scripts /app/dist/services"
           docker cp /tmp/backfill-feishu-metadata.js "${TARGET_CONTAINER}:/app/dist/scripts/backfill-feishu-metadata.js"
           docker cp /tmp/feishuService.js "${TARGET_CONTAINER}:/app/dist/services/feishuService.js"
 
