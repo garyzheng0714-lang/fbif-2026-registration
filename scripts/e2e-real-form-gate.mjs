@@ -10,6 +10,7 @@ const VERIFY_NAME = process.env.VERIFY_NAME || '郑梽煌';
 const VERIFY_ID = process.env.VERIFY_ID || '35052519981217001X';
 const VERIFY_PHONE = process.env.VERIFY_PHONE || '13800000001';
 const VERIFY_ID_TYPE_LABEL = process.env.VERIFY_ID_TYPE_LABEL || '护照';
+const DISABLE_WEB_SECURITY = process.env.E2E_DISABLE_WEB_SECURITY === '1';
 const SYNC_MAX_POLLS = Number(process.env.SYNC_MAX_POLLS || 30);
 const SYNC_POLL_INTERVAL_MS = Number(process.env.SYNC_POLL_INTERVAL_MS || 2000);
 const PROOF_FILE = process.env.E2E_PROOF_FILE || path.resolve('apps/web/public/banner.png');
@@ -191,7 +192,13 @@ async function main() {
   log('boot', `API_BASE=${API_BASE}`);
   log('boot', `proofFile=${PROOF_FILE}`);
 
-  const browser = await chromium.launch({ headless: true });
+  const browserLaunchArgs = DISABLE_WEB_SECURITY
+    ? ['--disable-web-security', '--disable-features=IsolateOrigins,site-per-process']
+    : [];
+  const browser = await chromium.launch({
+    headless: true,
+    args: browserLaunchArgs
+  });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 980 }
   });

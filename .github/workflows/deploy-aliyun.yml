@@ -436,6 +436,7 @@ jobs:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
           CANDIDATE_WEB_PORT: ${{ needs.prepare-candidate.outputs.candidate_web_port }}
+          E2E_DISABLE_WEB_SECURITY: '1'
           VERIFY_NAME: 郑梽煌
           VERIFY_ID: 35052519981217001X
           VERIFY_PHONE: 13800000001
