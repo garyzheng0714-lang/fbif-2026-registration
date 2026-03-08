@@ -1959,7 +1959,8 @@ export default function App() {
           <>
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
-            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。如已提交，<a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点此查询</a>注册与审核结果</p>
+            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+            <p className="tips">如已提交，<a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点此查询</a>注册与审核结果。</p>
 
             <div className="role-options">
               <button
