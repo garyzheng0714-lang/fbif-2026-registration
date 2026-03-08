@@ -24,7 +24,10 @@ const fieldMap = {
   source: process.env.FEISHU_FIELD_SOURCE || '',
   trackingParams: process.env.FEISHU_FIELD_TRACKING_PARAMS || '访问跟踪参数',
   trackingId: process.env.FEISHU_FIELD_TRACKING_ID || '跟踪ID',
-  trackingIdType: process.env.FEISHU_FIELD_TRACKING_ID_TYPE || '跟踪ID类型'
+  trackingIdType: process.env.FEISHU_FIELD_TRACKING_ID_TYPE || '跟踪ID类型',
+  clientIp: process.env.FEISHU_FIELD_CLIENT_IP || 'ip',
+  actualSubmittedAt: process.env.FEISHU_FIELD_ACTUAL_SUBMITTED_AT || '实际提交时间',
+  clientRequestId: process.env.FEISHU_FIELD_CLIENT_REQUEST_ID || '提交记录唯一值'
 };
 
 type TokenCache = { value: string; expiresAt: number };
@@ -360,6 +363,24 @@ function buildReadableFields(input: {
 
   if (fieldMap.trackingIdType && submission.trackingIdType) {
     fields[fieldMap.trackingIdType] = trim(submission.trackingIdType);
+  }
+
+  if (fieldMap.clientIp && submission.clientIp) {
+    fields[fieldMap.clientIp] = trim(submission.clientIp);
+  }
+
+  if (fieldMap.actualSubmittedAt) {
+    const d = submission.createdAt;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    fields[fieldMap.actualSubmittedAt] = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+  }
+
+  if (fieldMap.clientRequestId) {
+    fields[fieldMap.clientRequestId] = submission.clientRequestId;
   }
 
   return fields;
