@@ -9,14 +9,18 @@ function parseEnvBool(value: string | undefined, fallback: boolean) {
   return fallback;
 }
 
+const isHttpOrigin = /^http:\/\//i.test(String(process.env.WEB_ORIGIN || ''));
+const secureFallback = !isHttpOrigin;
+
 const csrfProtection = csurf({
   cookie: {
     httpOnly: true,
     sameSite: 'strict',
-    // NOTE:
-    // - Default false to support plain HTTP deployments (e.g. via IP:port).
-    // - Set CSRF_COOKIE_SECURE=true when the site is served over HTTPS.
-    secure: parseEnvBool(process.env.CSRF_COOKIE_SECURE, false)
+    // Secure flag is auto-derived from WEB_ORIGIN protocol.
+    // HTTP origins (e.g. preview via IP:port) → false.
+    // HTTPS origins (e.g. production domain) → true.
+    // CSRF_COOKIE_SECURE env var overrides when explicitly set.
+    secure: parseEnvBool(process.env.CSRF_COOKIE_SECURE, secureFallback)
   }
 }) as unknown as RequestHandler;
 

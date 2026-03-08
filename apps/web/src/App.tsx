@@ -1653,6 +1653,7 @@ export default function App() {
     let idVerifyTokenForSubmit = identity === 'industry' ? industryIdVerify.token : consumerIdVerify.token;
     if (needsIdVerify) {
       const currentName = (identity === 'industry' ? industryForm.name : consumerForm.name).trim();
+      const currentIdNumber = (identity === 'industry' ? industryForm.idNumber : consumerForm.idNumber).trim().toUpperCase();
       let verifiedToken = idVerifyTokenForSubmit;
       const canReuseVerifiedToken = Boolean(
         activeIdVerifyState.status === 'passed' &&

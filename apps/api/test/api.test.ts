@@ -75,6 +75,23 @@ test('GET /api/csrf returns csrf token, cookie, and trace header', async () => {
   assert.equal(typeof res.headers['x-trace-id'], 'string');
 });
 
+test('CSRF cookie must NOT have Secure flag when WEB_ORIGIN is HTTP', async () => {
+  const origin = process.env.WEB_ORIGIN || '';
+  if (!origin || origin.startsWith('http://')) {
+    const res = await request(server).get('/api/csrf');
+    const cookies = res.headers['set-cookie'];
+    assert.ok(cookies, 'set-cookie header must exist');
+    const csrfCookie = Array.isArray(cookies)
+      ? cookies.find((c: string) => c.startsWith('_csrf='))
+      : String(cookies);
+    assert.ok(csrfCookie, '_csrf cookie must exist');
+    assert.ok(
+      !csrfCookie.toLowerCase().includes('; secure'),
+      `CSRF cookie must NOT have Secure flag over HTTP. Got: ${csrfCookie}`
+    );
+  }
+});
+
 test('POST /api/oss/policy returns 503 when OSS is not configured', async () => {
   const csrfRes = await request(server).get('/api/csrf');
   const cookie = csrfRes.headers['set-cookie'][0];
