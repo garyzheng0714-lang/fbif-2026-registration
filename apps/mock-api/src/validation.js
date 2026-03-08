@@ -149,12 +149,11 @@ export function validateSubmission(input) {
     if (!businessType) {
       return { ok: false, error: '贵司的业务类型不能为空' };
     }
-    if (!department) {
-      return { ok: false, error: '您所处的部门不能为空' };
-    }
 
     payload.businessType = businessType.slice(0, 64);
-    payload.department = department.slice(0, 64);
+    if (department) {
+      payload.department = department.slice(0, 64);
+    }
     payload.proofUrls = normalizeProofUrls(input.proofUrls);
   }
 
