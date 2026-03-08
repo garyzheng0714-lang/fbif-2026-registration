@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "worker": "node dist/worker.js",
+    "backfill:feishu-metadata": "node dist/scripts/backfill-feishu-metadata.js",
     "worker:dev": "tsx src/worker.ts",
     "test": "NODE_ENV=test node --import tsx --test test/*.test.ts",
     "prisma:generate": "prisma generate",

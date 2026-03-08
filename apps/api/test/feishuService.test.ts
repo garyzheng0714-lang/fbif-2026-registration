@@ -176,3 +176,84 @@ test('mapSubmissionToBitableFields writes hyperlink object for proof url field',
     delete process.env.FEISHU_FIELD_PROOF_URL;
   }
 });
+
+test('mapSubmissionToBitableFields includes submission metadata fields', async () => {
+  const originalFetch = global.fetch;
+  ensureTestEnv();
+  process.env.FEISHU_FIELD_CLIENT_IP = 'ip';
+  process.env.FEISHU_FIELD_ACTUAL_SUBMITTED_AT = '实际提交时间';
+  process.env.FEISHU_FIELD_CLIENT_REQUEST_ID = '提交记录唯一值';
+
+  global.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/auth/v3/tenant_access_token/internal')) {
+      return jsonResponse({
+        code: 0,
+        tenant_access_token: 'tenant-token',
+        expire: 3600
+      });
+    }
+
+    if (url.includes('/fields?page_size=200')) {
+      return jsonResponse({
+        code: 0,
+        data: {
+          items: []
+        }
+      });
+    }
+
+    throw new Error(`unexpected fetch url: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const { mapSubmissionToBitableFields } = await import(`../src/services/feishuService.ts?test=${Date.now()}`);
+    const mapped = await mapSubmissionToBitableFields({
+      submission: {
+        id: 'submission-id',
+        clientRequestId: 'client-request-id-123',
+        traceId: 'trace-id',
+        role: 'consumer',
+        idType: 'passport',
+        name: '张三',
+        title: '消费者',
+        company: '个人消费者',
+        phoneEnc: 'enc-phone',
+        phoneHash: 'hash-phone',
+        idEnc: 'enc-id',
+        idHash: 'hash-id',
+        businessType: null,
+        department: null,
+        proofUrls: null,
+        syncStatus: 'SUCCESS',
+        syncError: null,
+        syncAttempts: 0,
+        lastAttemptAt: null,
+        nextAttemptAt: null,
+        feishuRecordId: null,
+        clickId: null,
+        clickIdSourceKey: null,
+        clientIp: '203.0.113.9',
+        userAgent: 'Mozilla/5.0',
+        createdAt: new Date('2026-03-05T01:02:03.000Z'),
+        updatedAt: new Date('2026-03-05T01:02:03.000Z')
+      } as any,
+      sensitive: {
+        phone: '+8613800000000',
+        idNumber: 'A1234567'
+      }
+    });
+
+    assert.equal(mapped.readableFields.ip, '203.0.113.9');
+    assert.equal(mapped.readableFields['提交记录唯一值'], 'client-request-id-123');
+    assert.equal(mapped.readableFields['实际提交时间'], '2026/03/05 09:02');
+    assert.equal(mapped.optionIdFields.ip, '203.0.113.9');
+    assert.equal(mapped.optionIdFields['提交记录唯一值'], 'client-request-id-123');
+    assert.equal(mapped.optionIdFields['实际提交时间'], '2026/03/05 09:02');
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.FEISHU_FIELD_CLIENT_IP;
+    delete process.env.FEISHU_FIELD_ACTUAL_SUBMITTED_AT;
+    delete process.env.FEISHU_FIELD_CLIENT_REQUEST_ID;
+  }
+});

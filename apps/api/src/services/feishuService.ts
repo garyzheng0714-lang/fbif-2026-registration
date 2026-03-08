@@ -525,6 +525,49 @@ export async function updateBitableRecord(recordId: string, fields: BitableWrite
   );
 }
 
+export type BitableRecordPageItem = {
+  recordId: string;
+  fields: Record<string, unknown>;
+};
+
+export type BitableRecordPage = {
+  items: BitableRecordPageItem[];
+  hasMore: boolean;
+  pageToken: string;
+};
+
+export async function listBitableRecordsPage(input?: {
+  pageSize?: number;
+  pageToken?: string;
+}): Promise<BitableRecordPage> {
+  const pageSize = Math.max(1, Math.min(500, Number(input?.pageSize || 500)));
+  const token = trim(input?.pageToken || '');
+  const query = new URLSearchParams();
+  query.set('page_size', String(pageSize));
+  if (token) query.set('page_token', token);
+
+  const data = await feishuRequest(
+    `/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}/records?${query.toString()}`,
+    { method: 'GET' }
+  );
+
+  const rawItems = Array.isArray(data?.data?.items) ? data.data.items : [];
+  const items: BitableRecordPageItem[] = rawItems
+    .map((raw: any) => {
+      const recordId = trim(raw?.record_id);
+      if (!recordId) return null;
+      const fields = raw?.fields && typeof raw.fields === 'object' ? (raw.fields as Record<string, unknown>) : {};
+      return { recordId, fields };
+    })
+    .filter(Boolean) as BitableRecordPageItem[];
+
+  return {
+    items,
+    hasMore: Boolean(data?.data?.has_more),
+    pageToken: trim(data?.data?.page_token || '')
+  };
+}
+
 export function isRetryableFeishuError(err: unknown) {
   if (err instanceof FeishuApiError) return err.retryable;
   if (err instanceof Error) return messageLooksRetryable(err.message || '');

@@ -1,0 +1,154 @@
+name: Backfill Feishu Metadata
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '输入 "backfill-feishu-metadata" 确认执行补写'
+        required: true
+        type: string
+      mode:
+        description: '执行模式'
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+      limit:
+        description: '最多处理记录数'
+        required: true
+        default: '5000'
+        type: string
+      batch_size:
+        description: '每批查询条数'
+        required: true
+        default: '200'
+        type: string
+      list_page_size:
+        description: '读取多维表格记录的分页大小（最大500）'
+        required: true
+        default: '500'
+        type: string
+
+jobs:
+  backfill:
+    if: github.event.inputs.confirm == 'backfill-feishu-metadata'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Validate SSH Key
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          mkdir -p ~/.ssh
+
+          if [ -n "${ALIYUN_SSH_KEY:-}" ]; then
+            KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
+            if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
+              echo '::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content.'
+              exit 1
+            fi
+            RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
+            printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
+          elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
+          else
+            echo '::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64'
+            exit 1
+          fi
+
+          chmod 600 ~/.ssh/id_aliyun
+          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            'echo SSH_OK' >/tmp/ssh_probe.out
+
+          grep -q SSH_OK /tmp/ssh_probe.out
+
+      - name: Run Backfill On Active API Container
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          MODE: ${{ github.event.inputs.mode }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          BATCH_SIZE: ${{ github.event.inputs.batch_size }}
+          LIST_PAGE_SIZE: ${{ github.event.inputs.list_page_size }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          REMOTE_ENV="$(printf \
+            'APP_DIR=%q MODE=%q LIMIT=%q BATCH_SIZE=%q LIST_PAGE_SIZE=%q COMPOSE_PROJECT_NAME=%q' \
+            "${APP_DIR:-/opt/web-fbif-form}" "${MODE}" "${LIMIT}" "${BATCH_SIZE}" "${LIST_PAGE_SIZE}" "fbif-form")"
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            "${REMOTE_ENV} bash -s --" <<'REMOTE'
+          set -euo pipefail
+
+          ACTIVE_SLOT="legacy"
+          if [ -f "${APP_DIR}/shared/active_slot" ]; then
+            ACTIVE_SLOT="$(tr -d '[:space:]' < "${APP_DIR}/shared/active_slot")"
+          fi
+
+          case "${ACTIVE_SLOT}" in
+            blue|green)
+              TARGET_CONTAINER="${COMPOSE_PROJECT_NAME}-api-${ACTIVE_SLOT}"
+              ;;
+            *)
+              TARGET_CONTAINER="${COMPOSE_PROJECT_NAME}-api-1"
+              ;;
+          esac
+
+          if ! docker ps --format '{{.Names}}' | grep -qx "${TARGET_CONTAINER}"; then
+            for candidate in \
+              "${COMPOSE_PROJECT_NAME}-api-blue" \
+              "${COMPOSE_PROJECT_NAME}-api-green" \
+              "${COMPOSE_PROJECT_NAME}-api-1"
+            do
+              if docker ps --format '{{.Names}}' | grep -qx "${candidate}"; then
+                TARGET_CONTAINER="${candidate}"
+                break
+              fi
+            done
+          fi
+
+          docker ps --format '{{.Names}}' | grep -qx "${TARGET_CONTAINER}" || {
+            echo "ERROR: no running API container found" >&2
+            exit 1
+          }
+
+          CMD="node dist/scripts/backfill-feishu-metadata.js --limit ${LIMIT} --batch-size ${BATCH_SIZE} --list-page-size ${LIST_PAGE_SIZE}"
+          if [ "${MODE}" = "dry-run" ]; then
+            CMD="${CMD} --dry-run"
+          fi
+
+          echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
+          echo "RUN_MODE=${MODE}"
+          docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
+REMOTE
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_aliyun
