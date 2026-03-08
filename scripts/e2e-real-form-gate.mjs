@@ -59,13 +59,35 @@ async function selectFsOptionByLabel(page, triggerSelector, optionLabel, roleLab
 
 async function submitAndCaptureId(page, roleLabel) {
   const responsePromise = page.waitForResponse((resp) => {
-    return resp.url().includes('/api/submissions') && resp.request().method() === 'POST' && resp.status() === 202;
+    return resp.url().includes('/api/submissions') && resp.request().method() === 'POST';
   }, { timeout: 120000 });
 
   await page.getByRole('button', { name: '领取观展票' }).click();
 
-  const response = await responsePromise;
-  const payload = await response.json();
+  let response;
+  try {
+    response = await responsePromise;
+  } catch (err) {
+    const notice = (await page.locator('.submit-dock-notice').first().textContent().catch(() => '')) || '';
+    const fieldErrors = await page.locator('.fs-field .error').allTextContents().catch(() => []);
+    const proofErrors = await page.locator('.proof-file-status.is-error').allTextContents().catch(() => []);
+    throw new Error(
+      `${roleLabel}: no submission response within timeout; notice=${notice.trim() || 'none'}; fieldErrors=${fieldErrors.map((s) => s.trim()).filter(Boolean).join(' | ') || 'none'}; proofErrors=${proofErrors.map((s) => s.trim()).filter(Boolean).join(' | ') || 'none'}; rootCause=${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (err) {
+    throw new Error(`${roleLabel}: /api/submissions returned non-json response: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (response.status() !== 202) {
+    const compactBody = JSON.stringify(payload);
+    throw new Error(`${roleLabel}: /api/submissions HTTP ${response.status()} body=${compactBody}`);
+  }
+
   const submissionId = String(payload?.id || '').trim();
 
   if (!submissionId) {
