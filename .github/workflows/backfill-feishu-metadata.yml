@@ -180,8 +180,14 @@ jobs:
           docker cp /tmp/backfill-feishu-metadata.js "${TARGET_CONTAINER}:/app/dist/scripts/backfill-feishu-metadata.js"
           docker cp /tmp/feishuService.js "${TARGET_CONTAINER}:/app/dist/services/feishuService.js"
 
+          FEISHU_HOST_IP="$(getent ahostsv4 open.feishu.cn | awk '{ print $1; exit }' || true)"
+          if [ -n "${FEISHU_HOST_IP}" ]; then
+            docker exec "${TARGET_CONTAINER}" sh -lc "grep -q 'open.feishu.cn' /etc/hosts || echo '${FEISHU_HOST_IP} open.feishu.cn' >> /etc/hosts"
+          fi
+
           echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
           echo "RUN_MODE=${MODE}"
+          echo "FEISHU_HOST_IP=${FEISHU_HOST_IP:-none}"
           docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
           REMOTE
 
