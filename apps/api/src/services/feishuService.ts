@@ -370,13 +370,12 @@ function buildReadableFields(input: {
   }
 
   if (fieldMap.actualSubmittedAt) {
-    const d = submission.createdAt;
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    fields[fieldMap.actualSubmittedAt] = `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+    const fmt = submission.createdAt.toLocaleString('sv-SE', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    fields[fieldMap.actualSubmittedAt] = fmt.replaceAll('-', '/');
   }
 
   if (fieldMap.clientRequestId) {
