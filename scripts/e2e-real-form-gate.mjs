@@ -9,6 +9,7 @@ const API_BASE = process.env.E2E_API_BASE || new URL('/api', BASE_URL).toString(
 const VERIFY_NAME = process.env.VERIFY_NAME || '郑梽煌';
 const VERIFY_ID = process.env.VERIFY_ID || '35052519981217001X';
 const VERIFY_PHONE = process.env.VERIFY_PHONE || '13800000001';
+const VERIFY_ID_TYPE_LABEL = process.env.VERIFY_ID_TYPE_LABEL || '护照';
 const SYNC_MAX_POLLS = Number(process.env.SYNC_MAX_POLLS || 30);
 const SYNC_POLL_INTERVAL_MS = Number(process.env.SYNC_POLL_INTERVAL_MS || 2000);
 const PROOF_FILE = process.env.E2E_PROOF_FILE || path.resolve('apps/web/public/banner.png');
@@ -41,6 +42,18 @@ async function acceptTicketPolicy(page, roleLabel) {
 
   if (!(await checkbox.isChecked())) {
     throw new Error(`${roleLabel}: failed to accept ticket policy`);
+  }
+}
+
+async function selectFsOptionByLabel(page, triggerSelector, optionLabel, roleLabel) {
+  await page.locator(triggerSelector).click();
+
+  const option = page.getByRole('option', { name: optionLabel }).first();
+  await option.click();
+
+  const triggerText = (await page.locator(triggerSelector).innerText()).trim();
+  if (!triggerText.includes(optionLabel)) {
+    throw new Error(`${roleLabel}: failed to select option "${optionLabel}" for ${triggerSelector}`);
   }
 }
 
@@ -104,6 +117,7 @@ async function fillIndustryScenario(page) {
   await page.locator('.role-options button[aria-label="专业观众注册"]').first().click();
   await page.waitForSelector('#industry-name', { timeout: 15000 });
 
+  await selectFsOptionByLabel(page, '#industry-idType', VERIFY_ID_TYPE_LABEL, step);
   await page.fill('#industry-name', VERIFY_NAME);
   await page.fill('#industry-idNumber', VERIFY_ID);
   await page.fill('#industry-phone', VERIFY_PHONE);
@@ -128,6 +142,7 @@ async function fillConsumerScenario(page) {
   await page.locator('.role-options button[aria-label="消费者注册"]').first().click();
   await page.waitForSelector('#consumer-name', { timeout: 15000 });
 
+  await selectFsOptionByLabel(page, '#consumer-idType', VERIFY_ID_TYPE_LABEL, step);
   await page.fill('#consumer-name', VERIFY_NAME);
   await page.fill('#consumer-idNumber', VERIFY_ID);
   await page.fill('#consumer-phone', VERIFY_PHONE);
