@@ -1,5 +1,5 @@
 import { prisma } from '../utils/db.js';
-import { listBitableRecordsPage, updateBitableRecord } from '../services/feishuService.js';
+import { FeishuApiError, listBitableRecordsPage, updateBitableRecord } from '../services/feishuService.js';
 import type { BitableWriteFields } from '../services/feishuService.js';
 import { logger } from '../utils/logger.js';
 import { decryptField } from '../utils/crypto.js';
@@ -224,6 +224,12 @@ class BitableRecordMatcher {
   }
 }
 
+function isRecordIdNotFoundError(err: unknown) {
+  if (err instanceof FeishuApiError && err.code === 1254043) return true;
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return msg.includes('RecordIdNotFound');
+}
+
 function buildMetadataFields(row: {
   clientIp: string | null;
   createdAt: Date;
@@ -264,6 +270,8 @@ async function main() {
   let ambiguousMatches = 0;
   let incompleteMatchKeys = 0;
   let linkedRecordId = 0;
+  let recordIdNotFound = 0;
+  let recoveredFromRecordIdNotFound = 0;
 
   let matcher: BitableRecordMatcher | null = null;
 
@@ -401,16 +409,111 @@ async function main() {
         await updateBitableRecord(recordId, fields);
         updated += 1;
       } catch (err) {
-        failed += 1;
-        logger.error(
-          {
-            err,
-            submissionId: row.id,
-            traceId: row.traceId,
-            feishuRecordId: recordId
-          },
-          'feishu metadata backfill failed'
-        );
+        if (!isRecordIdNotFoundError(err)) {
+          failed += 1;
+          logger.error(
+            {
+              err,
+              submissionId: row.id,
+              traceId: row.traceId,
+              feishuRecordId: recordId
+            },
+            'feishu metadata backfill failed'
+          );
+          continue;
+        }
+
+        recordIdNotFound += 1;
+
+        let phone = '';
+        let idNumber = '';
+        try {
+          phone = decryptField(row.phoneEnc);
+          idNumber = decryptField(row.idEnc);
+        } catch (decryptErr) {
+          failed += 1;
+          logger.error(
+            {
+              err: decryptErr,
+              submissionId: row.id,
+              traceId: row.traceId,
+              feishuRecordId: recordId
+            },
+            'feishu metadata backfill failed to decrypt sensitive fields after RecordIdNotFound'
+          );
+          continue;
+        }
+
+        if (!matcher) {
+          matcher = new BitableRecordMatcher(options.listPageSize);
+        }
+        const resolved = await matcher.resolve({
+          name: row.name,
+          phone,
+          title: row.title,
+          company: row.company,
+          idNumber
+        });
+
+        if (!resolved.recordId || resolved.recordId === recordId) {
+          failed += 1;
+          logger.error(
+            {
+              err,
+              submissionId: row.id,
+              traceId: row.traceId,
+              feishuRecordId: recordId,
+              resolvedRecordId: resolved.recordId,
+              resolveReason: resolved.reason,
+              phoneSuffix: maskTail(phone, 4),
+              idSuffix: maskTail(idNumber, 4)
+            },
+            'feishu metadata backfill RecordIdNotFound and rematch failed'
+          );
+          continue;
+        }
+
+        const rematchedRecordId = resolved.recordId;
+        if (!options.dryRun) {
+          try {
+            await prisma.submission.update({
+              where: { id: row.id },
+              data: { feishuRecordId: rematchedRecordId }
+            });
+          } catch (updateErr) {
+            failed += 1;
+            logger.error(
+              {
+                err: updateErr,
+                submissionId: row.id,
+                traceId: row.traceId,
+                oldFeishuRecordId: recordId,
+                newFeishuRecordId: rematchedRecordId
+              },
+              'feishu metadata backfill failed to persist rematched feishuRecordId'
+            );
+            continue;
+          }
+        }
+        linkedRecordId += 1;
+
+        try {
+          await updateBitableRecord(rematchedRecordId, fields);
+          updated += 1;
+          recoveredFromRecordIdNotFound += 1;
+        } catch (retryErr) {
+          failed += 1;
+          logger.error(
+            {
+              err: retryErr,
+              submissionId: row.id,
+              traceId: row.traceId,
+              oldFeishuRecordId: recordId,
+              newFeishuRecordId: rematchedRecordId
+            },
+            'feishu metadata backfill failed after RecordIdNotFound rematch'
+          );
+        }
       }
     }
   }
@@ -426,7 +529,9 @@ async function main() {
     unresolvedMissingRecordId,
     ambiguousMatches,
     incompleteMatchKeys,
-    linkedRecordId
+    linkedRecordId,
+    recordIdNotFound,
+    recoveredFromRecordIdNotFound
   };
   console.log(JSON.stringify(summary, null, 2));
   logger.info(summary, 'feishu metadata backfill finished');
