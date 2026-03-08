@@ -1,0 +1,100 @@
+name: Install Nginx On Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '输入 "install-nginx" 确认在生产机安装并配置 Nginx'
+        required: true
+        type: string
+
+jobs:
+  install-nginx:
+    if: github.event.inputs.confirm == 'install-nginx'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    steps:
+      - name: Checkout Scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: true
+
+      - name: Validate SSH Key
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          mkdir -p ~/.ssh
+
+          if [ -n "${ALIYUN_SSH_KEY:-}" ]; then
+            KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
+            if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
+              echo '::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content.'
+              exit 1
+            fi
+            RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
+            printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
+          elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
+          else
+            echo '::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64'
+            exit 1
+          fi
+
+          chmod 600 ~/.ssh/id_aliyun
+          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            'echo SSH_OK' >/tmp/ssh_probe.out
+
+          grep -q SSH_OK /tmp/ssh_probe.out
+
+      - name: Install And Configure Nginx
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          API_PORT: ${{ secrets.API_PORT }}
+          STATIC_DIR: ${{ secrets.STATIC_DIR }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          scp \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            scripts/install-nginx-remote.sh \
+            "${USER}@${HOST}:/tmp/install-nginx-remote.sh"
+
+          REMOTE_ENV="$(printf \
+            'API_PORT=%q STATIC_DIR=%q APP_DIR=%q PRIMARY_WEB_PORT=%q NGINX_SITE_NAME=%q' \
+            "${API_PORT:-8080}" "${STATIC_DIR:-/var/www/fbif-form}" "${APP_DIR:-/opt/web-fbif-form}" "3001" "fbif-form")"
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            "${REMOTE_ENV} bash /tmp/install-nginx-remote.sh"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_aliyun
