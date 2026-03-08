@@ -180,7 +180,15 @@ jobs:
           docker cp /tmp/backfill-feishu-metadata.js "${TARGET_CONTAINER}:/app/dist/scripts/backfill-feishu-metadata.js"
           docker cp /tmp/feishuService.js "${TARGET_CONTAINER}:/app/dist/services/feishuService.js"
 
-          FEISHU_HOST_IP="$(getent ahostsv4 open.feishu.cn | awk '{ print $1; exit }' || true)"
+          FEISHU_HOST_IP=""
+          while IFS= read -r candidate_ip; do
+            [ -n "${candidate_ip}" ] || continue
+            if docker exec "${TARGET_CONTAINER}" node -e "const net=require('node:net'); const s=net.createConnection({host:'${candidate_ip}', port:443, timeout:1500}, ()=>{s.end(); process.exit(0)}); s.on('timeout', ()=>{s.destroy(); process.exit(1)}); s.on('error', ()=>process.exit(1));" >/dev/null 2>&1; then
+              FEISHU_HOST_IP="${candidate_ip}"
+              break
+            fi
+          done < <(getent ahostsv4 open.feishu.cn | awk '{ print $1 }' | awk '!seen[$1]++')
+
           if [ -n "${FEISHU_HOST_IP}" ]; then
             docker exec "${TARGET_CONTAINER}" sh -lc "grep -q 'open.feishu.cn' /etc/hosts || echo '${FEISHU_HOST_IP} open.feishu.cn' >> /etc/hosts"
           fi
@@ -188,6 +196,7 @@ jobs:
           echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
           echo "RUN_MODE=${MODE}"
           echo "FEISHU_HOST_IP=${FEISHU_HOST_IP:-none}"
+          [ -n "${FEISHU_HOST_IP}" ] || { echo "ERROR: no reachable IP for open.feishu.cn from container" >&2; exit 1; }
           docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
           REMOTE
 
