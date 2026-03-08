@@ -23,6 +23,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function acceptTicketPolicy(page, roleLabel) {
+  const checkbox = page.locator('.submit-policy-input').first();
+
+  if (await checkbox.isChecked()) {
+    return;
+  }
+
+  await page.locator('.submit-policy-check').first().click({ force: true });
+
+  if (!(await checkbox.isChecked())) {
+    // Hidden native input can ignore pointer actions; trigger native click as fallback.
+    await checkbox.evaluate((el) => {
+      el.click();
+    });
+  }
+
+  if (!(await checkbox.isChecked())) {
+    throw new Error(`${roleLabel}: failed to accept ticket policy`);
+  }
+}
+
 async function submitAndCaptureId(page, roleLabel) {
   const responsePromise = page.waitForResponse((resp) => {
     return resp.url().includes('/api/submissions') && resp.request().method() === 'POST' && resp.status() === 202;
@@ -91,7 +112,7 @@ async function fillIndustryScenario(page) {
   await page.getByRole('button', { name: '品牌' }).first().click();
 
   await page.setInputFiles('#industry-proof', PROOF_FILE);
-  await page.locator('.submit-policy-input').check({ force: true });
+  await acceptTicketPolicy(page, step);
 
   const submissionId = await submitAndCaptureId(page, step);
   await waitForSyncSuccess(submissionId, step);
@@ -116,7 +137,7 @@ async function fillConsumerScenario(page) {
     await page.fill('#consumer-company', 'FBIF消费者验收');
   }
 
-  await page.locator('.submit-policy-input').check({ force: true });
+  await acceptTicketPolicy(page, step);
 
   const submissionId = await submitAndCaptureId(page, step);
   await waitForSyncSuccess(submissionId, step);
