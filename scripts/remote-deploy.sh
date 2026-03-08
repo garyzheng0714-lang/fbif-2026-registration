@@ -89,10 +89,20 @@ if [ -n "${NGINX_LISTEN_PORT:-}" ] && command -v nginx >/dev/null 2>&1; then
     '        proxy_set_header X-Forwarded-Host $host;' \
     '        proxy_read_timeout 75s;' \
     '        proxy_send_timeout 75s;' \
+    '        proxy_connect_timeout 5s;' \
+    '        proxy_next_upstream error timeout http_502 http_503;' \
+    '        proxy_next_upstream_timeout 30s;' \
+    '        proxy_next_upstream_tries 3;' \
+    '    }' \
+    '' \
+    '    location /assets/ {' \
+    '        expires 30d;' \
+    '        add_header Cache-Control "public, immutable";' \
     '    }' \
     '' \
     '    location / {' \
     '        try_files $uri $uri/ /index.html;' \
+    '        add_header Cache-Control "no-store";' \
     '    }' \
     '}' \
     > "/etc/nginx/sites-available/${NGINX_SITE_NAME}"
@@ -152,7 +162,10 @@ echo "==> Building Docker images (old containers still running)..."
 
 # ---------------------------------------------------------------
 # Step 6 + 7: Swap containers then health check.
-#             Failures in either step trigger rollback.
+#             Uses a minimal-downtime strategy:
+#             - Postgres/Redis containers are never recreated (data preserved)
+#             - Only the API container is recreated with the new image
+#             - NGINX proxy_next_upstream queues requests during the brief gap
 # ---------------------------------------------------------------
 rollback() {
   echo "==> ROLLBACK triggered!"
@@ -182,7 +195,7 @@ rollback() {
 
 wait_http() {
   local url="$1"
-  local retries="${2:-20}"
+  local retries="${2:-40}"
   local i=1
   while [ "${i}" -le "${retries}" ]; do
     if curl -fsS "${url}" >/dev/null 2>&1; then
@@ -193,39 +206,99 @@ wait_http() {
   done
   echo "Health check failed: ${url}" >&2
   docker ps || true
+  docker logs "${COMPOSE_PROJECT_NAME:-fbif-form}-api-1" --tail 30 2>&1 || true
   return 1
 }
 
 # Disable set -e for the swap+check block so we can handle failures ourselves
 set +e
 
-echo "==> Swapping containers (brief downtime)..."
+# --- Minimal-downtime deployment ---
+# 1. Ensure Postgres + Redis are running (no recreate if unchanged)
+# 2. Only recreate the API container with the new image
+echo "==> Ensuring database services are running..."
 (
   cd "${RELEASE_DIR}"
   docker compose \
     --env-file "${BACKEND_ENV_STAGED}" \
     -f docker-compose.production.yml \
-    up -d --no-build --remove-orphans
+    up -d --no-build --no-recreate postgres redis
+)
+DB_EXIT=$?
+if [ "${DB_EXIT}" -ne 0 ]; then
+  echo "==> Database services failed to start (exit ${DB_EXIT})"
+  rollback
+fi
+
+# Wait for database readiness before swapping API
+echo "==> Waiting for Postgres to be ready..."
+for _i in $(seq 1 30); do
+  if docker exec "${COMPOSE_PROJECT_NAME:-fbif-form}-postgres-1" pg_isready -U "${POSTGRES_USER:-fbif}" -d "${POSTGRES_DB:-fbif_form}" >/dev/null 2>&1; then
+    echo "==> Postgres is ready."
+    break
+  fi
+  sleep 1
+done
+
+echo "==> Waiting for Redis to be ready..."
+for _i in $(seq 1 15); do
+  if docker exec "${COMPOSE_PROJECT_NAME:-fbif-form}-redis-1" redis-cli ping 2>/dev/null | grep -q PONG; then
+    echo "==> Redis is ready."
+    break
+  fi
+  sleep 1
+done
+
+# Now recreate only the API container (brief downtime, typically 3-8 seconds)
+echo "==> Recreating API container (minimal downtime)..."
+(
+  cd "${RELEASE_DIR}"
+  docker compose \
+    --env-file "${BACKEND_ENV_STAGED}" \
+    -f docker-compose.production.yml \
+    up -d --no-build --force-recreate --no-deps api
 )
 UP_EXIT=$?
 
 if [ "${UP_EXIT}" -ne 0 ]; then
-  echo "==> docker compose up failed (exit ${UP_EXIT})"
+  echo "==> docker compose up (api) failed (exit ${UP_EXIT})"
   rollback
 fi
 
-if ! wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 40; then
+if ! wait_http "http://127.0.0.1:${API_PORT_VALUE}/health" 60; then
   echo "==> API health check failed"
   rollback
 fi
 
-# Re-enable set -e for the commit phase
+# Clean up orphaned containers from previous project names
+(
+  cd "${RELEASE_DIR}"
+  docker compose \
+    --env-file "${BACKEND_ENV_STAGED}" \
+    -f docker-compose.production.yml \
+    up -d --no-build --remove-orphans 2>/dev/null
+) || true
+
+# ---------------------------------------------------------------
+# Step 8: Post-deploy end-to-end verification
+# ---------------------------------------------------------------
+VERIFY_SCRIPT="${RELEASE_DIR}/scripts/post-deploy-verify.sh"
+if [ -x "${VERIFY_SCRIPT}" ]; then
+  echo "==> Running post-deploy verification..."
+  if ! API_PORT="${API_PORT_VALUE}" bash "${VERIFY_SCRIPT}"; then
+    echo "==> Post-deploy verification FAILED"
+    rollback
+  fi
+else
+  echo "==> Post-deploy verify script not found, skipping"
+fi
+
 set -e
 
 # ---------------------------------------------------------------
-# Step 8: Health check passed — COMMIT the deployment
+# Step 9: Verification passed — COMMIT the deployment
 # ---------------------------------------------------------------
-echo "==> Health check passed. Committing deployment..."
+echo "==> All checks passed. Committing deployment..."
 
 # Promote staged env to live
 cp "${BACKEND_ENV_FILE}" "${BACKEND_ENV_FILE}.prev" 2>/dev/null || true
@@ -254,7 +327,7 @@ if [ -n "${NGINX_LISTEN_PORT:-}" ]; then
 fi
 
 # ---------------------------------------------------------------
-# Step 9: Cleanup old releases (keep latest 3) + old static dirs
+# Step 10: Cleanup old releases (keep latest 3) + old static dirs
 # ---------------------------------------------------------------
 ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +4 | xargs -r rm -rf
 ls -1dt "${STATIC_DIR_VALUE}"-* 2>/dev/null | tail -n +4 | xargs -r rm -rf
