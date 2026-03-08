@@ -207,8 +207,8 @@ jobs:
           STATIC_DIR: ${{ secrets.STATIC_DIR }}
           API_PORT: ${{ secrets.API_PORT }}
           API_PORT_INTERNAL: ${{ secrets.API_PORT_INTERNAL }}
-          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
-          CSRF_COOKIE_SECURE: ${{ secrets.CSRF_COOKIE_SECURE }}
+          WEB_ORIGIN: "http://121.40.214.5:3003"
+          CSRF_COOKIE_SECURE: "false"
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
