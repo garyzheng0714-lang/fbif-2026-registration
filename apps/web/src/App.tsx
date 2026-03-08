@@ -1711,6 +1711,7 @@ export default function App() {
               role: 'industry' as const,
               idType: industryForm.idType,
               businessType: industryForm.businessType,
+              department: '其他',
               idVerifyToken: industryForm.idType === 'cn_id'
                 ? (String(idVerifyTokenForSubmit || '').trim() || undefined)
                 : undefined,
