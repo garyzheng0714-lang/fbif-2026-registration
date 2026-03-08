@@ -65,11 +65,9 @@ jobs:
             apps/api/package-lock.json
 
       - name: Install, Test And Build
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           set -euo pipefail
-          API_URL="${VITE_API_URL:-/api}"
+          API_URL="/api"
 
           npm ci --prefix apps/api
           DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
