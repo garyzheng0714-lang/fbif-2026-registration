@@ -10,7 +10,7 @@
 
 ```bash
 # SSH 登录后执行（自动安装 Docker + Caddy + 创建目录）
-curl -fsSL https://raw.githubusercontent.com/garyzheng0714-lang/web-fbif-form/main/scripts/bootstrap-server.sh | bash
+curl -fsSL https://raw.githubusercontent.com/garyzheng0714-lang/fbif-2026-registration/main/scripts/bootstrap-server.sh | bash
 ```
 
 ## 第二步：写入环境变量
@@ -133,7 +133,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y 
 
 # 2. 克隆代码
 cd /opt/web-fbif-form
-git clone https://github.com/garyzheng0714-lang/web-fbif-form.git current
+git clone https://github.com/garyzheng0714-lang/fbif-2026-registration.git current
 cd current
 
 # 3. 构建前端

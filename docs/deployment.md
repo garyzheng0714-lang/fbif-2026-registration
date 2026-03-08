@@ -1,3 +1,5 @@
+> **[DEPRECATED]** 本文档描述的是旧版部署方式，当前部署流程请参考 [deploy-guide.md](./deploy-guide.md) 和 [github-actions-deploy.md](./github-actions-deploy.md)。
+
 # 部署与配置说明（现有 NGINX + 后端容器隔离）
 
 ## 目标架构

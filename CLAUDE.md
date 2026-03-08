@@ -16,17 +16,15 @@ web-fbif-form/
 ├── tests/            # K6 负载测试脚本
 ├── scripts/          # 工具脚本 (local-stack, preview-manager)
 ├── docker-compose.yml              # 本地开发 (Postgres + Redis)
-├── docker-compose.production.yml   # 生产/测试统一编排 (Web + API + Postgres + Redis)
-├── docker-compose.backend.yml      # [旧] 仅后端编排 (保留供回滚)
-├── docker-compose.staging.yml      # [旧] 测试环境编排 (保留供回滚)
+├── docker-compose.production.yml   # 生产/preview 统一编排 (API + Postgres + Redis)
 ├── scripts/
 │   ├── bootstrap-server.sh         # 新服务器一键初始化
 │   └── update-backend-env.sh       # 环境变量管理 (CI 共享)
 ├── deploy/
 │   └── Caddyfile.template          # Caddy HTTPS 反向代理模板
 └── .github/workflows/
-    ├── deploy-aliyun.yml           # 生产部署 (main → 服务器)
-    └── deploy-staging.yml          # 测试部署 (staging → 服务器)
+    ├── deploy-aliyun.yml           # 生产部署 (手动 dispatch)
+    └── deploy-preview.yml          # Preview 部署 (push to main 自动触发)
 ```
 
 ## 技术栈
@@ -45,8 +43,7 @@ web-fbif-form/
 
 | 项目 | 值 |
 |------|-----|
-| 生产服务器 IP | 121.40.214.5 |
-| 测试服务器 IP | 112.124.103.65 |
+| 服务器 IP | 121.40.214.5 (生产 + preview 共用) |
 | SSH 别名 | `aliyun-prod` |
 | 主机名 | iZbp17qedrmdkhpr80coo4Z |
 | 系统 | Ubuntu Linux 6.8.0-78-generic |
@@ -55,15 +52,23 @@ web-fbif-form/
 
 ## 部署架构
 
+同一台服务器 (121.40.214.5) 运行生产和 preview 两套环境，通过不同端口和 Docker 项目名隔离：
+
 ```
-[客户端] → Caddy (宿主机, HTTPS) → Docker Web 容器 (NGINX, :3001)
-                                    ├─→ 静态文件 (SPA)
-                                    └─→ proxy /api/ → Docker API 容器 (:8080)
-                                                       ├─→ [PostgreSQL 16] (Docker)
-                                                       └─→ [Redis 7] (Docker)
+生产环境:
+  [客户端] → Caddy (HTTPS) → NGINX :3001 → 静态文件 (SPA)
+                                         → proxy /api/ → API :8080
+                                                          ├─→ [PostgreSQL 16]
+                                                          └─→ [Redis 7]
+
+Preview 环境:
+  [开发者] → NGINX :3003 → 静态文件 (SPA)
+                        → proxy /api/ → API :8083
+                                         ├─→ [PostgreSQL 16] (独立实例)
+                                         └─→ [Redis 7] (独立实例)
 ```
 
-所有服务通过 `docker-compose.production.yml` 统一编排，staging 使用相同 compose 文件通过 `COMPOSE_PROJECT_NAME` + `.env` 差异化。
+两套环境共用 `docker-compose.production.yml`，通过 `COMPOSE_PROJECT_NAME` + 环境变量差异化端口/数据库/volume。
 
 ### 前端部署
 - 容器: `fbif-form-web-1` (nginx:1.27-alpine)
@@ -165,13 +170,17 @@ Worker 同步到飞书多维表格
 
 ## CI/CD
 
-**GitHub Actions** (`.github/workflows/deploy-aliyun.yml`):
-- 触发: **仅手动 dispatch**（临时降风险措施，等 staging 部署流程跑稳后恢复 push to main 自动部署）
-- 并发: 单实例部署 (取消进行中的)
-- 测试: PostgreSQL 16 + Redis 7 服务容器
+### 生产部署 (`.github/workflows/deploy-aliyun.yml`)
+- 触发: **手动 workflow_dispatch** (需输入 "deploy" 确认)
+- 目标: 121.40.214.5, 端口 3001/8080
 - 步骤: Node 20 → Prisma 迁移 → API 测试 → Web 构建 → 打包 → SSH 部署到阿里云
-- 超时: 45 分钟
 - 部署脚本: `scripts/remote-deploy.sh`（原子静态切换 + 镜像 SHA tag + health check 回滚）
+
+### Preview 部署 (`.github/workflows/deploy-preview.yml`)
+- 触发: **push to main 自动触发** + 手动 dispatch
+- 目标: 121.40.214.5, 端口 3003/8083
+- 步骤: 与生产相同，但使用独立 Docker 项目名和数据库
+- Preview 地址: `http://121.40.214.5:3003`
 
 ## 环境变量
 
@@ -240,8 +249,8 @@ ssh root@new-server 'bash -s' < scripts/bootstrap-server.sh
 
 | 文档 | 内容 |
 |------|------|
-| `deployment.md` | 完整生产部署指南 |
-| `deployment-nginx-docker.md` | Nginx + Docker 部署 |
+| `deployment.md` | [旧] 完整生产部署指南 |
+| `deployment-nginx-docker.md` | [旧] Nginx + Docker 部署 |
 | `github-actions-deploy.md` | CI/CD 自动部署 |
 | `local-dev-environment.md` | 本地开发环境搭建 |
 | `api.md` | API 接口规范 |
@@ -260,80 +269,79 @@ ssh root@new-server 'bash -s' < scripts/bootstrap-server.sh
 
 **相关文件:** `apps/api/src/services/alertService.ts`, `apps/api/src/worker.ts`
 
-## 测试环境 (Staging)
+## Preview 环境
 
-### 架构
+### 架构（同一台服务器 121.40.214.5）
 
-| 项目 | 生产 (main) | 测试 (staging) |
-|------|------------|---------------|
+| 项目 | 生产 | Preview |
+|------|------|---------|
 | 前端 NGINX | 3001 | 3003 |
 | 后端 API | 8080 | 8083 |
 | Docker 项目名 | `fbif-form` | `fbif-form-staging` |
 | 服务器路径 | `/opt/web-fbif-form/` | `/opt/web-fbif-form-staging/` |
 | 数据库 | `fbif_form` | `fbif_form_staging` |
-| Compose 文件 | `docker-compose.production.yml` | `docker-compose.production.yml` (同一文件) |
+| 部署触发 | 手动 dispatch | push to main 自动 |
 
-生产和测试共用同一个 `docker-compose.production.yml`，通过 `COMPOSE_PROJECT_NAME` 环境变量和 `.env` 文件差异化端口/数据库名/volume。测试环境完全隔离不影响生产数据。
+两套环境共用 `docker-compose.production.yml`，通过 `COMPOSE_PROJECT_NAME` 环境变量差异化端口/数据库/volume。完全隔离，互不影响。
 
-### 测试环境预览地址
+### Preview 预览地址
 
-- 前端: http://112.124.103.65:3003
+- 前端: http://121.40.214.5:3003
 - 后端健康检查: http://127.0.0.1:8083/health
 
 ### 关键文件
 
 | 文件 | 用途 |
 |------|------|
-| `docker-compose.production.yml` | 统一生产/测试 Docker Compose (web + api + pg + redis) |
+| `docker-compose.production.yml` | 统一生产/preview Docker Compose (api + pg + redis) |
 | `scripts/update-backend-env.sh` | 环境变量管理 (CI 脚本共享) |
 | `scripts/bootstrap-server.sh` | 新服务器一键初始化 |
 | `deploy/Caddyfile.template` | Caddy HTTPS 反向代理模板 |
-| `.github/workflows/deploy-staging.yml` | 测试环境部署工作流 |
+| `.github/workflows/deploy-preview.yml` | Preview 部署工作流 |
 | `.github/workflows/deploy-aliyun.yml` | 生产环境部署工作流 |
 
 ### 数据来源字段
 
-飞书同步支持写入"数据来源"字段，用于区分生产/测试数据：
+飞书同步支持写入"数据来源"字段，用于区分生产/preview 数据：
 - `FEISHU_FIELD_SOURCE` - 飞书表格中的列名（如 "数据来源"）
-- `FEISHU_SUBMISSION_SOURCE` - 写入值（生产默认 "正式环境"，测试默认 "测试环境"）
+- `FEISHU_SUBMISSION_SOURCE` - 写入值（生产 "正式环境"，preview "测试环境"）
 
-当前生产与测试共用同一张飞书表 `tbl0CQ74guMS1IDd`，依赖 `FEISHU_SUBMISSION_SOURCE` 区分来源。
-
-前提：需在飞书多维表格中手动添加"数据来源"列。
+生产与 preview 共用同一张飞书表 `tbl0CQ74guMS1IDd`，依赖 `FEISHU_SUBMISSION_SOURCE` 区分来源。
 
 ## 开发工作流规范（必须遵守）
 
-**所有代码改动必须先部署到 staging 测试环境预览，用户确认后才能合并到 main 部署生产。**
+**只维护 `main` 分支。Push to main 自动部署到 preview 环境，用户确认后手动触发生产部署。**
 
 ### 标准流程
 
 ```
-1. 在 staging 分支上开发/修改代码
-2. 提交并推送到 staging 分支
-3. GitHub Actions 自动部署到测试环境 (http://112.124.103.65:3003)
+1. 在功能分支上开发/修改代码 (feat/xxx 或 fix/xxx)
+2. 创建 PR 合并到 main 分支
+3. Push to main 自动触发 preview 部署 (http://121.40.214.5:3003)
 4. 将预览链接返回给用户，等待用户确认
-5. 用户确认没问题后，合并 staging → main
-6. GitHub Actions 自动部署到生产环境 (https://fbif2026ticket.foodtalks.cn)
+5. 用户确认后，在 GitHub Actions 手动触发 Deploy To Aliyun 部署生产
+6. 确认生产部署成功 (https://fbif2026ticket.foodtalks.cn)
 ```
 
 ### 规则
 
-1. **禁止直接推送到 main 分支** — 所有改动必须先经过 staging 验证
-2. **每次部署 staging 后必须返回预览链接** — `http://112.124.103.65:3003`
-3. **必须等待用户明确同意后才合并到 main** — 不要自行决定合并
-4. **合并到 main 后需确认生产部署成功** — 检查 GitHub Actions 状态
+1. **push to main 自动触发 preview 部署** — 每次合并后自动预览
+2. **每次 preview 部署后必须返回预览链接** — `http://121.40.214.5:3003`
+3. **必须等待用户明确同意后才触发生产部署** — 不要自行决定
+4. **生产部署需手动触发** — 在 GitHub Actions 页面运行 Deploy To Aliyun
 
 ### 常用 Git 操作
 
 ```bash
-# 切换到 staging 分支开发
-git checkout staging
+# 创建功能分支开发
+git checkout -b feat/xxx
 
-# 提交并推送到 staging（触发测试环境部署）
-git add . && git commit -m "描述" && git push origin staging
+# 提交并推送功能分支
+git add . && git commit -m "feat: 描述" && git push origin feat/xxx
 
-# 用户确认后，合并到 main（触发生产部署）
-git checkout main && git merge staging && git push origin main
+# 创建 PR 合并到 main（合并后自动触发 preview 部署）
+
+# 用户确认后，在 GitHub Actions 手动触发生产部署
 ```
 
 ## 服务器迁移
@@ -365,7 +373,7 @@ ssh new-server "cp deploy/Caddyfile.template /etc/caddy/Caddyfile && systemctl r
 ## 待办事项
 
 - [x] 增加数据同步失败告警 (飞书机器人通知)
-- [x] 添加 staging 测试环境
+- [x] 添加 preview 预览环境
 - [x] 前端容器化 + 统一 Docker Compose 编排
 - [x] 部署安全加固（原子切换 + 回滚 + 前端重试 + 优雅关闭）
 - [ ] 添加管理后台查看失败记录

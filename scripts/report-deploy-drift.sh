@@ -17,9 +17,7 @@ print_ref() {
 
 echo "== Local Git refs =="
 print_ref "main"
-print_ref "staging"
-print_ref "production/main"
-print_ref "production/staging"
+print_ref "origin/main"
 
 echo
 echo "== Local config checkpoints =="
@@ -27,13 +25,13 @@ grep -nE '^(API_PORT|API_PORT_INTERNAL|WEB_ORIGIN|CSRF_COOKIE_SECURE|FEISHU_FIEL
 
 echo
 echo "== Local compose pass-through =="
-grep -nE 'FEISHU_FIELD_CLICK_ID|FEISHU_FIELD_CLICK_ID_SOURCE_KEY|FEISHU_FIELD_TRACKING_PARAMS|FEISHU_FIELD_TRACKING_ID|FEISHU_FIELD_TRACKING_ID_TYPE|FEISHU_SUBMISSION_SOURCE' docker-compose.production.yml docker-compose.staging.yml || true
+grep -nE 'FEISHU_FIELD_CLICK_ID|FEISHU_FIELD_CLICK_ID_SOURCE_KEY|FEISHU_FIELD_TRACKING_PARAMS|FEISHU_FIELD_TRACKING_ID|FEISHU_FIELD_TRACKING_ID_TYPE|FEISHU_SUBMISSION_SOURCE' docker-compose.production.yml || true
 
 if [[ -z "${SSH_HOST:-}" ]]; then
   echo
   echo "SSH_HOST is not set; skipping remote read-only checks."
   echo "Usage:"
-  echo "  SSH_HOST=root@<server> SSH_KEY_PATH=/path/to/key ./scripts/report-deploy-drift.sh"
+  echo "  SSH_HOST=root@121.40.214.5 SSH_KEY_PATH=/path/to/key ./scripts/report-deploy-drift.sh"
   exit 0
 fi
 
@@ -48,18 +46,18 @@ echo "== Remote read-only checks (${SSH_HOST}) =="
 ssh "${SSH_ARGS[@]}" "${SSH_HOST}" 'bash -s' <<'REMOTE'
 set -euo pipefail
 
-prod_release="$(basename "$(readlink -f /opt/web-fbif-form/current)")"
-staging_release="$(basename "$(readlink -f /opt/web-fbif-form-staging/current)")"
+prod_release="$(basename "$(readlink -f /opt/web-fbif-form/current 2>/dev/null || echo 'N/A')")"
+preview_release="$(basename "$(readlink -f /opt/web-fbif-form-staging/current 2>/dev/null || echo 'N/A')")"
 
 echo "prod_release ${prod_release}"
-echo "staging_release ${staging_release}"
+echo "preview_release ${preview_release}"
 
 echo
 echo "-- prod env --"
 grep -nE '^(WEB_ORIGIN|API_PORT|POSTGRES_DB|FEISHU_SUBMISSION_SOURCE|FEISHU_FIELD_CLICK_ID|FEISHU_FIELD_CLICK_ID_SOURCE_KEY|FEISHU_FIELD_TRACKING_PARAMS|FEISHU_FIELD_TRACKING_ID|FEISHU_FIELD_TRACKING_ID_TYPE)=' /opt/web-fbif-form/shared/backend.env || true
 
 echo
-echo "-- staging env --"
+echo "-- preview env --"
 grep -nE '^(WEB_ORIGIN|API_PORT|POSTGRES_DB|FEISHU_SUBMISSION_SOURCE|FEISHU_FIELD_CLICK_ID|FEISHU_FIELD_CLICK_ID_SOURCE_KEY|FEISHU_FIELD_TRACKING_PARAMS|FEISHU_FIELD_TRACKING_ID|FEISHU_FIELD_TRACKING_ID_TYPE)=' /opt/web-fbif-form-staging/shared/backend.env || true
 
 echo
@@ -74,7 +72,7 @@ ORDER BY ordinal_position;
 SQL
 
 echo
-echo "-- staging submission tracking columns --"
+echo "-- preview submission tracking columns --"
 docker exec -i fbif-form-staging-postgres-1 psql -U fbif -d fbif_form_staging -AXqt <<'SQL'
 SELECT column_name
 FROM information_schema.columns

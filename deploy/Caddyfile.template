@@ -8,7 +8,8 @@ fbif2026ticket.foodtalks.cn {
     reverse_proxy localhost:3001
 }
 
-# 如需测试环境 (可选，取消注释):
-# staging.fbif2026ticket.foodtalks.cn {
+# Preview 环境通过 IP:3003 直接访问 (NGINX 代理)，无需 Caddy 条目。
+# 如需为 preview 配置域名，取消注释:
+# preview.fbif2026ticket.foodtalks.cn {
 #     reverse_proxy localhost:3003
 # }

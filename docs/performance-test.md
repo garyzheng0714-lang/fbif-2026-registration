@@ -19,7 +19,7 @@ k6 run tests/k6/form-submit.js -e BASE_URL=http://localhost:8080
 dd if=/dev/urandom of=/tmp/fbif-load-20mb.bin bs=1m count=20
 
 # 100 并发，一人 3 个附件（可用同一个文件复用）
-API_BASE=http://112.124.103.65:8080 \
+API_BASE=http://121.40.214.5:8080 \
 FILES_SPECS="/tmp/fbif-load-20mb.bin:20971520:proof-1.bin,/tmp/fbif-load-20mb.bin:20971520:proof-2.bin,/tmp/fbif-load-20mb.bin:20971520:proof-3.bin" \
 bash tests/load/mixed_oss_100.sh
 ```
