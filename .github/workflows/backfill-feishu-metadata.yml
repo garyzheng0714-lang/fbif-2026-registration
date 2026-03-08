@@ -147,7 +147,7 @@ jobs:
           echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
           echo "RUN_MODE=${MODE}"
           docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
-REMOTE
+          REMOTE
 
       - name: Cleanup
         if: always()
