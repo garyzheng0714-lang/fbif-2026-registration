@@ -104,7 +104,8 @@ apply_defaults() {
   set_default API_PORT "${api_port_value}"
   set_default API_PORT_INTERNAL "${api_port_internal_value}"
   set_default WEB_ORIGIN "${web_origin_value}"
-  set_default CSRF_COOKIE_SECURE "${csrf_cookie_secure_default}"
+  # Force-set: always derive from WEB_ORIGIN protocol to prevent stale values
+  upsert_env CSRF_COOKIE_SECURE "${csrf_cookie_secure_default}"
   set_default POSTGRES_USER fbif
   set_default POSTGRES_PASSWORD change_me
   set_default POSTGRES_DB "${POSTGRES_DB:-fbif_form}"
