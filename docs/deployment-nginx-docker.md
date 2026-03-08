@@ -1,3 +1,5 @@
+> **[DEPRECATED]** 本文档描述的是旧版 Nginx + Docker 部署方式，当前部署流程请参考 [deploy-guide.md](./deploy-guide.md)。
+
 # NGINX Docker 部署（并行接入，不影响现有系统）
 
 ## 目标

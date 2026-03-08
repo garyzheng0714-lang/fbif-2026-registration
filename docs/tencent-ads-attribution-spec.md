@@ -7,8 +7,8 @@
 ### 主仓库
 
 - GitHub 仓库：<https://github.com/garyzheng0714-lang/fbif-2026-registration.git>
-- `main` -> 生产服务器 `121.40.214.5`
-- `staging` -> 测试服务器 `112.124.103.65`
+- `main` (workflow_dispatch) -> 生产环境 `121.40.214.5:3001/8080`
+- `main` (push) -> preview 环境 `121.40.214.5:3003/8083`
 - 生产访问域名：<https://fbif2026ticket.foodtalks.cn>
 
 ### 镜像仓库
@@ -87,29 +87,29 @@
 - `FEISHU_FIELD_CLICK_ID_SOURCE_KEY`
 - `FEISHU_FIELD_SOURCE`
 
-### 测试环境（staging 分支）
+### Preview 环境（main 分支 push 触发）
 
-`staging` 分支部署后的数据当前也写入同一张表：
+preview 环境部署后的数据当前也写入同一张表：
 
 - Base: `<YOUR_FEISHU_APP_TOKEN>`
 - Table: `tbl0CQ74guMS1IDd`
 - URL: <https://foodtalks.feishu.cn/base/<YOUR_FEISHU_APP_TOKEN>?table=tbl0CQ74guMS1IDd>
 
-测试环境写入值要求：
+Preview 环境写入值要求：
 
 - `FEISHU_SUBMISSION_SOURCE=测试环境`
 
 说明：
 
-- 当前不再要求“生产表”和“测试表”分离。
-- 生产与测试通过 `FEISHU_SUBMISSION_SOURCE` 区分来源。
+- 当前不再要求"生产表"和"preview 表"分离。
+- 生产与 preview 通过 `FEISHU_SUBMISSION_SOURCE` 区分来源。
 - 如果未来恢复为两张表，必须同步修改 workflow、文档和环境变量。
 
 ## 部署要求
 
-### staging
+### preview
 
-- `staging` GitHub Actions 工作流固定写入共享表：
+- preview 环境（`deploy-preview.yml`）工作流固定写入共享表：
   - `FEISHU_APP_TOKEN=<YOUR_FEISHU_APP_TOKEN>`
   - `FEISHU_TABLE_ID=tbl0CQ74guMS1IDd`
   - `FEISHU_SUBMISSION_SOURCE=测试环境`
@@ -136,9 +136,9 @@
 2. 本文档
 3. 对应环境变量配置
 
-如果未来再次拆成测试专用表，还必须同时更新：
+如果未来再次拆成 preview 专用表，还必须同时更新：
 
-1. `.github/workflows/deploy-staging.yml`
+1. `.github/workflows/deploy-preview.yml`
 2. `docs/repo-environment-model.md`
 3. `docs/repo-deploy-truth-map.md`
 
@@ -159,5 +159,5 @@
 - 提交入库校验：`apps/api/src/validation/submission.ts`
 - 持久化：`apps/api/src/services/submissionService.ts`
 - 飞书字段映射：`apps/api/src/services/feishuService.ts`
-- 测试环境部署：`.github/workflows/deploy-staging.yml`
+- Preview 环境部署：`.github/workflows/deploy-preview.yml`
 - 生产环境部署：`.github/workflows/deploy-aliyun.yml`
