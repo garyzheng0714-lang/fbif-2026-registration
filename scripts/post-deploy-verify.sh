@@ -176,8 +176,8 @@ body = {
     'name': '${VERIFY_NAME}',
     'title': '部署验证',
     'company': 'FBIF部署验证',
-    'businessType': '食品加工',
-    'department': '技术',
+    'businessType': '其他',
+    'department': '其他',
     'proofUrls': ['https://fbif2026ticket.foodtalks.cn/placeholder-proof.jpg']
 }
 token = '${VERIFY_TOKEN}'
