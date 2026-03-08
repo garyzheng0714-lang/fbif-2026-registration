@@ -944,9 +944,6 @@ export default function App() {
         setClickId(draftClickId);
         setClickIdSourceKey(draftClickIdSourceKey);
       }
-      if (parsed.identity === 'industry' || parsed.identity === 'consumer') {
-        setIdentity(parsed.identity);
-      }
       if (parsed.industryForm) {
         const { proofFiles: _proofFiles, ...rest } = parsed.industryForm;
         setIndustryForm((prev) => ({
@@ -973,7 +970,6 @@ export default function App() {
       try {
         const draft = {
           clientRequestId,
-          identity,
           clickId,
           clickIdSourceKey,
           industryForm: { ...industryForm, proofFiles: [] },
@@ -986,7 +982,7 @@ export default function App() {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [clientRequestId, identity, clickId, clickIdSourceKey, industryForm, consumerForm]);
+  }, [clientRequestId, clickId, clickIdSourceKey, industryForm, consumerForm]);
 
   useEffect(() => {
     return () => {
@@ -1836,7 +1832,6 @@ export default function App() {
           FORM_DRAFT_KEY,
           JSON.stringify({
             clientRequestId: nextClientRequestId,
-            identity,
             clickId: '',
             clickIdSourceKey: '',
             industryForm: initialIndustryForm,
