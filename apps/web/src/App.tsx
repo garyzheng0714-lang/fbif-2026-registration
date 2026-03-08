@@ -2297,8 +2297,6 @@ export default function App() {
                       </div>
 
                       <ul className="proof-guideline-meta-list">
-                        <li>审核需要 1-3 个工作日，审核通过的出席人员方可入场</li>
-                        <li>如有任何问题，请联系工作人员 Carrie（微信：lovelyFBIFer1）</li>
                         <li className="is-warn">如在现场发现为非专业观众，我们有权请您离开现场</li>
                       </ul>
                     </div>
