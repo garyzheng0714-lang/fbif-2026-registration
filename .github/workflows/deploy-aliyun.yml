@@ -49,8 +49,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: npm
           cache-dependency-path: |
             apps/web/package-lock.json
             apps/mock-api/package-lock.json
@@ -70,6 +70,7 @@ jobs:
 
           npm ci --prefix apps/mock-api
           npm test --prefix apps/mock-api
+
           npm ci --prefix apps/web
           VITE_API_URL="${API_URL}" VITE_BUILD_SHA="${GITHUB_SHA:-dev}" npm run build --prefix apps/web
 
@@ -78,20 +79,20 @@ jobs:
           set -euo pipefail
           rm -f /tmp/release.tgz release.tgz
           tar -czf /tmp/release.tgz \
-            --exclude=".git" \
-            --exclude=".github" \
-            --exclude="release.tgz" \
-            --exclude="./release.tgz" \
-            --exclude="apps/web/node_modules" \
-            --exclude="apps/mock-api/node_modules" \
-            --exclude="apps/api/node_modules" \
-            --exclude="apps/web/.env" \
-            --exclude="apps/web/.env.*" \
-            --exclude="apps/mock-api/.env" \
-            --exclude="apps/mock-api/.env.*" \
-            --exclude="apps/api/.env" \
-            --exclude="apps/api/.env.*" \
-            --exclude=".local-stack" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='release.tgz' \
+            --exclude='./release.tgz' \
+            --exclude='apps/web/node_modules' \
+            --exclude='apps/mock-api/node_modules' \
+            --exclude='apps/api/node_modules' \
+            --exclude='apps/web/.env' \
+            --exclude='apps/web/.env.*' \
+            --exclude='apps/mock-api/.env' \
+            --exclude='apps/mock-api/.env.*' \
+            --exclude='apps/api/.env' \
+            --exclude='apps/api/.env.*' \
+            --exclude='.local-stack' \
             .
           cp /tmp/release.tgz release.tgz
 
@@ -136,54 +137,124 @@ jobs:
           if [ -n "${ALIYUN_SSH_KEY:-}" ]; then
             KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
             if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
-              echo "::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content."
+              echo '::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content.'
               exit 1
             fi
-
             RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
-            if printf '%s' "${RAW_KEY}" | grep -q -- '-----BEGIN OPENSSH PRIVATE KEY-----'; then
-              printf '%s\n' "${RAW_KEY}" | awk '
-                /-----BEGIN OPENSSH PRIVATE KEY-----/ {in_key=1}
-                in_key {print}
-                /-----END OPENSSH PRIVATE KEY-----/ {if (in_key) {exit}}
-              ' > ~/.ssh/id_aliyun
-            else
-              printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
-            fi
+            printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
           elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
             printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
           else
-            echo "::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64"
+            echo '::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64'
             exit 1
           fi
 
           chmod 600 ~/.ssh/id_aliyun
+          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
 
-          if ! ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null 2>/tmp/ssh_key_err.log; then
-            echo "::error::Invalid private key content in Actions secret."
-            cat /tmp/ssh_key_err.log || true
-            exit 1
-          fi
-
-          if ! ssh \
+          ssh \
             -i ~/.ssh/id_aliyun \
             -o BatchMode=yes \
             -o ConnectTimeout=10 \
             -o StrictHostKeyChecking=accept-new \
             "${USER}@${HOST}" \
-            "echo SSH_OK" >/tmp/ssh_probe_out.log 2>/tmp/ssh_probe_err.log; then
-            if grep -qi "Permission denied" /tmp/ssh_probe_err.log; then
-              echo "::error::SSH authentication failed. Ensure the public key is in server ~/.ssh/authorized_keys."
-            elif grep -Eqi "Connection timed out|No route to host|Connection refused" /tmp/ssh_probe_err.log; then
-              echo "::error::Cannot reach server SSH port 22 from GitHub Actions. Check Aliyun security group/firewall."
-            else
-              echo "::error::SSH probe failed. See logs below."
+            'echo SSH_OK' >/tmp/ssh_probe.out
+
+          grep -q SSH_OK /tmp/ssh_probe.out
+
+      - name: Remote Preflight Gate
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          STATIC_DIR: ${{ secrets.STATIC_DIR }}
+          API_PORT: ${{ secrets.API_PORT }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          REMOTE_ENV="$(printf \
+            'APP_DIR=%q STATIC_DIR=%q API_PORT=%q PRIMARY_WEB_PORT=%q NGINX_SITE_NAME=%q COMPOSE_PROJECT_NAME=%q' \
+            "${APP_DIR:-/opt/web-fbif-form}" "${STATIC_DIR:-/var/www/fbif-form}" "${API_PORT:-8080}" "3001" "fbif-form" "fbif-form")"
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            "${REMOTE_ENV} bash -s -- preflight" < scripts/remote-deploy.sh
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_aliyun
+
+  prepare-candidate:
+    if: github.event.inputs.confirm == 'deploy'
+    needs:
+      - build-test
+      - preflight-remote
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    outputs:
+      candidate_slot: ${{ steps.prepare.outputs.candidate_slot }}
+      candidate_api_port: ${{ steps.prepare.outputs.candidate_api_port }}
+      candidate_web_port: ${{ steps.prepare.outputs.candidate_web_port }}
+
+    steps:
+      - name: Checkout Scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: true
+
+      - name: Download Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-production
+
+      - name: Validate SSH Key
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+          ALIYUN_SSH_KEY_B64: ${{ secrets.ALIYUN_SSH_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          mkdir -p ~/.ssh
+
+          if [ -n "${ALIYUN_SSH_KEY:-}" ]; then
+            KEY_HEAD="$(printf '%s' "${ALIYUN_SSH_KEY}" | head -n 1)"
+            if printf '%s' "${KEY_HEAD}" | grep -qE '^ssh-(ed25519|rsa|dss) '; then
+              echo '::error::ALIYUN_SSH_KEY looks like a public key. Please set the private key content.'
+              exit 1
             fi
-            cat /tmp/ssh_probe_err.log || true
+            RAW_KEY="$(printf '%b' "${ALIYUN_SSH_KEY}" | tr -d '\r')"
+            printf '%s' "${RAW_KEY}" > ~/.ssh/id_aliyun
+          elif [ -n "${ALIYUN_SSH_KEY_B64:-}" ]; then
+            printf '%s' "${ALIYUN_SSH_KEY_B64}" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_aliyun
+          else
+            echo '::error::Missing Actions secret: ALIYUN_SSH_KEY or ALIYUN_SSH_KEY_B64'
             exit 1
           fi
 
-          grep -q "SSH_OK" /tmp/ssh_probe_out.log
+          chmod 600 ~/.ssh/id_aliyun
+          ssh-keygen -y -f ~/.ssh/id_aliyun >/dev/null
+
+          ssh \
+            -i ~/.ssh/id_aliyun \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=accept-new \
+            "${USER}@${HOST}" \
+            'echo SSH_OK' >/tmp/ssh_probe.out
+
+          grep -q SSH_OK /tmp/ssh_probe.out
 
       - name: Upload Release To Server
         env:
@@ -202,7 +273,8 @@ jobs:
             release.tgz \
             "${USER}@${HOST}:/tmp/release.tgz"
 
-      - name: Deploy On Server
+      - name: Prepare Candidate Slot
+        id: prepare
         env:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
