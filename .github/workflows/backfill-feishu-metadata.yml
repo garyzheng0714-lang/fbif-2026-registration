@@ -180,24 +180,52 @@ jobs:
           docker cp /tmp/backfill-feishu-metadata.js "${TARGET_CONTAINER}:/app/dist/scripts/backfill-feishu-metadata.js"
           docker cp /tmp/feishuService.js "${TARGET_CONTAINER}:/app/dist/services/feishuService.js"
 
-          FEISHU_HOST_IP=""
-          while IFS= read -r candidate_ip; do
-            [ -n "${candidate_ip}" ] || continue
-            if docker exec "${TARGET_CONTAINER}" node -e "const net=require('node:net'); const s=net.createConnection({host:'${candidate_ip}', port:443, timeout:1500}, ()=>{s.end(); process.exit(0)}); s.on('timeout', ()=>{s.destroy(); process.exit(1)}); s.on('error', ()=>process.exit(1));" >/dev/null 2>&1; then
-              FEISHU_HOST_IP="${candidate_ip}"
-              break
-            fi
-          done < <(getent ahostsv4 open.feishu.cn | awk '{ print $1 }' | awk '!seen[$1]++')
-
-          if [ -n "${FEISHU_HOST_IP}" ]; then
-            docker exec "${TARGET_CONTAINER}" sh -lc "grep -q 'open.feishu.cn' /etc/hosts || echo '${FEISHU_HOST_IP} open.feishu.cn' >> /etc/hosts"
-          fi
-
           echo "TARGET_CONTAINER=${TARGET_CONTAINER}"
           echo "RUN_MODE=${MODE}"
-          echo "FEISHU_HOST_IP=${FEISHU_HOST_IP:-none}"
-          [ -n "${FEISHU_HOST_IP}" ] || { echo "ERROR: no reachable IP for open.feishu.cn from container" >&2; exit 1; }
-          docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
+
+          if [ "${MODE}" = "apply" ]; then
+            IMAGE="$(docker inspect -f '{{.Config.Image}}' "${TARGET_CONTAINER}")"
+            POSTGRES_CONTAINER=""
+            for candidate in \
+              "${COMPOSE_PROJECT_NAME}-postgres-1" \
+              "${COMPOSE_PROJECT_NAME}-postgres-blue" \
+              "${COMPOSE_PROJECT_NAME}-postgres-green"
+            do
+              if docker ps --format '{{.Names}}' | grep -qx "${candidate}"; then
+                POSTGRES_CONTAINER="${candidate}"
+                break
+              fi
+            done
+            [ -n "${POSTGRES_CONTAINER}" ] || { echo "ERROR: postgres container not found" >&2; exit 1; }
+
+            POSTGRES_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${POSTGRES_CONTAINER}" | awk '{print $1}')"
+            [ -n "${POSTGRES_IP}" ] || { echo "ERROR: postgres IP not found" >&2; exit 1; }
+
+            ENV_FILE="/tmp/backfill-env.list"
+            docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${TARGET_CONTAINER}" > "${ENV_FILE}"
+            DB_URL="$(grep '^DATABASE_URL=' "${ENV_FILE}" | tail -n1 | cut -d= -f2-)"
+            [ -n "${DB_URL}" ] || { echo "ERROR: DATABASE_URL missing in container env" >&2; exit 1; }
+            DB_URL_HOST="${DB_URL/@postgres:5432/@${POSTGRES_IP}:5432}"
+
+            echo "BACKFILL_IMAGE=${IMAGE}"
+            echo "POSTGRES_CONTAINER=${POSTGRES_CONTAINER}"
+            echo "POSTGRES_IP=${POSTGRES_IP}"
+
+            docker run --rm \
+              --network host \
+              --entrypoint node \
+              --env-file "${ENV_FILE}" \
+              -e "DATABASE_URL=${DB_URL_HOST}" \
+              -v /tmp/backfill-feishu-metadata.js:/app/dist/scripts/backfill-feishu-metadata.js:ro \
+              -v /tmp/feishuService.js:/app/dist/services/feishuService.js:ro \
+              "${IMAGE}" \
+              /app/dist/scripts/backfill-feishu-metadata.js \
+              --limit "${LIMIT}" \
+              --batch-size "${BATCH_SIZE}" \
+              --list-page-size "${LIST_PAGE_SIZE}"
+          else
+            docker exec "${TARGET_CONTAINER}" sh -lc "${CMD}"
+          fi
           REMOTE
 
       - name: Cleanup
