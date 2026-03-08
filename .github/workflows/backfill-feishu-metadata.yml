@@ -205,7 +205,7 @@ jobs:
             docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${TARGET_CONTAINER}" > "${ENV_FILE}"
             DB_URL="$(grep '^DATABASE_URL=' "${ENV_FILE}" | tail -n1 | cut -d= -f2-)"
             [ -n "${DB_URL}" ] || { echo "ERROR: DATABASE_URL missing in container env" >&2; exit 1; }
-            DB_URL_HOST="${DB_URL/@postgres:5432/@${POSTGRES_IP}:5432}"
+            DB_URL_HOST="$(printf '%s' "${DB_URL}" | sed -E "s#@[^:/]+:5432#@${POSTGRES_IP}:5432#")"
 
             echo "BACKFILL_IMAGE=${IMAGE}"
             echo "POSTGRES_CONTAINER=${POSTGRES_CONTAINER}"
