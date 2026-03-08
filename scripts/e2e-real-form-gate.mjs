@@ -23,21 +23,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function selectFirstNonEmpty(page, selector) {
-  const value = await page.$eval(selector, (el) => {
-    const select = el;
-    const options = Array.from(select.options || []);
-    const first = options.find((opt) => String(opt.value || '').trim() !== '');
-    return first ? String(first.value) : '';
-  });
-
-  if (!value) {
-    throw new Error(`no selectable non-empty option found: ${selector}`);
-  }
-
-  await page.selectOption(selector, value);
-}
-
 async function submitAndCaptureId(page, roleLabel) {
   const responsePromise = page.waitForResponse((resp) => {
     return resp.url().includes('/api/submissions') && resp.request().method() === 'POST' && resp.status() === 202;
@@ -99,14 +84,11 @@ async function fillIndustryScenario(page) {
   await page.waitForSelector('#industry-name', { timeout: 15000 });
 
   await page.fill('#industry-name', VERIFY_NAME);
-  await page.selectOption('#industry-idType', 'cn_id');
   await page.fill('#industry-idNumber', VERIFY_ID);
   await page.fill('#industry-phone', VERIFY_PHONE);
   await page.fill('#industry-company', 'FBIF发布验收公司');
   await page.fill('#industry-title', '发布验收负责人');
-
-  await selectFirstNonEmpty(page, '#industry-businessType');
-  await selectFirstNonEmpty(page, '#industry-department');
+  await page.getByRole('button', { name: '品牌' }).first().click();
 
   await page.setInputFiles('#industry-proof', PROOF_FILE);
   await page.locator('.submit-policy-input').check({ force: true });
@@ -126,7 +108,6 @@ async function fillConsumerScenario(page) {
   await page.waitForSelector('#consumer-name', { timeout: 15000 });
 
   await page.fill('#consumer-name', VERIFY_NAME);
-  await page.selectOption('#consumer-idType', 'cn_id');
   await page.fill('#consumer-idNumber', VERIFY_ID);
   await page.fill('#consumer-phone', VERIFY_PHONE);
 
