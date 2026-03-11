@@ -175,18 +175,37 @@ jobs:
           set -euo pipefail
           HOST="${ALIYUN_HOST:-121.40.214.5}"
           USER="${ALIYUN_USER:-root}"
+          SSH_CMD="ssh -i ~/.ssh/id_aliyun -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new ${USER}@${HOST}"
+
+          echo "::group::isolation-check"
+          REMOTE_PORTS="$(${SSH_CMD} 'docker ps --format \"{{.Names}}\t{{.Ports}}\"')"
+          echo "${REMOTE_PORTS}"
+
+          if echo "${REMOTE_PORTS}" | grep -Eq '^fbif-form-staging-api-(blue|green)[[:space:]].*127\.0\.0\.1:(8080|18080)->'; then
+            echo '::error::Staging API slot is occupying production API ports (8080/18080).'
+            exit 1
+          fi
+
+          STAGING_NGX="$(${SSH_CMD} 'ls -1 /etc/nginx/sites-enabled 2>/dev/null | grep -E \"^fbif-form-staging\" || true')"
+          if [ -n "${STAGING_NGX}" ]; then
+            echo '::error::Staging nginx site is enabled on production web ports.'
+            echo "${STAGING_NGX}"
+            exit 1
+          fi
+
+          PROD_CADDY="$(${SSH_CMD} 'sed -n \"/^fbif2026ticket\\.foodtalks\\.cn {/,/^}/p\" /etc/caddy/Caddyfile')"
+          if ! echo "${PROD_CADDY}" | grep -q 'reverse_proxy localhost:3001'; then
+            echo '::error::Production Caddy upstream is not pinned to localhost:3001.'
+            echo "${PROD_CADDY}"
+            exit 1
+          fi
+          echo "::endgroup::"
 
           REMOTE_ENV="$(printf \
-            'APP_DIR=%q STATIC_DIR=%q API_PORT=%q PRIMARY_WEB_PORT=%q NGINX_SITE_NAME=%q COMPOSE_PROJECT_NAME=%q' \
-            "${APP_DIR:-/opt/web-fbif-form}" "${STATIC_DIR:-/var/www/fbif-form}" "${API_PORT:-8080}" "3001" "fbif-form" "fbif-form")"
+            'APP_DIR=%q STATIC_DIR=%q API_PORT=%q PRIMARY_WEB_PORT=%q CANDIDATE_WEB_PORT=%q NGINX_SITE_NAME=%q COMPOSE_PROJECT_NAME=%q BLUE_API_PORT=%q GREEN_API_PORT=%q' \
+            "${APP_DIR:-/opt/web-fbif-form}" "${STATIC_DIR:-/var/www/fbif-form}" "${API_PORT:-8080}" "3001" "3002" "fbif-form" "fbif-form" "8080" "18080")"
 
-          ssh \
-            -i ~/.ssh/id_aliyun \
-            -o BatchMode=yes \
-            -o ConnectTimeout=20 \
-            -o StrictHostKeyChecking=accept-new \
-            "${USER}@${HOST}" \
-            "${REMOTE_ENV} bash -s -- preflight" < scripts/remote-deploy.sh
+          ${SSH_CMD} "${REMOTE_ENV} bash -s -- preflight" < scripts/remote-deploy.sh
 
       - name: Cleanup
         if: always()
