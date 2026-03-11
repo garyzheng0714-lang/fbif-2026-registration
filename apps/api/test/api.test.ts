@@ -209,31 +209,33 @@ test('clientRequestId is idempotent', async () => {
   assert.equal(r1.body.traceId, r2.body.traceId);
 });
 
-test('industry submission requires proofUrls', async () => {
-  const csrfRes = await request(server).get('/api/csrf');
-  const cookie = csrfRes.headers['set-cookie'][0];
-  const token = csrfRes.body.csrfToken;
-
-  const res = await request(server)
-    .post('/api/submissions')
-    .set('Cookie', cookie)
-    .set('X-CSRF-Token', token)
-    .send({
-      clientRequestId: 'req-industry-1',
-      role: 'industry',
-      idType: 'passport',
-      idNumber: 'ABCDEFGH',
-      phone: '13800138000',
-      name: '张三',
-      title: '运营负责人',
-      company: '测试公司',
-      businessType: '食品饮料品牌方',
-      department: '高管/战略'
-    });
-
-  assert.equal(res.status, 400);
-  assert.equal(res.body.error, 'ValidationError');
-});
+// proofUrls validation is currently disabled (PROOF_UPLOAD_ENABLED = false).
+// Re-enable this test when proof upload is required again.
+// test('industry submission requires proofUrls', async () => {
+//   const csrfRes = await request(server).get('/api/csrf');
+//   const cookie = csrfRes.headers['set-cookie'][0];
+//   const token = csrfRes.body.csrfToken;
+//
+//   const res = await request(server)
+//     .post('/api/submissions')
+//     .set('Cookie', cookie)
+//     .set('X-CSRF-Token', token)
+//     .send({
+//       clientRequestId: 'req-industry-1',
+//       role: 'industry',
+//       idType: 'passport',
+//       idNumber: 'ABCDEFGH',
+//       phone: '13800138000',
+//       name: '张三',
+//       title: '运营负责人',
+//       company: '测试公司',
+//       businessType: '食品饮料品牌方',
+//       department: '高管/战略'
+//     });
+//
+//   assert.equal(res.status, 400);
+//   assert.equal(res.body.error, 'ValidationError');
+// });
 
 test('industry submission accepts proofUrls array', async () => {
   const csrfRes = await request(server).get('/api/csrf');
