@@ -579,6 +579,7 @@ function FloatingRegisterTab({ onSelect }: { onSelect: (role: 'industry' | 'cons
         setPulsing(true);
         startIdle();
       }, 600);
+      prevVisible.current = visible;
       return () => clearTimeout(t);
     }
     prevVisible.current = visible;
@@ -640,14 +641,14 @@ function FloatingRegisterTab({ onSelect }: { onSelect: (role: 'industry' | 'cons
             <span className="mi-icon mi-icon--industry" aria-hidden="true"><IndustryCardIcon /></span>
             <span className="mi-text">
               <span className="mi-label">专业观众</span>
-              <span className="mi-date">4.27-29 三天票</span>
+              <span className="mi-date">4.27-29 三日票</span>
             </span>
           </button>
           <button className="fab-menu-item" onClick={() => handleSelect('consumer')}>
             <span className="mi-icon mi-icon--consumer" aria-hidden="true"><ConsumerCardIcon /></span>
             <span className="mi-text">
               <span className="mi-label">消费者</span>
-              <span className="mi-date">仅4.29 一天票</span>
+              <span className="mi-date">仅4.29 一日票</span>
             </span>
           </button>
         </div>
@@ -1893,7 +1894,7 @@ export default function App() {
   const identityLabel = identity === 'industry' ? '专业观众注册' : '消费者注册';
   const identityDateReminder =
     identity === 'industry'
-      ? '您正在注册 4月27-29日 三天票'
+      ? '您正在注册 4月27-29日 三日票'
       : null;
   const identityAgeNotice =
     identity === 'industry'
@@ -2029,8 +2030,8 @@ export default function App() {
                   <p className="stage-current-note">{identityDateReminder}</p>
                 ) : (
                   <>
-                    <p className="stage-current-note">仅4月29日 一天票</p>
-                    <p className="stage-current-hint">如需三天票请返回选择专业观众</p>
+                    <p className="stage-current-note">仅4月29日 一日票</p>
+                    <p className="stage-current-hint">如需三日票请返回选择专业观众</p>
                   </>
                 )}
               </div>
