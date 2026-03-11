@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>方案B - 海报下拉卡片式 + 底部注册栏</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --brand-blue: #1a56db;
+    --brand-gold: #f5a623;
+    --surface: #f4f6f9;
+    --card: #ffffff;
+    --ink-primary: #111827;
+    --ink-secondary: #4b5563;
+    --ink-muted: #9ca3af;
+    --border: rgba(0,0,0,0.06);
+    --radius: 16px;
+    --radius-sm: 12px;
+    --content-width: 420px;
+  }
+
+  html { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif; }
+
+  body {
+    background: var(--surface);
+    color: var(--ink-primary);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === Page wrapper === */
+  .page {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 100dvh;
+    padding-bottom: 100px;
+  }
+
+  /* === Top Banner - more compact === */
+  .top-banner {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .top-banner img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* === Role Selection - Card style === */
+  .role-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 22px 16px 18px;
+    border: 1px solid var(--border);
+  }
+
+  .role-card h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .role-subtitle {
+    text-align: center;
+    font-size: 0.83rem;
+    color: var(--ink-secondary);
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+
+  .role-query-link {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+  }
+  .role-query-link a {
+    color: var(--brand-blue);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  /* Big, tappable role cards */
+  .role-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .role-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #e2e8f0;
+    background: var(--card);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .role-btn:active { transform: scale(0.98); }
+
+  .role-btn--industry {
+    border-color: #bfdbfe;
+    background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+  }
+  .role-btn--consumer {
+    border-color: #bbf7d0;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  }
+
+  .role-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .role-icon--industry { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+  .role-icon--consumer { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+
+  .role-info { flex: 1; }
+  .role-name {
+    font-size: 1.05rem;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+
+  .role-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 4px;
+  }
+  .role-tag--review { background: #fef3c7; color: #92400e; }
+  .role-tag--free { background: #d1fae5; color: #065f46; }
+
+  .role-desc { font-size: 0.82rem; color: var(--ink-secondary); }
+
+  .role-arrow {
+    width: 24px;
+    height: 24px;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+
+  .role-warning {
+    text-align: center;
+    font-size: 0.78rem;
+    color: #ef4444;
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  /* === Poster Section - Inline scrollable card === */
+  .poster-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: all 0.4s ease;
+  }
+
+  .poster-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .poster-card-header:active {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .poster-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .poster-card-header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+
+  .poster-card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .poster-card-subtitle {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+  }
+
+  .poster-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: var(--brand-blue);
+    font-weight: 500;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+  }
+  .poster-toggle:hover {
+    background: rgba(26,86,219,0.06);
+  }
+  .poster-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+  }
+  .poster-toggle.is-expanded svg {
+    transform: rotate(180deg);
+  }
+
+  /* Poster body */
+  .poster-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .poster-body.is-expanded {
+    max-height: 65vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .poster-body img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Inline fade at bottom of scrollable area */
+  .poster-body-fade {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, var(--card));
+    pointer-events: none;
+    margin-top: -50px;
+    z-index: 2;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  .poster-body-fade.is-hidden {
+    opacity: 0;
+  }
+
+  .poster-scroll-label {
+    position: sticky;
+    bottom: 8px;
+    text-align: center;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  .poster-scroll-label.is-hidden {
+    opacity: 0;
+  }
+  .poster-scroll-label span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+  }
+  .poster-scroll-label svg {
+    width: 12px;
+    height: 12px;
+    animation: bounce-down 1.5s ease-in-out infinite;
+  }
+  @keyframes bounce-down {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(2px); }
+  }
+
+  /* === Fixed Bottom Register Bar (alternative) === */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .bottom-bar.is-visible {
+    display: block;
+  }
+
+  .bottom-bar-inner {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+  }
+
+  .bottom-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 13px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+  }
+  .bottom-btn:active { transform: scale(0.98); }
+
+  .bottom-btn--industry {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+  }
+  .bottom-btn--consumer {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5,150,105,0.25);
+  }
+
+  .bottom-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* === Footer === */
+  .footer {
+    padding: 20px 12px 16px;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  /* === Label === */
+  .approach-label {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 9999;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="approach-label">方案 B</div>
+
+<div class="page" id="mainPage">
+  <!-- Top Banner -->
+  <div class="top-banner">
+    <img src="https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-top-2026-v2.webp" alt="FBIF 2026">
+  </div>
+
+  <!-- Role Selection -->
+  <div class="role-card" id="roleCard">
+    <h2>请选择您的观展身份</h2>
+    <p class="role-subtitle">请选择身份，我们将为您发放对应的观展票</p>
+    <p class="role-query-link">如已提交，<a href="#">点此查询</a>注册与审核结果</p>
+
+    <div class="role-options">
+      <button class="role-btn role-btn--industry">
+        <div class="role-icon role-icon--industry">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v.01"/></svg>
+        </div>
+        <div class="role-info">
+          <div class="role-name">专业观众注册 <span class="role-tag role-tag--review">需审核</span></div>
+          <div class="role-desc">4月27-29日展区票（<b>3</b>日票）</div>
+        </div>
+        <svg class="role-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+
+      <button class="role-btn role-btn--consumer">
+        <div class="role-icon role-icon--consumer">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="role-info">
+          <div class="role-name">消费者注册 <span class="role-tag role-tag--free">免审核</span></div>
+          <div class="role-desc">4月29日展区票（<b>1</b>日票）</div>
+        </div>
+        <svg class="role-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <p class="role-warning">16岁以下观众禁止入场，请勿注册！</p>
+  </div>
+
+  <!-- Poster as expandable card -->
+  <div class="poster-card" id="posterCard">
+    <div class="poster-card-header" onclick="togglePoster()">
+      <div class="poster-card-header-left">
+        <div class="poster-card-header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div>
+          <div class="poster-card-title">展会亮点</div>
+          <div class="poster-card-subtitle">650+ 全球观众 / 100+ 论坛峰会</div>
+        </div>
+      </div>
+      <button class="poster-toggle" id="posterToggle">
+        展开
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+
+    <div class="poster-body" id="posterBody">
+      <img src="https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp" alt="FBIF 2026 展会亮点">
+      <div class="poster-body-fade" id="posterFade"></div>
+      <div class="poster-scroll-label" id="posterScrollLabel">
+        <span>
+          下滑查看更多
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>&copy; Copyright 2026 Simba. All rights reserved.</p>
+    <p>上海辛巴商务咨询有限公司 版权所有</p>
+  </div>
+</div>
+
+<!-- Fixed bottom bar (shows when role card scrolls out) -->
+<div class="bottom-bar" id="bottomBar">
+  <div class="bottom-bar-inner">
+    <button class="bottom-btn bottom-btn--industry">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      专业观众
+    </button>
+    <button class="bottom-btn bottom-btn--consumer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      消费者
+    </button>
+  </div>
+</div>
+
+<script>
+  const posterBody = document.getElementById('posterBody');
+  const posterToggle = document.getElementById('posterToggle');
+  const posterFade = document.getElementById('posterFade');
+  const posterScrollLabel = document.getElementById('posterScrollLabel');
+  const bottomBar = document.getElementById('bottomBar');
+  const roleCard = document.getElementById('roleCard');
+  let expanded = false;
+
+  function togglePoster() {
+    expanded = !expanded;
+    posterBody.classList.toggle('is-expanded', expanded);
+    posterToggle.classList.toggle('is-expanded', expanded);
+    posterToggle.childNodes[0].textContent = expanded ? '收起' : '展开';
+
+    if (expanded) {
+      posterBody.scrollTop = 0;
+      posterFade.classList.remove('is-hidden');
+      posterScrollLabel.classList.remove('is-hidden');
+    }
+  }
+
+  posterBody.addEventListener('scroll', () => {
+    const atBottom = posterBody.scrollHeight - posterBody.scrollTop - posterBody.clientHeight < 40;
+    posterFade.classList.toggle('is-hidden', atBottom);
+    if (posterBody.scrollTop > 80) {
+      posterScrollLabel.classList.add('is-hidden');
+    }
+  }, { passive: true });
+
+  // Show bottom bar when role card scrolls out of view
+  const obs = new IntersectionObserver(([entry]) => {
+    bottomBar.classList.toggle('is-visible', !entry.isIntersecting);
+  }, { threshold: 0.05 });
+  obs.observe(roleCard);
+</script>
+
+</body>
+</html>

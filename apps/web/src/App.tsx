@@ -2552,8 +2552,6 @@ export default function App() {
 
         {page === 'submitted' && (
           <>
-            <img className="banner" src={TOP_BANNER_URL} alt="FBIF 食品创新展" />
-
             <FeishuCard className="success-card">
               <div className="success-hero">
                 <div className="success-hero-icon">

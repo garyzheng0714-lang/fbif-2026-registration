@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FBIF2026 - 原型预览</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --surface: #f4f6f9;
+    --card: #ffffff;
+    --ink-primary: #111827;
+    --ink-secondary: #4b5563;
+    --ink-muted: #9ca3af;
+    --border: rgba(0,0,0,0.06);
+    --radius: 16px;
+    --radius-sm: 12px;
+    --content-width: 420px;
+    --btn-blue: rgb(61, 112, 222);
+  }
+
+  html { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif; }
+  body {
+    background: var(--surface);
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .top-banner { width: 100%; border-radius: var(--radius); overflow: hidden; }
+  .top-banner img { display: block; width: 100%; height: auto; }
+
+  .role-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px 18px 20px;
+    border: 1px solid var(--border);
+  }
+  .role-card h2 {
+    font-size: 1.25rem; font-weight: 700;
+    text-align: center; margin-bottom: 6px;
+  }
+  .role-subtitle {
+    text-align: center; font-size: 0.85rem;
+    color: var(--ink-secondary); margin-bottom: 4px; line-height: 1.5;
+  }
+  .role-query-link {
+    text-align: center; font-size: 0.82rem;
+    color: var(--ink-muted); margin-bottom: 18px;
+  }
+  .role-query-link a { color: var(--btn-blue); text-decoration: none; font-weight: 500; }
+  .role-options { display: flex; flex-direction: column; gap: 12px; }
+
+  .role-btn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; border-radius: var(--radius-sm);
+    border: 1.5px solid #e2e8f0; background: var(--card);
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .role-btn:active { transform: scale(0.98); }
+  .role-btn--industry { border-color: #bfdbfe; background: linear-gradient(135deg, #f0f7ff, #fff); }
+  .role-btn--consumer { border-color: #bbf7d0; background: linear-gradient(135deg, #f0fdf4, #fff); }
+
+  .role-icon {
+    width: 52px; height: 52px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .role-icon--industry { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+  .role-icon--consumer { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+
+  .role-info { flex: 1; }
+  .role-name {
+    font-size: 1.05rem; font-weight: 650;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 3px;
+  }
+  .role-tag {
+    display: inline-block; padding: 1px 7px;
+    font-size: 0.7rem; font-weight: 600; border-radius: 4px;
+  }
+  .role-tag--review { background: #fef3c7; color: #92400e; }
+  .role-tag--free { background: #d1fae5; color: #065f46; }
+  .role-desc { font-size: 0.82rem; color: var(--ink-secondary); }
+  .role-arrow { width: 24px; height: 24px; color: var(--ink-muted); flex-shrink: 0; }
+  .role-warning {
+    text-align: center; font-size: 0.78rem;
+    color: #ef4444; margin-top: 14px; font-weight: 500;
+  }
+
+  .poster-inline { width: 100%; border-radius: var(--radius); overflow: hidden; }
+  .poster-inline img { display: block; width: 100%; height: auto; }
+
+  .footer {
+    padding: 20px 12px calc(16px + env(safe-area-inset-bottom));
+    text-align: center; font-size: 0.72rem;
+    color: var(--ink-muted); line-height: 1.6;
+  }
+
+  /* =============================================
+     Apple-style floating button
+     ============================================= */
+  .float-btn-wrap {
+    position: fixed;
+    bottom: 28px;
+    left: 0; right: 0;
+    z-index: 900;
+    padding: 0 20px;
+    padding-bottom: env(safe-area-inset-bottom);
+    pointer-events: none;
+    will-change: transform, opacity;
+    /* Hidden state */
+    transform: translateY(20px) scale(0.92);
+    opacity: 0;
+    filter: blur(4px);
+    /* Apple-style deceleration curve */
+    transition:
+      transform 0.65s cubic-bezier(0.4, 0, 0, 1),
+      opacity   0.5s  cubic-bezier(0.4, 0, 0, 1),
+      filter    0.5s  cubic-bezier(0.4, 0, 0, 1);
+  }
+
+  .float-btn-wrap.is-visible {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  .float-register-btn {
+    display: block;
+    width: 100%;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 14px;
+    background: var(--btn-blue);
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: center;
+    cursor: pointer;
+    pointer-events: auto;
+    will-change: transform;
+    box-shadow:
+      0 2px 4px rgba(61,112,222,0.15),
+      0 8px 24px rgba(61,112,222,0.3),
+      0 1px 2px rgba(0,0,0,0.06);
+    transition:
+      transform 0.35s cubic-bezier(0.4, 0, 0, 1),
+      box-shadow 0.35s cubic-bezier(0.4, 0, 0, 1);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .float-register-btn:active {
+    transform: scale(0.97);
+    box-shadow:
+      0 1px 2px rgba(61,112,222,0.1),
+      0 4px 12px rgba(61,112,222,0.2),
+      0 1px 2px rgba(0,0,0,0.04);
+    transition-duration: 0.1s;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="top-banner">
+    <img src="https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-top-2026-v2.webp" alt="FBIF 2026">
+  </div>
+
+  <div class="role-card" id="roleCard">
+    <h2>请选择您的观展身份</h2>
+    <p class="role-subtitle">请选择身份，我们将为您发放对应的观展票</p>
+    <p class="role-query-link">如已提交，<a href="#">点此查询</a>注册与审核结果</p>
+    <div class="role-options">
+      <button class="role-btn role-btn--industry">
+        <div class="role-icon role-icon--industry">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v.01"/></svg>
+        </div>
+        <div class="role-info">
+          <div class="role-name">专业观众注册 <span class="role-tag role-tag--review">需审核</span></div>
+          <div class="role-desc">4月27-29日展区票（<b>3</b>日票）</div>
+        </div>
+        <svg class="role-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <button class="role-btn role-btn--consumer">
+        <div class="role-icon role-icon--consumer">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="role-info">
+          <div class="role-name">消费者注册 <span class="role-tag role-tag--free">免审核</span></div>
+          <div class="role-desc">4月29日展区票（<b>1</b>日票）</div>
+        </div>
+        <svg class="role-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <p class="role-warning">16岁以下观众禁止入场，请勿注册！</p>
+  </div>
+
+  <div class="poster-inline">
+    <img src="https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp" alt="FBIF 2026 展会亮点">
+  </div>
+
+  <div class="footer">
+    <p>&copy; Copyright 2026 Simba. All rights reserved.</p>
+    <p>上海辛巴商务咨询有限公司 版权所有</p>
+  </div>
+</div>
+
+<div class="float-btn-wrap" id="floatBtn">
+  <button class="float-register-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">立即注册</button>
+</div>
+
+<script>
+  const roleCard = document.getElementById('roleCard');
+  const floatBtn = document.getElementById('floatBtn');
+
+  const obs = new IntersectionObserver(([entry]) => {
+    floatBtn.classList.toggle('is-visible', !entry.isIntersecting);
+  }, { threshold: 0 });
+
+  obs.observe(roleCard);
+</script>
+
+</body>
+</html>

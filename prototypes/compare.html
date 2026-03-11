@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBIF 注册表单 - 修改前后对比</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'PingFang SC', sans-serif; background: #f0f1f3; color: #1f2329; }
+  h1 { text-align: center; padding: 32px 16px 8px; font-size: 22px; font-weight: 700; }
+  .subtitle { text-align: center; color: #646a73; font-size: 14px; margin-bottom: 32px; }
+  .section { max-width: 960px; margin: 0 auto 48px; padding: 0 16px; }
+  .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; padding-left: 12px; border-left: 4px solid #0f5fc2; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+  .pair-label { text-align: center; font-size: 13px; font-weight: 600; padding: 8px; border-radius: 6px; }
+  .pair-label.before { background: #fef2f2; color: #c54e3a; }
+  .pair-label.after { background: #ecfdf5; color: #2e7d32; }
+  .pair img { width: 100%; border: 1px solid #dee0e3; border-radius: 8px; display: block; }
+  .changes { margin-top: 12px; padding: 12px 16px; background: #fff; border-radius: 8px; border: 1px solid #dee0e3; font-size: 13px; line-height: 1.7; color: #646a73; }
+  .changes strong { color: #1f2329; }
+  @media (max-width: 600px) {
+    .pair { grid-template-columns: 1fr; }
+    h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>FBIF 注册表单优化 - 修改前后对比</h1>
+<p class="subtitle">左侧为修改前，右侧为修改后（手机端 390px 视口）</p>
+
+<div class="section">
+  <h2 class="section-title">1. 角色选择页</h2>
+  <div class="pair">
+    <div class="pair-label before">修改前</div>
+    <div class="pair-label after">修改后</div>
+  </div>
+  <div class="pair">
+    <img src="before-identity.png" alt="修改前 - 角色选择">
+    <img src="after-identity.png" alt="修改后 - 角色选择">
+  </div>
+  <div class="changes">
+    <strong>改动：</strong>去掉原有灰色小字描述（"4月27-29日展区票（3日票）"），替换为醒目的日期标签 —— 专业观众蓝色底「4月27-29日 可入场（共 3 天）」，消费者金色底「仅限 4月29日 可入场（共 1 天）」。一眼可区分三天票和一天票。
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">2. 专业观众表单页</h2>
+  <div class="pair">
+    <div class="pair-label before">修改前</div>
+    <div class="pair-label after">修改后</div>
+  </div>
+  <div class="pair">
+    <img src="before-form-industry.png" alt="修改前 - 专业观众表单">
+    <img src="after-form-industry.png" alt="修改后 - 专业观众表单">
+  </div>
+  <div class="changes">
+    <strong>改动：</strong>新增蓝色日期提醒条「您正在注册 4月27-29日 三天票」，位于表头和年龄提醒之间，填表过程中始终可见。
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">3. 消费者表单页</h2>
+  <div class="pair">
+    <div class="pair-label before">修改前</div>
+    <div class="pair-label after">修改后</div>
+  </div>
+  <div class="pair">
+    <img src="before-form-consumer.png" alt="修改前 - 消费者表单">
+    <img src="after-form-consumer.png" alt="修改后 - 消费者表单">
+  </div>
+  <div class="changes">
+    <strong>改动：</strong>新增金色日期提醒条「您正在注册 仅4月29日 一天票，如需三天票请返回选择专业观众」，明确提醒消费者只能29号入场，并引导想要三天票的用户返回。
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">4. 消费者成功页</h2>
+  <div class="pair">
+    <div class="pair-label before">修改前</div>
+    <div class="pair-label after">修改后</div>
+  </div>
+  <div class="pair">
+    <img src="before-success-consumer.png" alt="修改前 - 消费者成功">
+    <img src="after-success-consumer.png" alt="修改后 - 消费者成功">
+  </div>
+  <div class="changes">
+    <strong>改动：</strong><br>
+    1) Hero 区域新增金色日期标签「入场日期：仅 4月29日」<br>
+    2) 新增红色「重要提示」警告框 —— 明确告知消费者票仅限29日，27-28日为专业观众日无法入场<br>
+    3) 移除「温馨提示」（内容已合并到二维码区域）<br>
+    4) 二维码直接内联展示，不再需要点按钮弹窗<br>
+    5) 底部只保留「查看展会介绍」按钮
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">5. 专业观众成功页</h2>
+  <div class="pair">
+    <div class="pair-label before">修改前</div>
+    <div class="pair-label after">修改后</div>
+  </div>
+  <div class="pair">
+    <img src="before-success-industry.png" alt="修改前 - 专业观众成功">
+    <img src="after-success-industry.png" alt="修改后 - 专业观众成功">
+  </div>
+  <div class="changes">
+    <strong>改动：</strong><br>
+    1) Hero 区域新增蓝色日期标签「入场日期：4月27日 - 29日」<br>
+    2) 移除「温馨提示」（内容已合并到二维码区域）<br>
+    3) 二维码直接内联展示，附工作人员信息和说明文字<br>
+    4) 底部只保留「查看展会介绍」按钮
+  </div>
+</div>
+
+</body>
+</html>

@@ -3235,24 +3235,37 @@ body {
 
 /* ===== 提交成功页面 ===== */
 
+.page.page-submitted {
+  padding-top: 8px;
+}
+
+.page.page-submitted .frame {
+  gap: 10px;
+  align-content: start;
+}
+
 .success-card {
   overflow: hidden;
+  padding: 0;
 }
 
 /* Hero 区域 - 绿色成功背景 */
 .success-hero {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 20px 24px;
+  gap: 10px;
+  padding: 14px 16px;
   background: #ecfdf5;
   border-bottom: 1px solid rgba(39, 174, 96, 0.15);
 }
 
 .success-hero-icon {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   background: var(--ok);
   color: #fff;
@@ -3273,7 +3286,7 @@ body {
 
 .success-hero-title {
   margin: 0 0 2px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ink);
   line-height: 1.4;
@@ -3281,14 +3294,14 @@ body {
 
 .success-hero-desc {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.4;
 }
 
 .success-hero-date {
-  margin: 4px 0 0;
-  font-size: 13px;
+  margin: 2px 0 0;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
   line-height: 1.4;
@@ -3296,25 +3309,25 @@ body {
 
 /* 步骤流程 */
 .success-steps {
-  padding: 20px 24px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .success-step {
   display: flex;
-  gap: 14px;
+  gap: 10px;
 }
 
 .success-step-num {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
   border-radius: 50%;
   background: var(--deep-blue);
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -3323,18 +3336,18 @@ body {
 }
 
 .success-step-body h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
+  margin: 0 0 2px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
-  line-height: 24px;
+  line-height: 1.35;
 }
 
 .success-step-body p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.45;
 }
 
 .success-step-body strong {
@@ -3368,8 +3381,8 @@ body {
 .success-notice {
   display: flex;
   gap: 10px;
-  margin: 0 24px;
-  padding: 12px 14px;
+  margin: 0 16px;
+  padding: 10px 12px;
   border-radius: 10px;
   background: rgba(15, 95, 194, 0.05);
   border: 1px solid rgba(15, 95, 194, 0.1);
@@ -3391,7 +3404,7 @@ body {
 
 .success-notice-body h3 {
   margin: 0 0 2px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--deep-blue);
   line-height: 20px;
@@ -3399,34 +3412,34 @@ body {
 
 .success-notice-body p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 
 /* 内联二维码区域 */
 .success-qr-inline {
-  margin: 16px 24px 0;
-  padding: 16px;
+  margin: 10px 16px 0;
+  padding: 12px;
   border-radius: 10px;
   background: rgba(15, 95, 194, 0.04);
   border: 1px solid rgba(15, 95, 194, 0.1);
 }
 .success-qr-inline-title {
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0 0 8px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
 }
 .success-qr-inline-content {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 .success-qr-inline-image {
-  width: 110px;
-  height: 110px;
+  width: 88px;
+  height: 88px;
   border-radius: var(--radius-md);
   object-fit: contain;
   flex-shrink: 0;
@@ -3438,25 +3451,25 @@ body {
 }
 .success-qr-inline-name {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
 }
 .success-qr-inline-wechat {
   margin: 2px 0 0;
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--muted);
 }
 .success-qr-inline-desc {
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: 6px 0 0;
+  font-size: 11px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* 底部按钮行 */
 .success-bottom {
-  padding: 16px 24px 20px;
+  padding: 10px 16px 14px;
   display: flex;
   gap: 8px;
 }
@@ -3467,11 +3480,11 @@ body {
   justify-content: center;
   gap: 6px;
   flex: 1;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 16px;
   background: var(--deep-blue);
   color: #fff;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: var(--radius-sm);
   text-decoration: none;
@@ -3485,8 +3498,8 @@ body {
 }
 
 .success-cta svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 .success-qr-btn {
@@ -3522,12 +3535,12 @@ body {
 
 @media (max-width: 768px) {
   .success-hero {
-    padding: 20px;
+    padding: 12px 14px;
   }
 
   .success-steps {
-    padding: 16px 20px;
-    gap: 16px;
+    padding: 10px 14px;
+    gap: 10px;
   }
 
   .success-actions {
@@ -3545,18 +3558,28 @@ body {
     flex-direction: column;
   }
   .success-qr-inline {
-    margin: 12px 16px 0;
+    margin: 8px 14px 0;
   }
   .success-qr-inline-content {
     flex-direction: column;
     text-align: center;
   }
   .success-qr-inline-image {
-    width: 140px;
-    height: 140px;
+    width: 96px;
+    height: 96px;
   }
   .success-notice {
-    margin: 0 16px;
+    margin: 0 14px;
+  }
+}
+
+@media (max-height: 760px) {
+  .page.page-submitted .success-qr-inline-desc {
+    display: none;
+  }
+
+  .page.page-submitted .success-steps {
+    gap: 8px;
   }
 }
 
