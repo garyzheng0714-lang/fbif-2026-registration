@@ -638,11 +638,17 @@ function FloatingRegisterTab({ onSelect }: { onSelect: (role: 'industry' | 'cons
         <div className="fab-menu">
           <button className="fab-menu-item" onClick={() => handleSelect('industry')}>
             <span className="mi-icon mi-icon--industry" aria-hidden="true"><IndustryCardIcon /></span>
-            <span className="mi-label">专业观众</span>
+            <span className="mi-text">
+              <span className="mi-label">专业观众</span>
+              <span className="mi-date">4.27-29 三天票</span>
+            </span>
           </button>
           <button className="fab-menu-item" onClick={() => handleSelect('consumer')}>
             <span className="mi-icon mi-icon--consumer" aria-hidden="true"><ConsumerCardIcon /></span>
-            <span className="mi-label">消费者</span>
+            <span className="mi-text">
+              <span className="mi-label">消费者</span>
+              <span className="mi-date">仅4.29 一天票</span>
+            </span>
           </button>
         </div>
         <button type="button" className={tabCls} onClick={menuOpen ? handleClose : handleOpen} aria-label="观众注册">
@@ -861,15 +867,6 @@ function OpenInNewSmallIcon() {
   );
 }
 
-function QrCodeSmallIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2.5 2.5h3v3h-3zm8 0h3v3h-3zm-8 8h3v3h-3zm5-5h1v1h-1zm1 1h1v1h-1zm-1 1h1v1h-1zm2 0h1v1h-1zm1 1h1v1h-1zm-3 2h1v1h-1zm1 1h1v1h-1zm2-1h2v2h-2z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 2h4v4H2zm8 0h4v4h-4zM2 10h4v4H2z" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
 function ChevronLeftSmallIcon() {
   return (
     <svg viewBox="0 0 1152 1024" fill="none" aria-hidden="true">
@@ -916,7 +913,7 @@ export default function App() {
     open: false,
     message: ''
   });
-  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+
   const [ticketPolicyAccepted, setTicketPolicyAccepted] = useState(false);
   const [submitDialog, setSubmitDialog] = useState<{
     open: boolean;
@@ -1505,7 +1502,6 @@ export default function App() {
 
     setPage('identity');
     setSubmittedRole(null);
-    setQrDialogOpen(false);
     setNotice('');
     setSubmitAttempted(false);
     setTouched({});
@@ -1895,6 +1891,10 @@ export default function App() {
   };
 
   const identityLabel = identity === 'industry' ? '专业观众注册' : '消费者注册';
+  const identityDateReminder =
+    identity === 'industry'
+      ? '您正在注册 4月27-29日 三天票'
+      : null;
   const identityAgeNotice =
     identity === 'industry'
       ? '16岁以下观众禁止入场，请勿注册！'
@@ -1979,7 +1979,7 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">专业观众注册<span className="role-tag need">需审核</span></span>
-                  <span className="role-desc">4 月 27-29 日展区票（<span className="role-num">3</span> 日票）</span>
+                  <span className="role-desc">4月27-29日 展区票（<span className="role-day-highlight">3日</span>票）</span>
                 </span>
                 <span className="role-check" aria-hidden="true">
                   <CheckIcon />
@@ -1997,14 +1997,13 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">消费者注册<span className="role-tag free">免审核</span></span>
-                  <span className="role-desc">4 月 29 日展区票（<span className="role-num">1</span> 日票）</span>
+                  <span className="role-desc">仅4月29日 展区票（<span className="role-day-highlight">1日</span>票）</span>
                 </span>
                 <span className="role-check" aria-hidden="true">
                   <CheckIcon />
                 </span>
               </button>
             </div>
-            <p className="age-notice">16岁以下观众禁止入场，请勿注册！</p>
             </FeishuCard>
 
             <BannerSection />
@@ -2026,6 +2025,14 @@ export default function App() {
                 <p className="stage-current stage-current-centered">
                   <span className="stage-current-value">{identityLabel}</span>
                 </p>
+                {identityDateReminder ? (
+                  <p className="stage-current-note">{identityDateReminder}</p>
+                ) : (
+                  <>
+                    <p className="stage-current-note">仅4月29日 一天票</p>
+                    <p className="stage-current-hint">如需三天票请返回选择专业观众</p>
+                  </>
+                )}
               </div>
             </FeishuCard>
 
@@ -2562,6 +2569,9 @@ export default function App() {
                       ? 'FBIF 食品创新展 2026 消费者观展票'
                       : 'FBIF 食品创新展 2026 专业观众观展票'}
                   </p>
+                  <p className="success-hero-date">
+                    {submittedRole === 'consumer' ? '入场日期：仅4月29日' : '入场日期：4月27日 - 29日'}
+                  </p>
                 </div>
               </div>
 
@@ -2615,15 +2625,30 @@ export default function App() {
                 )}
               </div>
 
-              <div className="success-notice">
-                <div className="success-notice-icon" aria-hidden="true">
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 3.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 0110 5.5zm0 8a.75.75 0 100-1.5.75.75 0 000 1.5z" fill="currentColor" />
-                  </svg>
+              {submittedRole === 'consumer' && (
+                <div className="success-notice">
+                  <div className="success-notice-icon" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none">
+                      <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 3.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 0110 5.5zm0 8a.75.75 0 100-1.5.75.75 0 000 1.5z" fill="currentColor" />
+                    </svg>
+                  </div>
+                  <div className="success-notice-body">
+                    <h3>请注意</h3>
+                    <p>消费者观展票仅限4月29日当天入场，4月27-28日为专业观众日，消费者票无法入场。</p>
+                  </div>
                 </div>
-                <div className="success-notice-body">
-                  <h3>温馨提示</h3>
-                  <p>注册成功后，FBIF工作人员将会添加您的微信，同步您入场相关资讯</p>
+              )}
+
+
+              <div className="success-qr-inline">
+                <h3 className="success-qr-inline-title">联系工作人员</h3>
+                <div className="success-qr-inline-content">
+                  <img className="success-qr-inline-image" src={CARRIE_WECHAT_QR_URL} alt="FBIF 工作人员 Carrie 微信二维码" />
+                  <div className="success-qr-inline-info">
+                    <p className="success-qr-inline-name">Carrie</p>
+                    <p className="success-qr-inline-wechat">微信：lovelyFBIFer1</p>
+                    <p className="success-qr-inline-desc">注册成功后，工作人员将添加您的微信，同步入场相关资讯</p>
+                  </div>
                 </div>
               </div>
 
@@ -2637,10 +2662,6 @@ export default function App() {
                   <OpenInNewSmallIcon />
                   查看展会介绍
                 </a>
-                <button type="button" className="success-qr-btn" onClick={() => setQrDialogOpen(true)}>
-                  <QrCodeSmallIcon />
-                  联系工作人员
-                </button>
               </div>
             </FeishuCard>
           </>
@@ -2657,27 +2678,6 @@ export default function App() {
       {page === 'identity' && (
         <FloatingRegisterTab onSelect={handleIdentitySelect} />
       )}
-
-      <FeishuDialog
-        open={qrDialogOpen}
-        title="工作人员微信二维码"
-        ariaLabel="工作人员微信二维码"
-        className="submit-qr-dialog"
-        onClose={() => setQrDialogOpen(false)}
-        closeOnEsc
-        closeOnMask
-        body={
-          <div className="submit-qr-dialog-body">
-            <img className="submit-qr-dialog-image" src={CARRIE_WECHAT_QR_URL} alt="FBIF 工作人员 Carrie 微信二维码" />
-            <p className="submit-qr-dialog-caption">Carrie（微信：lovelyFBIFer1）</p>
-          </div>
-        }
-        footer={
-          <FeishuButton type="button" className="modal-button" onClick={() => setQrDialogOpen(false)}>
-            关闭
-          </FeishuButton>
-        }
-      />
 
       <FeishuDialog
         open={submitDialog.open}
