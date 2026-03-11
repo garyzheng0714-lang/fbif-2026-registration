@@ -56,6 +56,12 @@ const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_jCAW65K_5jnSM5Ptx-bEmA_1772899617672/img_v3_02vg_d64f7ff2-ac83-458f-bf46-3004e66ea83g_1772899617821.png';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
+/**
+ * Feature flag: require industry proof upload.
+ * Set to `true` to re-enable the "专业观众身份审核" section.
+ */
+const PROOF_UPLOAD_ENABLED = false;
+
 if (typeof window !== 'undefined') {
   // eslint-disable-next-line no-console
   console.log('[FBIF] build:', __BUILD_SHA__);
@@ -1034,14 +1040,15 @@ export default function App() {
   }, [page]);
 
   const industryErrors: IndustryErrors = useMemo(() => {
-    const hasProofFiles = proofPreviews.length > 0;
-    const hasFailedProof = proofPreviews.some((item) => item.status === 'error');
-
     let proofError = '';
-    if (!hasProofFiles) {
-      proofError = '请上传专业观众证明材料';
-    } else if (hasFailedProof) {
-      proofError = '有附件转换失败，请删除后重传';
+    if (PROOF_UPLOAD_ENABLED) {
+      const hasProofFiles = proofPreviews.length > 0;
+      const hasFailedProof = proofPreviews.some((item) => item.status === 'error');
+      if (!hasProofFiles) {
+        proofError = '请上传专业观众证明材料';
+      } else if (hasFailedProof) {
+        proofError = '有附件转换失败，请删除后重传';
+      }
     }
 
     return {
@@ -1739,7 +1746,7 @@ export default function App() {
                 : undefined
             };
 
-      if (identity === 'industry') {
+      if (PROOF_UPLOAD_ENABLED && identity === 'industry') {
         // Upload attachments only when user clicks submit.
         const urls = await uploadProofFilesBeforeSubmit();
         if (urls.length === 0) {
@@ -2157,7 +2164,7 @@ export default function App() {
 
                     </section>
 
-                    <section className="form-section-card section-proof" aria-labelledby="section-proof-title">
+                    {PROOF_UPLOAD_ENABLED && <section className="form-section-card section-proof" aria-labelledby="section-proof-title">
                       <div className="form-section-head">
                         <span className="form-section-icon" aria-hidden="true"><SectionVerifiedUserIcon /></span>
                         <h3 className="form-section-title" id="section-proof-title">专业观众身份审核</h3>
@@ -2300,7 +2307,7 @@ export default function App() {
                     </div>
                   </FeishuField>
 
-                    </section>
+                    </section>}
 
                     <section className="form-section-card section-work" aria-labelledby="section-work-title">
                       <div className="form-section-head">
@@ -2697,7 +2704,7 @@ export default function App() {
             {submitDialog.status === 'submitting' && (
               <div className="modal-loading-wrap">
                 <FeishuLoading size="md" text="正在提交，请稍候" />
-                {identity === 'industry' && proofPreviews.length > 0 ? (
+                {PROOF_UPLOAD_ENABLED && identity === 'industry' && proofPreviews.length > 0 ? (
                   <p className="modal-body-copy">
                     正在上传附件（
                     {proofPreviews.filter((item) => item.status === 'success').length}/{proofPreviews.length}
