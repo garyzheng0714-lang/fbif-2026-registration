@@ -11,6 +11,20 @@
 - 生产和预览共用飞书表 `tbl0CQ74guMS1IDd`
 - 通过 `FEISHU_SUBMISSION_SOURCE` 区分 `正式环境` / `测试环境`
 
+## 端口隔离与门禁（2026-03-11 起）
+
+为避免预览环境占用生产端口导致串线，部署规则固定为：
+
+- 生产外部入口：`Caddy(443) -> Nginx(3001) -> API active slot(8080/18080)`
+- 预览外部入口：`Caddy(3003) -> API 8083`
+- 预览蓝绿槽位（仅部署过程使用）：`API 28080/28081`，`Nginx 3101/3102`
+
+`deploy-aliyun.yml` 的 `Remote Preflight Gate` 会在部署前强制检查：
+
+- `fbif-form-staging-api-(blue|green)` 不得发布到 `127.0.0.1:8080/18080`
+- `/etc/nginx/sites-enabled` 不得出现 `fbif-form-staging*`
+- 生产 Caddy `fbif2026ticket.foodtalks.cn` 的上游必须是 `localhost:3001`
+
 ## 一次性配置（GitHub Secrets）
 
 在仓库 `Settings -> Secrets and variables -> Actions -> New repository secret` 新增：
@@ -76,6 +90,8 @@
 | 数据库 | `fbif_form_staging` |
 | Web 端口 | `3003` |
 | API 端口 | `8083` |
+| 预览蓝绿 API 端口 | `28080 / 28081` |
+| 预览蓝绿 Nginx 端口 | `3101 / 3102` |
 | 飞书表 | `tbl0CQ74guMS1IDd` |
 | 数据来源 | `FEISHU_SUBMISSION_SOURCE=测试环境` |
 

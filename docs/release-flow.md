@@ -46,6 +46,7 @@
 2. **预览先行** -- 每次合并到 `main` 自动部署预览，必须确认后才手动发布生产。
 3. **禁止直接 push 到 `main`** -- 开启 branch protection。
 4. **服务器禁止手动改代码** -- 只接受 GitHub Actions 部署的 release。
+5. **端口隔离门禁必须通过** -- 生产发布前必须确认 staging 不占用 `8080/18080`，且生产域名 API 上游固定为 `localhost:3001`。
 
 ## 两个环境的差异
 
@@ -67,6 +68,7 @@
 - 生产前端：`https://fbif2026ticket.foodtalks.cn`
 - 生产后端健康：`http://127.0.0.1:8080/health`（服务器内）
 - GitHub Actions 日志：仓库 `Actions` 页面查看对应 workflow
+- 端口隔离检查：参考 `docs/production-port-isolation-runbook.md`
 
 ## 判断标准
 

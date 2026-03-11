@@ -49,10 +49,15 @@ node scripts/local-stack.mjs status
 
 | 环境 | 前端 | API | 触发方式 |
 |------|------|-----|----------|
-| 生产 | `:3001` (Caddy HTTPS) | `:8080` | 手动 GitHub Actions dispatch |
+| 生产 | `:3001` (Caddy HTTPS -> Nginx) | `:8080 / :18080` (blue/green) | 手动 GitHub Actions dispatch |
 | Preview | `:3003` (HTTP) | `:8083` | push to main 自动触发 |
 
 两套环境通过不同 Docker 项目名和数据库完全隔离。
+
+生产稳定性基线（防串线）：
+- 生产域名 API 必须经 `localhost:3001`，不允许直连 `localhost:8080`
+- Preview 蓝绿槽位不得占用生产 API 端口 `8080/18080`
+- `nginx sites-enabled` 不允许出现 `fbif-form-staging*` 条目
 
 ## CI/CD
 
@@ -61,6 +66,7 @@ node scripts/local-stack.mjs status
 
 说明文档: `docs/github-actions-deploy.md`
 发布规则: `docs/release-flow.md`
+应急与防复发手册: `docs/production-port-isolation-runbook.md`
 
 ## 重要配置
 
