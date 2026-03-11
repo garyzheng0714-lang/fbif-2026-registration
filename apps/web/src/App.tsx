@@ -1979,7 +1979,7 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">专业观众注册<span className="role-tag need">需审核</span></span>
-                  <span className="role-desc">4月27-29日 展区票（3日票）</span>
+                  <span className="role-desc">4月27-29日 展区票（<span className="role-day-highlight">3日</span>票）</span>
                 </span>
                 <span className="role-check" aria-hidden="true">
                   <CheckIcon />
@@ -1997,7 +1997,7 @@ export default function App() {
                 </span>
                 <span className="role-content">
                   <span className="role-title">消费者注册<span className="role-tag free">免审核</span></span>
-                  <span className="role-desc">仅4月29日 展区票（1日票）</span>
+                  <span className="role-desc">仅4月29日 展区票（<span className="role-day-highlight">1日</span>票）</span>
                 </span>
                 <span className="role-check" aria-hidden="true">
                   <CheckIcon />

@@ -639,6 +639,10 @@ body {
   font-size: 14px;
   line-height: 1.5;
 }
+.role-day-highlight {
+  font-weight: 700;
+  color: var(--deep-blue);
+}
 
 .role-num {
   display: inline-block;
