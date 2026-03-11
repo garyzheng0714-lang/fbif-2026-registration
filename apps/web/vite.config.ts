@@ -7,7 +7,8 @@ export default defineConfig({
     __BUILD_SHA__: JSON.stringify(process.env.VITE_BUILD_SHA || 'dev')
   },
   server: {
-    port: 5173
+    port: 5173,
+    allowedHosts: true
   },
   test: {
     environment: 'jsdom',
