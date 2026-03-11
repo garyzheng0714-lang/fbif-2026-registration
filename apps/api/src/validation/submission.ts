@@ -245,14 +245,16 @@ export const submissionSchema = z.object({
         message: '贵司的业务类型不能为空'
       });
     }
-    const urls = Array.isArray(data.proofUrls) ? data.proofUrls : [];
-    if (urls.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['proofUrls'],
-        message: '请上传专业观众证明材料'
-      });
-    }
+    // proofUrls validation disabled — proof upload is currently not required.
+    // Re-enable when PROOF_UPLOAD_ENABLED is set back to true on the frontend.
+    // const urls = Array.isArray(data.proofUrls) ? data.proofUrls : [];
+    // if (urls.length === 0) {
+    //   ctx.addIssue({
+    //     code: z.ZodIssueCode.custom,
+    //     path: ['proofUrls'],
+    //     message: '请上传专业观众证明材料'
+    //   });
+    // }
   }
 });
 
