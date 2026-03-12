@@ -3241,7 +3241,7 @@ body {
 
 .page.page-submitted .frame {
   gap: 10px;
-  align-content: start;
+  align-content: center;
 }
 
 .success-card {

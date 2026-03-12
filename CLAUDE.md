@@ -77,7 +77,7 @@ fbif-2026-registration/
                                                     └─→ [Redis 7]
 
 Preview 环境:
-  [开发者] → Caddy (HTTPS, fbif2026ticket2.foodtalks.cn / :3003)
+  [开发者] → Caddy (:3003)
                ├─ /assets/* → 静态文件 (/var/www/fbif-form-staging) [30天缓存]
                ├─ /* → 静态文件 (SPA fallback) [no-store]
                └─ /api/* → reverse_proxy localhost:8083
@@ -91,7 +91,7 @@ Preview 环境:
 - 静态文件目录: `/var/www/fbif-form` (生产) / `/var/www/fbif-form-staging` (preview)
 - 缓存: `/assets/` 30 天 immutable, `/` no-store
 - 生产域名: `fbif2026ticket.foodtalks.cn`
-- Preview 域名: `fbif2026ticket2.foodtalks.cn` (也可通过 `:3003` 直连)
+- Preview 地址: `http://121.40.214.5:3003` (公网 3003 端口直连)
 
 ### 后端部署
 - 生产容器: `fbif-form-api-blue` / `fbif-form-api-green` (蓝绿部署)
@@ -203,7 +203,7 @@ Worker 同步到飞书多维表格
 - 预览蓝绿临时槽位: API `28080/28081`, Nginx `3101/3102`（仅部署过程使用，避免与生产冲突）
 - 数据库: `fbif_form_staging`
 - 飞书来源标记: "测试环境"
-- Preview 地址: `https://fbif2026ticket2.foodtalks.cn` 或 `http://121.40.214.5:3003`
+- Preview 地址: `http://121.40.214.5:3003`
 
 ### 生产部署 (`.github/workflows/deploy-aliyun.yml`)
 - 触发: **手动 workflow_dispatch** (需输入 "deploy" 确认, 支持 dry-run 模式)
@@ -342,7 +342,7 @@ ssh aliyun-prod-real "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Port
 
 | 项目 | 生产 | Preview |
 |------|------|---------|
-| 域名 | `fbif2026ticket.foodtalks.cn` | `fbif2026ticket2.foodtalks.cn` / `:3003` |
+| 域名 | `fbif2026ticket.foodtalks.cn` | `http://121.40.214.5:3003` |
 | 静态文件 | `/var/www/fbif-form` | `/var/www/fbif-form-staging` |
 | API 端口 | 8080 (蓝绿: 8080/18080) | 8083 |
 | 蓝绿临时端口 | Nginx 3001/3002 | Nginx 3101/3102, API 28080/28081 |
@@ -365,7 +365,7 @@ ssh aliyun-prod-real "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Port
 2. 创建 PR 合并到 main 分支
 3. 合并后自动触发 preview 部署
 4. 将预览链接返回给用户，等待用户确认
-   - Preview: https://fbif2026ticket2.foodtalks.cn
+   - Preview: http://121.40.214.5:3003
 5. 用户确认后，在 GitHub Actions 手动触发 Deploy To Aliyun 部署生产
 6. 确认生产部署成功: https://fbif2026ticket.foodtalks.cn
 ```
@@ -373,7 +373,7 @@ ssh aliyun-prod-real "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Port
 ### 规则
 
 1. **push to main 自动触发 preview 部署** — 每次合并后自动预览
-2. **每次 preview 部署后必须返回预览链接** — `https://fbif2026ticket2.foodtalks.cn`
+2. **每次 preview 部署后必须返回预览链接** — `http://121.40.214.5:3003`
 3. **必须等待用户明确同意后才触发生产部署** — 不要自行决定
 4. **生产部署需手动触发** — 在 GitHub Actions 页面运行 Deploy To Aliyun
 
