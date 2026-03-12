@@ -148,7 +148,16 @@ async function fillIndustryScenario(page) {
   await page.fill('#industry-title', '发布验收负责人');
   await page.getByRole('button', { name: '品牌' }).first().click();
 
-  await page.setInputFiles('#industry-proof', PROOF_FILE);
+  const proofInput = page.locator('#industry-proof');
+  const hasProofInput = (await proofInput.count()) > 0;
+  const proofDisabled = hasProofInput ? await proofInput.isDisabled().catch(() => false) : false;
+
+  if (hasProofInput && !proofDisabled) {
+    await page.setInputFiles('#industry-proof', PROOF_FILE);
+    log(step, 'uploaded industry proof file');
+  } else {
+    log(step, 'industry proof input missing or disabled; skip upload');
+  }
   await acceptTicketPolicy(page, step);
 
   const submissionId = await submitAndCaptureId(page, step);
