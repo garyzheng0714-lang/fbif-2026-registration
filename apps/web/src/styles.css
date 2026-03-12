@@ -3775,6 +3775,7 @@ body {
   .fab-menu-item .mi-text { display: flex; flex-direction: column; gap: 1px; }
   .fab-menu-item .mi-label { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
   .fab-menu-item .mi-date { font-size: 0.7rem; font-weight: 500; color: var(--muted); }
+  .ticket-num { color: var(--primary, #3370ff); font-weight: 700; }
 
   .fab-wrap.is-open .fab-menu-item {
     opacity: 1; transform: translateX(0); pointer-events: auto;

@@ -641,14 +641,14 @@ function FloatingRegisterTab({ onSelect }: { onSelect: (role: 'industry' | 'cons
             <span className="mi-icon mi-icon--industry" aria-hidden="true"><IndustryCardIcon /></span>
             <span className="mi-text">
               <span className="mi-label">专业观众</span>
-              <span className="mi-date">4.27-29 三日票</span>
+              <span className="mi-date">4.27-29（<strong className="ticket-num">3</strong>日票）</span>
             </span>
           </button>
           <button className="fab-menu-item" onClick={() => handleSelect('consumer')}>
             <span className="mi-icon mi-icon--consumer" aria-hidden="true"><ConsumerCardIcon /></span>
             <span className="mi-text">
               <span className="mi-label">消费者</span>
-              <span className="mi-date">仅4.29 一日票</span>
+              <span className="mi-date">仅4.29（<strong className="ticket-num">1</strong>日票）</span>
             </span>
           </button>
         </div>
@@ -1894,7 +1894,7 @@ export default function App() {
   const identityLabel = identity === 'industry' ? '专业观众注册' : '消费者注册';
   const identityDateReminder =
     identity === 'industry'
-      ? '您正在注册 4月27-29日 三日票'
+      ? <>您正在注册 4月27-29日（<strong className="ticket-num">3</strong>日票）</>
       : null;
   const identityAgeNotice =
     identity === 'industry'
@@ -2030,8 +2030,8 @@ export default function App() {
                   <p className="stage-current-note">{identityDateReminder}</p>
                 ) : (
                   <>
-                    <p className="stage-current-note">仅4月29日 一日票</p>
-                    <p className="stage-current-hint">如需三日票请返回选择专业观众</p>
+                    <p className="stage-current-note">仅4月29日（<strong className="ticket-num">1</strong>日票）</p>
+                    <p className="stage-current-hint">如需<strong className="ticket-num">3</strong>日票请返回选择专业观众</p>
                   </>
                 )}
               </div>
@@ -2519,27 +2519,30 @@ export default function App() {
                   </FeishuField>
 
                   <FeishuField
-                    label={<>公司 / 职位<span className="optional-tag">选填</span></>}
+                    label={<>公司<span className="optional-tag">选填</span></>}
                     htmlFor="consumer-company"
                   >
-                    <div className="phone-input-row consumer-work-row">
-                      <FeishuInput
-                        id="consumer-company"
-                        type="text"
-                        autoComplete="organization"
-                        placeholder="公司名称"
-                        value={consumerForm.company}
-                        onChange={handleConsumerChange('company')}
-                      />
-                      <FeishuInput
-                        id="consumer-title"
-                        type="text"
-                        autoComplete="organization-title"
-                        placeholder="职位"
-                        value={consumerForm.title}
-                        onChange={handleConsumerChange('title')}
-                      />
-                    </div>
+                    <FeishuInput
+                      id="consumer-company"
+                      type="text"
+                      autoComplete="organization"
+                      placeholder="公司名称"
+                      value={consumerForm.company}
+                      onChange={handleConsumerChange('company')}
+                    />
+                  </FeishuField>
+                  <FeishuField
+                    label={<>职位<span className="optional-tag">选填</span></>}
+                    htmlFor="consumer-title"
+                  >
+                    <FeishuInput
+                      id="consumer-title"
+                      type="text"
+                      autoComplete="organization-title"
+                      placeholder="职位"
+                      value={consumerForm.title}
+                      onChange={handleConsumerChange('title')}
+                    />
                   </FeishuField>
                     </section>
                   </div>
