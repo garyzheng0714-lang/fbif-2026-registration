@@ -28,7 +28,7 @@
 
 | 环境 | Web 端口 | API 端口 | 触发方式 | 用途 |
 | --- | --- | --- | --- | --- |
-| Preview（预览） | 3003 | 8083 | push to `main` 自动 | 验证代码变更 |
+| Preview（预览） | 3003 | active slot `28080/28081`（经 `3101`） | push to `main` 自动 | 验证代码变更 |
 | Production（生产） | 3001 | 8080 | 手动 `workflow_dispatch` | 对外正式服务 |
 
 补充：
@@ -62,7 +62,7 @@
 fbif-2026-registration.git
 └── main (唯一分支)
     ├── push 自动触发 → deploy-preview.yml
-    │   └── 121.40.214.5:3003/8083  (preview)
+    │   └── 121.40.214.5:3003 -> 3101 -> 28080/28081  (preview)
     │       └── FEISHU_SUBMISSION_SOURCE=测试环境
     └── 手动触发 → deploy-aliyun.yml
         └── 121.40.214.5:3001/8080  (production)

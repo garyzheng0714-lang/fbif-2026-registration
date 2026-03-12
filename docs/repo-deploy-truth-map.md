@@ -30,7 +30,7 @@
 
 | 环境 | 服务器 | Web 端口 | API 端口 | 触发方式 | 工作流文件 |
 | --- | --- | --- | --- | --- | --- |
-| Preview（预览） | `121.40.214.5` | 3003 | 8083 | push to `main` 自动触发 | `deploy-preview.yml` |
+| Preview（预览） | `121.40.214.5` | 3003 | active slot `28080/28081`（经 `3101`） | push to `main` 自动触发 | `deploy-preview.yml` |
 | Production（生产） | `121.40.214.5` | 3001 | 8080 | 手动 `workflow_dispatch` | `deploy-aliyun.yml` |
 
 补充：
@@ -52,7 +52,7 @@
 
 | Workflow | 触发方式 | 目标端口 | 飞书来源值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `deploy-preview.yml` | push to `main` | Web 3003 / API 8083 | `测试环境` | 自动部署预览环境 |
+| `deploy-preview.yml` | push to `main` | Web 3003 / API active slot `28080/28081`（经 3101） | `测试环境` | 自动部署预览环境 |
 | `deploy-aliyun.yml` | 手动 `workflow_dispatch` | Web 3001 / API 8080 | `正式环境` | 手动触发生产部署 |
 
 ## 6. 部署流程
@@ -64,7 +64,7 @@
 deploy-preview.yml 自动运行
     |
     v
-Preview 部署到 121.40.214.5:3003/8083
+Preview 部署到 121.40.214.5:3003（API 经 3101 -> 28080/28081）
     |
     v
 开发者验证 Preview 环境
@@ -82,7 +82,7 @@ Production 部署到 121.40.214.5:3001/8080
 fbif-2026-registration.git
 └── main
     ├── deploy-preview.yml   (push 自动触发)
-    │   └── 121.40.214.5:3003/8083  (preview)
+    │   └── 121.40.214.5:3003 -> 3101 -> 28080/28081  (preview)
     ├── deploy-aliyun.yml    (手动触发)
     │   └── 121.40.214.5:3001/8080  (production)
     └── feishu table: tbl0CQ74guMS1IDd

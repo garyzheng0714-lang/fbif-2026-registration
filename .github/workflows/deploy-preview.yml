@@ -199,6 +199,38 @@ jobs:
             release.tgz \
             "${USER}@${HOST}:/tmp/release-preview.tgz"
 
+      - name: Remote Preflight Gate
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          STATIC_DIR: ${{ secrets.STATIC_DIR }}
+          API_PORT: ${{ secrets.API_PORT }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+          SSH_CMD="ssh -i ~/.ssh/id_aliyun -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new ${USER}@${HOST}"
+
+          # Best-effort cleanup from old broken runs. No-op when nothing is pending.
+          REMOTE_ENV="$(printf \
+            "APP_DIR=%q STATIC_DIR=%q API_PORT=%q PRIMARY_WEB_PORT=%q CANDIDATE_WEB_PORT=%q NGINX_SITE_NAME=%q COMPOSE_PROJECT_NAME=%q BLUE_API_PORT=%q GREEN_API_PORT=%q" \
+            "${APP_DIR:-/opt/web-fbif-form-staging}" "${STATIC_DIR:-/var/www/fbif-form-staging}" "${API_PORT:-8083}" "3101" "3102" "fbif-form-staging" "fbif-form-staging" "28080" "28081")"
+          ${SSH_CMD} "${REMOTE_ENV} bash -s -- discard" < scripts/remote-deploy.sh || true
+
+          ${SSH_CMD} "${REMOTE_ENV} bash -s -- preflight" < scripts/remote-deploy.sh
+
+          CADDY_3003="$(${SSH_CMD} 'sed -n "/^:3003 {/,/^}/p" /etc/caddy/Caddyfile')"
+          echo "${CADDY_3003}"
+          if ! echo "${CADDY_3003}" | grep -q 'reverse_proxy localhost:3101'; then
+            echo "::error::Preview Caddy route (:3003) must proxy API/health to localhost:3101."
+            exit 1
+          fi
+          if ! echo "${CADDY_3003}" | grep -q 'rewrite \* /healthz'; then
+            echo "::error::Preview Caddy route (:3003) must rewrite /health to /healthz."
+            exit 1
+          fi
+
       - name: Deploy On Server
         env:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
@@ -262,6 +294,7 @@ jobs:
           set -euo pipefail
           HOST="${ALIYUN_HOST:-121.40.214.5}"
           USER="${ALIYUN_USER:-root}"
+          PREPARED=0
 
           REMOTE_ENV="$(printf \
             "APP_DIR=%q STATIC_DIR=%q API_PORT=%q API_PORT_INTERNAL=%q WEB_ORIGIN=%q CSRF_COOKIE_SECURE=%q POSTGRES_USER=%q POSTGRES_PASSWORD=%q POSTGRES_DB=%q DATA_KEY=%q DATA_HASH_SALT=%q FEISHU_APP_ID=%q FEISHU_APP_SECRET=%q FEISHU_APP_TOKEN=%q FEISHU_TABLE_ID=%q OSS_ACCESS_KEY_ID=%q OSS_ACCESS_KEY_SECRET=%q OSS_BUCKET=%q OSS_REGION=%q OSS_HOST=%q OSS_PUBLIC_BASE_URL=%q OSS_UPLOAD_PREFIX=%q OSS_MAX_UPLOAD_MB=%q OSS_POLICY_EXPIRE_SECONDS=%q OSS_OBJECT_ACL=%q ID_VERIFY_ENABLED=%q ID_VERIFY_ALIYUN_HOST=%q ID_VERIFY_ALIYUN_PATH=%q ID_VERIFY_APPCODE=%q ID_VERIFY_TIMEOUT_MS=%q ID_VERIFY_TOKEN_TTL_SECONDS=%q RATE_LIMIT_WINDOW_MS=%q RATE_LIMIT_MAX=%q RATE_LIMIT_BURST=%q SYNC_POLL_TIMEOUT_MS=%q FEISHU_SYNC_ATTEMPTS=%q FEISHU_SYNC_BACKOFF_MS=%q FEISHU_SYNC_BACKOFF_MAX_MS=%q FEISHU_WORKER_CONCURRENCY=%q FEISHU_WORKER_QPS=%q FEISHU_SELECT_WRITE_MODE=%q MAX_PROOF_URLS=%q MAX_PROOF_URL_LENGTH=%q FEISHU_FIELD_CLICK_ID=%q FEISHU_FIELD_CLICK_ID_SOURCE_KEY=%q FEISHU_FIELD_SOURCE=%q FEISHU_FIELD_TRACKING_PARAMS=%q FEISHU_FIELD_TRACKING_ID=%q FEISHU_FIELD_TRACKING_ID_TYPE=%q FEISHU_SUBMISSION_SOURCE=%q FEISHU_ALERT_WEBHOOK=%q FEISHU_ALERT_ENABLED=%q RUN_DB_MIGRATE=%q RUN_WORKER=%q GH_SHA=%q COMPOSE_PROJECT_NAME=%q RELEASE_TGZ=%q PRIMARY_WEB_PORT=%q CANDIDATE_WEB_PORT=%q NGINX_SITE_NAME=%q BLUE_API_PORT=%q GREEN_API_PORT=%q" \
@@ -269,12 +302,23 @@ jobs:
 
           SSH_CMD="ssh -i ~/.ssh/id_aliyun -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new ${USER}@${HOST}"
 
+          cleanup_on_error() {
+            if [ "${PREPARED}" = "1" ]; then
+              echo "::group::discard-on-failure"
+              ${SSH_CMD} "${REMOTE_ENV} bash -s -- discard" < scripts/remote-deploy.sh || true
+              echo "::endgroup::"
+            fi
+          }
+          trap cleanup_on_error ERR
+
           echo "::group::prepare"
           ${SSH_CMD} "${REMOTE_ENV} bash -s -- prepare" < scripts/remote-deploy.sh
+          PREPARED=1
           echo "::endgroup::"
 
           echo "::group::promote"
           ${SSH_CMD} "${REMOTE_ENV} bash -s -- promote" < scripts/remote-deploy.sh
+          PREPARED=0
           echo "::endgroup::"
 
       - name: Cleanup

@@ -4,7 +4,7 @@
 
 | 工作流 | 文件 | 触发方式 | 环境 | 端口 |
 |--------|------|---------|------|------|
-| Deploy Preview | `deploy-preview.yml` | push 到 `main` 自动触发 | 预览 | Web 3003 / API 8083 |
+| Deploy Preview | `deploy-preview.yml` | push 到 `main` 自动触发 | 预览 | Web 3003（入口） / API active slot 28080/28081（经 3101） |
 | Deploy Production | `deploy-aliyun.yml` | 手动 `workflow_dispatch` | 生产 | Web 3001 / API 8080 |
 
 飞书同步说明：
@@ -16,8 +16,9 @@
 为避免预览环境占用生产端口导致串线，部署规则固定为：
 
 - 生产外部入口：`Caddy(443) -> Nginx(3001) -> API active slot(8080/18080)`
-- 预览外部入口：`Caddy(3003) -> API 8083`
-- 预览蓝绿槽位（仅部署过程使用）：`API 28080/28081`，`Nginx 3101/3102`
+- 预览外部入口：`Caddy(3003) -> Nginx(3101) -> API active slot(28080/28081)`
+- 预览蓝绿槽位：`API 28080/28081`，`Nginx 3101/3102`
+- `8083` 属于历史兼容口，不应作为预览默认流量入口。
 
 `deploy-aliyun.yml` 的 `Remote Preflight Gate` 会在部署前强制检查：
 
@@ -89,9 +90,10 @@
 | Docker 项目名 | `fbif-form-staging` |
 | 数据库 | `fbif_form_staging` |
 | Web 端口 | `3003` |
-| API 端口 | `8083` |
+| 预览入口端口 | `3003 -> 3101` |
 | 预览蓝绿 API 端口 | `28080 / 28081` |
 | 预览蓝绿 Nginx 端口 | `3101 / 3102` |
+| 兼容口（不作为默认入口） | `8083` |
 | 飞书表 | `tbl0CQ74guMS1IDd` |
 | 数据来源 | `FEISHU_SUBMISSION_SOURCE=测试环境` |
 
@@ -100,7 +102,7 @@
 | 检查项 | 地址 |
 |--------|------|
 | 预览前端 | `http://121.40.214.5:3003` |
-| 预览后端健康 | `http://127.0.0.1:8083/health`（服务器内） |
+| 预览后端健康 | `http://121.40.214.5:3003/health`（外部） / `http://127.0.0.1:3101/healthz`（服务器内） |
 | 生产前端 | `https://fbif2026ticket.foodtalks.cn` |
 | 生产后端健康 | `http://127.0.0.1:8080/health`（服务器内） |
 | Actions 日志 | 仓库 `Actions` 页面查看 `Deploy Preview` / `Deploy To Aliyun` |

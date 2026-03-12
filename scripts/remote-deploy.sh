@@ -97,6 +97,26 @@ other_slot() {
   esac
 }
 
+candidate_slot_from_active() {
+  local active_slot="$1"
+  local active_api_port
+  local candidate_slot
+  local candidate_api_port
+
+  active_api_port="$(slot_api_port "${active_slot}")"
+  candidate_slot="$(other_slot "${active_slot}")"
+  candidate_api_port="$(slot_api_port "${candidate_slot}")"
+
+  if [ "${candidate_api_port}" = "${active_api_port}" ]; then
+    candidate_slot="$(other_slot "${candidate_slot}")"
+    candidate_api_port="$(slot_api_port "${candidate_slot}")"
+  fi
+
+  [ "${candidate_api_port}" != "${active_api_port}" ] || die "no free candidate slot: active_slot=${active_slot}, active_api_port=${active_api_port}"
+
+  echo "${candidate_slot}"
+}
+
 legacy_container_name() {
   echo "${COMPOSE_PROJECT_NAME}-api-1"
 }
@@ -856,7 +876,7 @@ cmd_prepare() {
   local nginx_present=0
 
   active_slot="$(read_active_slot)"
-  candidate_slot="$(other_slot "${active_slot}")"
+  candidate_slot="$(candidate_slot_from_active "${active_slot}")"
   candidate_api_port="$(slot_api_port "${candidate_slot}")"
 
   prev_release="$(readlink -f "${CURRENT_LINK}" 2>/dev/null || true)"
@@ -926,6 +946,7 @@ cmd_promote() {
 
   if is_nginx_available; then
     configure_primary_nginx "${candidate_slot}"
+    remove_nginx_site "${CANDIDATE_SITE_NAME}"
     reload_nginx
   else
     log "nginx not found, skip primary site switch"
@@ -952,24 +973,30 @@ cmd_promote() {
 }
 
 cmd_discard() {
+  local had_pending=0
+
   if [ ! -f "${PENDING_FILE}" ]; then
     log "No pending deployment state to discard"
-    exit 0
+  else
+    had_pending=1
+    load_pending_state
+
+    remove_slot_api_container "${CANDIDATE_SLOT}"
+    rm -rf "${STATIC_NEW}" >/dev/null 2>&1 || true
+    rm -f "${BACKEND_ENV_STAGED}" >/dev/null 2>&1 || true
+    rm -f "${PENDING_FILE}"
   fi
-
-  load_pending_state
-
-  remove_slot_api_container "${CANDIDATE_SLOT}"
-  rm -rf "${STATIC_NEW}" >/dev/null 2>&1 || true
-  rm -f "${BACKEND_ENV_STAGED}" >/dev/null 2>&1 || true
-  rm -f "${PENDING_FILE}"
 
   if command -v nginx >/dev/null 2>&1; then
     remove_nginx_site "${CANDIDATE_SITE_NAME}"
     reload_nginx
   fi
 
-  log "Discarded pending candidate"
+  if [ "${had_pending}" -eq 1 ]; then
+    log "Discarded pending candidate"
+  else
+    log "Discard completed"
+  fi
 }
 
 cmd_rollback() {

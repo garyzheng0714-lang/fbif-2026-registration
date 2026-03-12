@@ -8,7 +8,7 @@
 
 - GitHub 仓库：<https://github.com/garyzheng0714-lang/fbif-2026-registration.git>
 - `main` (workflow_dispatch) -> 生产环境 `121.40.214.5:3001/8080`
-- `main` (push) -> preview 环境 `121.40.214.5:3003/8083`
+- `main` (push) -> preview 环境 `121.40.214.5:3003`（API 经 `3101 -> 28080/28081`）
 - 生产访问域名：<https://fbif2026ticket.foodtalks.cn>
 
 ### 镜像仓库
