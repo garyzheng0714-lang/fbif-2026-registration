@@ -193,7 +193,7 @@ jobs:
             exit 1
           fi
 
-          PROD_CADDY="$(${SSH_CMD} 'sed -n \"/^fbif2026ticket\\.foodtalks\\.cn {/,/^}/p\" /etc/caddy/Caddyfile')"
+          PROD_CADDY="$(${SSH_CMD} 'sed -n "/^fbif2026ticket\\.foodtalks\\.cn {/,/^}/p" /etc/caddy/Caddyfile')"
           if ! echo "${PROD_CADDY}" | grep -q 'reverse_proxy localhost:3001'; then
             echo '::error::Production Caddy upstream is not pinned to localhost:3001.'
             echo "${PROD_CADDY}"
