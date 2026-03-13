@@ -50,6 +50,7 @@ const TOP_BANNER_URL =
   'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-top-2026-v2.webp';
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
+const SUCCESS_TOP_BANNER_URL = '/success-banner.webp';
 const BOTTOM_LONG_BANNER_URL =
   'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp';
 const CARRIE_WECHAT_QR_URL =
@@ -1965,7 +1966,7 @@ export default function App() {
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
             <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
-            <p className="tips">如已提交，<a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点此查询</a>注册与审核结果。</p>
+            <p className="tips"><a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点击查询已提交信息</a></p>
 
             <div className="role-options">
               <button
@@ -2556,6 +2557,7 @@ export default function App() {
         {page === 'submitted' && (
           <>
             <FeishuCard className="success-card">
+              <img className="success-banner" src={SUCCESS_TOP_BANNER_URL} alt="FBIF 食品创新展 2026" />
               <div className="success-hero">
                 <div className="success-hero-icon">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -2566,13 +2568,13 @@ export default function App() {
                   <h2 className="success-hero-title">
                     {submittedRole === 'consumer' ? '报名成功' : '申请已提交'}
                   </h2>
-                  <p className="success-hero-desc">
+                  <p className="success-hero-ticket">
                     {submittedRole === 'consumer'
                       ? 'FBIF 食品创新展 2026 消费者观展票'
                       : 'FBIF 食品创新展 2026 专业观众观展票'}
                   </p>
                   <p className="success-hero-date">
-                    {submittedRole === 'consumer' ? '入场日期：仅4月29日' : '入场日期：4月27日 - 29日'}
+                    {submittedRole === 'consumer' ? '入场日期：仅4月29日（1日票）' : '入场日期：4月27日 - 29日（3日票）'}
                   </p>
                 </div>
               </div>

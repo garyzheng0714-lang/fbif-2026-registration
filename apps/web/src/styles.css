@@ -1003,16 +1003,6 @@ body {
 }
 
 @media (min-width: 900px) {
-  .page.page-submitted {
-    padding-block: 22px;
-  }
-
-  .page.page-submitted .frame {
-    min-height: calc(100vh - 44px);
-    align-content: center;
-    justify-items: center;
-  }
-
   .card.submit-complete-card {
     width: min(100%, 820px);
     border-radius: 20px;
@@ -3236,17 +3226,25 @@ body {
 /* ===== 提交成功页面 ===== */
 
 .page.page-submitted {
-  padding-top: 8px;
+  padding-top: 0;
+  padding-inline: 0;
 }
 
 .page.page-submitted .frame {
-  gap: 10px;
+  gap: 0;
   align-content: center;
 }
 
 .success-card {
   overflow: hidden;
   padding: 0;
+}
+
+/* 成功页顶部 banner */
+.success-banner {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 /* Hero 区域 - 绿色成功背景 */
@@ -3292,18 +3290,19 @@ body {
   line-height: 1.4;
 }
 
-.success-hero-desc {
-  margin: 0;
-  font-size: 12px;
-  color: var(--muted);
+.success-hero-ticket {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
   line-height: 1.4;
 }
 
 .success-hero-date {
-  margin: 2px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--deep-blue);
   line-height: 1.4;
 }
 
@@ -3533,53 +3532,83 @@ body {
 
 /* ===== 响应式设计 - 成功页 ===== */
 
-@media (max-width: 768px) {
-  .success-hero {
-    padding: 12px 14px;
+/* 桌面端 - banner 吸附卡片，整体垂直居中 */
+@media (min-width: 769px) {
+  .page.page-submitted {
+    padding: 22px 16px 0;
   }
+  .page.page-submitted .frame {
+    min-height: calc(100vh - 44px);
+    align-content: center;
+    justify-items: center;
+  }
+  .success-card {
+    width: min(100%, 560px);
+  }
+}
 
+/* 移动端 - 一屏显示所有信息 */
+@media (max-width: 768px) {
+  .page.page-submitted .frame {
+    min-height: 100dvh;
+  }
+  .success-card {
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+  }
+  .success-hero {
+    padding: 10px 14px;
+  }
+  .success-hero-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+  .success-hero-icon svg {
+    width: 20px;
+    height: 20px;
+  }
   .success-steps {
     padding: 10px 14px;
-    gap: 10px;
+    gap: 8px;
   }
-
-  .success-actions {
-    padding: 0 20px 16px;
+  .success-qr-inline {
+    margin: 6px 14px 0;
+    padding: 10px;
   }
-
-  .success-contact {
-    padding: 12px 20px;
-    font-size: 12px;
+  .success-qr-inline-image {
+    width: 72px;
+    height: 72px;
+  }
+  .success-notice {
+    margin: 0 14px;
+    padding: 8px 10px;
+  }
+  .success-bottom {
+    padding: 8px 14px 12px;
   }
 }
 
 @media (max-width: 480px) {
-  .success-bottom {
-    flex-direction: column;
-  }
-  .success-qr-inline {
-    margin: 8px 14px 0;
-  }
-  .success-qr-inline-content {
-    flex-direction: column;
-    text-align: center;
-  }
   .success-qr-inline-image {
-    width: 96px;
-    height: 96px;
-  }
-  .success-notice {
-    margin: 0 14px;
+    width: 68px;
+    height: 68px;
   }
 }
 
-@media (max-height: 760px) {
-  .page.page-submitted .success-qr-inline-desc {
+@media (max-height: 700px) and (max-width: 768px) {
+  .success-qr-inline-desc {
     display: none;
   }
-
-  .page.page-submitted .success-steps {
-    gap: 8px;
+  .success-steps {
+    gap: 6px;
+  }
+  .success-qr-inline {
+    margin-top: 4px;
+  }
+  .success-bottom {
+    padding: 6px 14px 10px;
   }
 }
 
