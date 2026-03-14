@@ -526,13 +526,12 @@ body {
   vertical-align: baseline;
   gap: 2px;
   color: var(--deep-blue);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: rgba(15, 95, 194, 0.3);
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 .tips-link:hover {
-  text-decoration-color: var(--deep-blue);
+  color: #0b4a96;
 }
 
 .query-link-divider {
