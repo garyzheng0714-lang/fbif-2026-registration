@@ -3481,12 +3481,6 @@ body {
   color: var(--muted);
   line-height: 1.4;
 }
-.success-qr-inline-hint {
-  margin: 4px 0 0;
-  font-size: 10.5px;
-  color: var(--deep-blue);
-  opacity: 0.6;
-}
 .success-qr-inline-image:active {
   transform: scale(0.96);
 }

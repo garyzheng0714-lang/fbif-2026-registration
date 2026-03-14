@@ -2674,7 +2674,6 @@ export default function App() {
                     <p className="success-qr-inline-name">Carrie</p>
                     <p className="success-qr-inline-wechat">微信：lovelyFBIFer1</p>
                     <p className="success-qr-inline-desc">注册成功后，工作人员将添加您的微信，同步入场相关资讯</p>
-                    <p className="success-qr-inline-hint">点击二维码可放大查看</p>
                   </div>
                 </div>
               </div>
