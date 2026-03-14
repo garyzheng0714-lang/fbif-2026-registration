@@ -885,6 +885,16 @@ export default function App() {
   const [page, setPage] = useState<'identity' | 'form' | 'submitted'>('identity');
   const [identity, setIdentity] = useState<Identity>('');
   const [submittedRole, setSubmittedRole] = useState<SubmittedRole | null>(null);
+  const [qrZoomed, setQrZoomed] = useState(false);
+  const qrDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dlg = qrDialogRef.current;
+    if (!dlg) return;
+    if (qrZoomed && !dlg.open) dlg.showModal();
+    if (!qrZoomed && dlg.open) dlg.close();
+  }, [qrZoomed]);
+
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
   const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
   const [industryIdVerify, setIndustryIdVerify] = useState<IdVerifyState>(initialIdVerifyState);
@@ -1966,7 +1976,6 @@ export default function App() {
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
             <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
-            <p className="tips"><a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">点击查询已提交信息</a></p>
 
             <div className="role-options">
               <button
@@ -2005,6 +2014,11 @@ export default function App() {
                   <CheckIcon />
                 </span>
               </button>
+            </div>
+            <div className="query-link-divider">
+              <span className="query-divider-line" />
+              <a className="tips-link" href="https://foodtalks.feishu.cn/share/base/query/shrcn8O5GMUDVRBMIGBQfWHZeGb" target="_blank" rel="noopener noreferrer">已注册，点此查询</a>
+              <span className="query-divider-line" />
             </div>
             </FeishuCard>
 
@@ -2647,7 +2661,15 @@ export default function App() {
               <div className="success-qr-inline">
                 <h3 className="success-qr-inline-title">联系工作人员</h3>
                 <div className="success-qr-inline-content">
-                  <img className="success-qr-inline-image" src={CARRIE_WECHAT_QR_URL} alt="FBIF 工作人员 Carrie 微信二维码" />
+                  <img
+                    className="success-qr-inline-image"
+                    src={CARRIE_WECHAT_QR_URL}
+                    alt="FBIF 工作人员 Carrie 微信二维码"
+                    onClick={() => setQrZoomed(true)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter') setQrZoomed(true); }}
+                  />
                   <div className="success-qr-inline-info">
                     <p className="success-qr-inline-name">Carrie</p>
                     <p className="success-qr-inline-wechat">微信：lovelyFBIFer1</p>
@@ -2678,6 +2700,14 @@ export default function App() {
           <p className="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p>
         </div>
       </footer>
+
+      <dialog
+        ref={qrDialogRef}
+        className="qr-lightbox"
+        onClick={() => setQrZoomed(false)}
+      >
+        {qrZoomed && <img className="qr-lightbox-image" src={CARRIE_WECHAT_QR_URL} alt="FBIF 工作人员 Carrie 微信二维码" />}
+      </dialog>
 
       {page === 'identity' && (
         <FloatingRegisterTab onSelect={handleIdentitySelect} />
