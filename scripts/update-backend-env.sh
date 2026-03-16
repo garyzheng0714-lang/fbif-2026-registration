@@ -132,14 +132,18 @@ apply_defaults() {
   set_default FEISHU_FIELD_CLIENT_REQUEST_ID "提交记录唯一值"
   set_default FEISHU_SUBMISSION_SOURCE "${FEISHU_SUBMISSION_SOURCE:-正式环境}"
   set_default RATE_LIMIT_WINDOW_MS 60000
-  set_default RATE_LIMIT_MAX 120
-  set_default RATE_LIMIT_BURST 20
+  set_default RATE_LIMIT_MAX 600
+  set_default RATE_LIMIT_BURST 100
+  set_default CSRF_RATE_LIMIT_MAX 6000
+  set_default DB_POOL_CONNECTION_LIMIT 15
+  set_default DB_POOL_TIMEOUT_S 30
+  set_default TRUST_PROXY_HOPS 3
   set_default SYNC_POLL_TIMEOUT_MS 30000
   set_default FEISHU_SYNC_ATTEMPTS 8
   set_default FEISHU_SYNC_BACKOFF_MS 1000
   set_default FEISHU_SYNC_BACKOFF_MAX_MS 120000
-  set_default FEISHU_WORKER_CONCURRENCY 10
-  set_default FEISHU_WORKER_QPS 10
+  set_default FEISHU_WORKER_CONCURRENCY 20
+  set_default FEISHU_WORKER_QPS 20
   set_default FEISHU_SELECT_WRITE_MODE label
   set_default MAX_PROOF_URLS 5
   set_default MAX_PROOF_URL_LENGTH 2048
@@ -186,6 +190,10 @@ apply_overrides() {
   set_if_non_empty RATE_LIMIT_WINDOW_MS "${RATE_LIMIT_WINDOW_MS:-}"
   set_if_non_empty RATE_LIMIT_MAX "${RATE_LIMIT_MAX:-}"
   set_if_non_empty RATE_LIMIT_BURST "${RATE_LIMIT_BURST:-}"
+  set_if_non_empty CSRF_RATE_LIMIT_MAX "${CSRF_RATE_LIMIT_MAX:-}"
+  set_if_non_empty DB_POOL_CONNECTION_LIMIT "${DB_POOL_CONNECTION_LIMIT:-}"
+  set_if_non_empty DB_POOL_TIMEOUT_S "${DB_POOL_TIMEOUT_S:-}"
+  set_if_non_empty TRUST_PROXY_HOPS "${TRUST_PROXY_HOPS:-}"
   set_if_non_empty SYNC_POLL_TIMEOUT_MS "${SYNC_POLL_TIMEOUT_MS:-}"
   set_if_non_empty FEISHU_SYNC_ATTEMPTS "${FEISHU_SYNC_ATTEMPTS:-}"
   set_if_non_empty FEISHU_SYNC_BACKOFF_MS "${FEISHU_SYNC_BACKOFF_MS:-}"

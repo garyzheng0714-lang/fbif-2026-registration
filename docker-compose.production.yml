@@ -44,14 +44,18 @@ services:
       FEISHU_FIELD_TRACKING_ID_TYPE: ${FEISHU_FIELD_TRACKING_ID_TYPE:-}
       FEISHU_SUBMISSION_SOURCE: ${FEISHU_SUBMISSION_SOURCE:-}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
-      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
-      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-600}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-100}
+      CSRF_RATE_LIMIT_MAX: ${CSRF_RATE_LIMIT_MAX:-6000}
+      DB_POOL_CONNECTION_LIMIT: ${DB_POOL_CONNECTION_LIMIT:-15}
+      DB_POOL_TIMEOUT_S: ${DB_POOL_TIMEOUT_S:-30}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-3}
       SYNC_POLL_TIMEOUT_MS: ${SYNC_POLL_TIMEOUT_MS:-30000}
       FEISHU_SYNC_ATTEMPTS: ${FEISHU_SYNC_ATTEMPTS:-8}
       FEISHU_SYNC_BACKOFF_MS: ${FEISHU_SYNC_BACKOFF_MS:-1000}
       FEISHU_SYNC_BACKOFF_MAX_MS: ${FEISHU_SYNC_BACKOFF_MAX_MS:-120000}
-      FEISHU_WORKER_CONCURRENCY: ${FEISHU_WORKER_CONCURRENCY:-10}
-      FEISHU_WORKER_QPS: ${FEISHU_WORKER_QPS:-10}
+      FEISHU_WORKER_CONCURRENCY: ${FEISHU_WORKER_CONCURRENCY:-20}
+      FEISHU_WORKER_QPS: ${FEISHU_WORKER_QPS:-20}
       FEISHU_SELECT_WRITE_MODE: ${FEISHU_SELECT_WRITE_MODE:-label}
       MAX_PROOF_URLS: ${MAX_PROOF_URLS:-5}
       MAX_PROOF_URL_LENGTH: ${MAX_PROOF_URL_LENGTH:-2048}
@@ -84,8 +88,8 @@ services:
     networks:
       - backend
       - private
-    mem_limit: 512m
-    cpus: "1.00"
+    mem_limit: 2g
+    cpus: "3.00"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:${API_PORT_INTERNAL:-8080}/health || exit 1"]
       interval: 15s
@@ -100,6 +104,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-fbif}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
       POSTGRES_DB: ${POSTGRES_DB:-fbif_form}
+    mem_limit: 2g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fbif} -d ${POSTGRES_DB:-fbif_form}"]
       interval: 10s
@@ -114,6 +119,7 @@ services:
     image: redis:7
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    mem_limit: 512m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
