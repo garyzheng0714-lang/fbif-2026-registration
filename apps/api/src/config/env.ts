@@ -14,6 +14,7 @@ function parseEnvBool(value: unknown, fallback = false) {
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(8080),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(3),
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().min(1),
   // Prisma pool config (applied by rewriting DATABASE_URL at runtime).

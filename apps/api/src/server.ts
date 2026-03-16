@@ -36,7 +36,7 @@ function normalizeMetricsPath(rawUrl: string) {
 export function createServer() {
   const app = express();
 
-  app.set('trust proxy', 1);
+  app.set('trust proxy', env.TRUST_PROXY_HOPS);
   app.use((req, res, next) => {
     const traceId = crypto.randomUUID();
     (res.locals as any).traceId = traceId;
