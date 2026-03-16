@@ -1,0 +1,5 @@
+               total        used        free      shared  buff/cache   available
+Mem:           7.1Gi       1.4Gi       393Mi        36Mi       5.7Gi       5.7Gi
+Swap:             0B          0B          0B
+max_connections: 100
+4

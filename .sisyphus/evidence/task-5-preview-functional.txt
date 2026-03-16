@@ -1,0 +1,2 @@
+health: ok
+csrf: {"csrfToken":"AFQbEgif-57iCej5rwHGG7RTSjroNu5iptto"}

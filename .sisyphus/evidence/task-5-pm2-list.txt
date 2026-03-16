@@ -1,0 +1,14 @@
+# Task 5: PM2 cluster verification on preview (fbif-form-staging-api-blue)
+# Date: 2026-03-16
+
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ fbif-api       │ default     │ 0.1.0   │ cluster │ 69       │ 3m     │ 0    │ online    │ 0%       │ 78.2mb   │ root     │ disabled │
+│ 2  │ fbif-api       │ default     │ 0.1.0   │ cluster │ 83       │ 3m     │ 0    │ online    │ 0%       │ 77.3mb   │ root     │ disabled │
+│ 3  │ fbif-api       │ default     │ 0.1.0   │ cluster │ 90       │ 3m     │ 0    │ online    │ 0%       │ 77.1mb   │ root     │ disabled │
+│ 1  │ fbif-worker    │ default     │ 0.1.0   │ fork    │ 75       │ 3m     │ 0    │ online    │ 0%       │ 81.9mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+RESULT: 3 API cluster workers + 1 worker fork = ALL online ✅
+Container: fbif-form-staging-api-blue (preview bue-green deployment)

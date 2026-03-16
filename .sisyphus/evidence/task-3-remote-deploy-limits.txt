@@ -1,0 +1,12 @@
+Evidence: docker run invocation on production slot now includes explicit CPU and memory limits.
+- Modified script: scripts/remote-deploy.sh
+- Change: add --cpus 3 and --memory 2g after --restart unless-stopped, before --network
+- Verification hint: grep -n -- '--cpus' scripts/remote-deploy.sh should show --cpus 3
+
+Snippet (context):
+docker run -d \
+  --name "${container_name}" \
+  --restart unless-stopped \
+  --cpus 3 \
+  --memory 2g \
+  --network "${COMPOSE_PROJECT_NAME}_private" \

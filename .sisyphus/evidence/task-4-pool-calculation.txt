@@ -1,0 +1,5 @@
+Evidence: Database pool sizing calculation
+- Current pool limit per process: DB_POOL_CONNECTION_LIMIT = 15
+- PM2 cluster configuration: 3 API processes + 1 Worker process = 4 processes total
+- Total DB connections = 4 * 15 = 60
+- Safety margin considered in limits: well below PostgreSQL max (60 << 100)
