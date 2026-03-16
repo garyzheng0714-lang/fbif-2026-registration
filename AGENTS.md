@@ -62,19 +62,19 @@ fbif-2026-registration/
 
 ## 部署架构
 
-同一台服务器 (121.40.214.5) 运行生产和 preview 两套环境。当前架构中 **Caddy 负责 HTTPS 与静态文件**，生产 API 通过 **主机 Nginx（非容器）** 转发：
+同一台服务器 (121.40.214.5) 运行生产和 preview 两套环境。**Caddy 负责 HTTPS 与静态文件**，生产 API 通过 **主机 Nginx（非容器）** 转发。已配置阿里云 CDN 支持（可选，见 `docs/cdn-setup-guide.md`）。
 
 ```
-生产环境:
-  [客户端] → Caddy (HTTPS, fbif2026ticket.foodtalks.cn)
-               ├─ /assets/* → 静态文件 (/var/www/fbif-form) [30天缓存]
-               ├─ /* → 静态文件 (SPA fallback) [no-store]
-               └─ /api/*, /health → reverse_proxy localhost:3001
-                                     └─ Nginx (host service, port 3001)
-                                          └─ /api/* → active slot (blue=8080, green=18080)
-                                               └─ Docker API 容器 (蓝绿部署)
-                                                    ├─→ [PostgreSQL 16]
-                                                    └─→ [Redis 7]
+生产环境（含 CDN 可选层）:
+  [客户端] → [阿里云 CDN (可选)] → Caddy (HTTPS, fbif2026ticket.foodtalks.cn)
+                                      ├─ /assets/* → 静态文件 (/var/www/fbif-form) [30天缓存]
+                                      ├─ /* → 静态文件 (SPA fallback) [no-store]
+                                      └─ /api/*, /health → reverse_proxy localhost:3001
+                                                            └─ Nginx (host service, port 3001)
+                                                                 └─ /api/* → active slot (blue=8080, green=18080)
+                                                                      └─ Docker API 容器 (PM2 cluster, 蓝绿部署)
+                                                                           ├─→ [PostgreSQL 16]
+                                                                           └─→ [Redis 7]
 
 Preview 环境:
   [开发者] → Caddy (:3003)
@@ -97,7 +97,8 @@ Preview 环境:
 - 生产容器: `fbif-form-api-blue` / `fbif-form-api-green` (蓝绿部署)
 - Preview 容器: `fbif-form-staging-api-1`
 - 蓝绿端口: blue=8080, green=18080
-- 入口: `/entrypoint.sh` (自动执行 Prisma 迁移 + 启动 Worker)
+- 入口: `/entrypoint-pm2.sh` (Prisma 迁移 → PM2 cluster: 3 API workers + 1 BullMQ worker)
+- 回滚: 将 Dockerfile `ENTRYPOINT` 改回 `/entrypoint.sh` 即可恢复单进程模式
 - Docker: node:20-bookworm (Prisma 需要 OpenSSL)
 - 健康检查: HTTP GET `/health`
 
