@@ -369,7 +369,7 @@ export function FeishuSelect({
       }}
     >
       <button
-        {...rest}
+        {...(rest as any)}
         ref={triggerRef}
         id={controlId}
         type="button"

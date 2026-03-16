@@ -887,6 +887,8 @@ export default function App() {
   const [submittedRole, setSubmittedRole] = useState<SubmittedRole | null>(null);
   const [qrZoomed, setQrZoomed] = useState(false);
   const qrDialogRef = useRef<HTMLDialogElement>(null);
+  const [showQrSheet, setShowQrSheet] = useState(false);
+  const [wechatCopied, setWechatCopied] = useState(false);
 
   useEffect(() => {
     const dlg = qrDialogRef.current;
@@ -894,6 +896,20 @@ export default function App() {
     if (qrZoomed && !dlg.open) dlg.showModal();
     if (!qrZoomed && dlg.open) dlg.close();
   }, [qrZoomed]);
+
+  useEffect(() => {
+    if (!showQrSheet) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowQrSheet(false);
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [showQrSheet]);
+
+  useEffect(() => {
+    document.body.style.overflow = showQrSheet ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showQrSheet]);
 
   const [industryForm, setIndustryForm] = useState(initialIndustryForm);
   const [consumerForm, setConsumerForm] = useState(initialConsumerForm);
@@ -1823,6 +1839,7 @@ export default function App() {
 
       setSubmittedRole(identity);
       setPage('submitted');
+      setShowQrSheet(true);
       setSubmitDialog((prev) => ({
         ...prev,
         open: false,
@@ -1916,6 +1933,28 @@ export default function App() {
     if (!canCloseSubmitDialog) return;
     setSubmitDialog((prev) => ({ ...prev, open: false }));
   };
+
+  const handleCopyWechat = async () => {
+    if (wechatCopied) return;
+    const wechatId = 'lovelyFBIFer1';
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(wechatId);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = wechatId;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setWechatCopied(true);
+      setTimeout(() => setWechatCopied(false), 2000);
+    } catch {
+      // silent fail
+    }
+  };
   const submitActionBlock = (
     <div className="form-submit-section" role="region" aria-label="提交操作区">
       <div className="submit-dock-inner">
@@ -1948,6 +1987,7 @@ export default function App() {
         {notice && (
           <p className="notice notice-error submit-dock-notice">{notice}</p>
         )}
+        <p className="submit-wechat-hint">💬 提交后可添加工作人员微信，获取展会最新资讯</p>
         <FeishuButton
           className="submit-button"
           type="submit"
@@ -2659,7 +2699,7 @@ export default function App() {
 
 
               <div className="success-qr-inline">
-                <h3 className="success-qr-inline-title">联系工作人员</h3>
+                <h3 className="success-qr-inline-title">添加微信 · 获取展会资讯</h3>
                 <div className="success-qr-inline-content">
                   <img
                     className="success-qr-inline-image"
@@ -2673,7 +2713,14 @@ export default function App() {
                   <div className="success-qr-inline-info">
                     <p className="success-qr-inline-name">Carrie</p>
                     <p className="success-qr-inline-wechat">微信：lovelyFBIFer1</p>
-                    <p className="success-qr-inline-desc">注册成功后，工作人员将添加您的微信，同步入场相关资讯</p>
+                    <button
+                      className={`success-qr-copy-btn${wechatCopied ? ' is-copied' : ''}`}
+                      onClick={handleCopyWechat}
+                      type="button"
+                    >
+                      {wechatCopied ? '已复制 ✓' : '复制微信号'}
+                    </button>
+                    <p className="success-qr-inline-desc">长按二维码或截图保存，用微信扫一扫添加</p>
                   </div>
                 </div>
               </div>
@@ -2700,6 +2747,59 @@ export default function App() {
           <p className="legal-footer-copy legal-footer-icp">沪ICP备19035501号-1</p>
         </div>
       </footer>
+
+      {showQrSheet && (
+        <div
+          className="qr-sheet-overlay"
+          onClick={() => setShowQrSheet(false)}
+          role="presentation"
+        >
+          <div
+            className="qr-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="添加微信获取展会资讯"
+          >
+            <button
+              className="qr-sheet-close"
+              onClick={() => setShowQrSheet(false)}
+              aria-label="关闭"
+              type="button"
+            >
+              ×
+            </button>
+            <div className="qr-sheet-content">
+              <h2 className="qr-sheet-title">添加微信，获取展会资讯</h2>
+              <p className="qr-sheet-subtitle">扫码添加 FBIF 工作人员 Carrie</p>
+              <img
+                className="qr-sheet-qr"
+                src={CARRIE_WECHAT_QR_URL}
+                alt="Carrie 微信二维码"
+              />
+              <ul className="qr-sheet-benefits">
+                <li>获取最新展会资讯与日程安排</li>
+                <li>入场指引及电子门票提醒</li>
+                <li>参展商名录抢先看</li>
+              </ul>
+              <button
+                className={`qr-sheet-copy${wechatCopied ? ' is-copied' : ''}`}
+                onClick={handleCopyWechat}
+                type="button"
+              >
+                {wechatCopied ? '已复制 ✓' : '复制微信号：lovelyFBIFer1'}
+              </button>
+              <button
+                className="qr-sheet-dismiss"
+                onClick={() => setShowQrSheet(false)}
+                type="button"
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <dialog
         ref={qrDialogRef}
