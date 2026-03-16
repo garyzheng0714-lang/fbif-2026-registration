@@ -54,7 +54,7 @@ const SUCCESS_TOP_BANNER_URL = '/success-banner.webp';
 const BOTTOM_LONG_BANNER_URL =
   'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp';
 const CARRIE_WECHAT_QR_URL =
-  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_jCAW65K_5jnSM5Ptx-bEmA_1772899617672/img_v3_02vg_d64f7ff2-ac83-458f-bf46-3004e66ea83g_1772899617821.png';
+  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_ZqRI5Leu1y91z9OU8LtpOg_1773644300555/img_v3_02vr_01c7aa2d-3e94-400a-b442-de1b254103dg_1773644300778.png';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
 
 /**
@@ -1971,7 +1971,6 @@ export default function App() {
         {notice && (
           <p className="notice notice-error submit-dock-notice">{notice}</p>
         )}
-        <p className="submit-wechat-hint">💬 提交后可添加工作人员微信，获取展会最新资讯</p>
         <FeishuButton
           className="submit-button"
           type="submit"
