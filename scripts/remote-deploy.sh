@@ -539,6 +539,8 @@ run_slot_api_container() {
     docker run -d \
       --name "${container_name}" \
       --restart unless-stopped \
+      --cpus 3 \
+      --memory 2g \
       --network "${COMPOSE_PROJECT_NAME}_private" \
       -p "127.0.0.1:${slot_port}:${API_PORT_INTERNAL_VALUE}" \
       --env-file "${BACKEND_ENV_STAGED}" \
