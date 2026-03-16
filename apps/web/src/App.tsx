@@ -2683,7 +2683,7 @@ export default function App() {
 
 
               <div className="success-qr-inline">
-                <h3 className="success-qr-inline-title">添加微信 · 获取展会资讯</h3>
+                <h3 className="success-qr-inline-title">观展、参展、参会咨询</h3>
                 <div className="success-qr-inline-content">
                   <img
                     className="success-qr-inline-image"

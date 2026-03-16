@@ -3442,25 +3442,25 @@ body {
 /* 内联二维码区域 */
 .success-qr-inline {
   margin: 10px 16px 0;
-  padding: 14px;
-  border-radius: 10px;
+  padding: 16px;
+  border-radius: 12px;
   background: rgba(7, 193, 96, 0.05);
   border: 1px solid rgba(7, 193, 96, 0.2);
 }
 .success-qr-inline-title {
-  margin: 0 0 10px;
-  font-size: 13px;
+  margin: 0 0 12px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
 }
 .success-qr-inline-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 .success-qr-inline-image {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: transform 0.15s ease;
@@ -3474,26 +3474,26 @@ body {
 }
 .success-qr-inline-name {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--ink);
 }
 .success-qr-inline-wechat {
-  margin: 2px 0 0;
-  font-size: 11.5px;
+  margin: 3px 0 0;
+  font-size: 13px;
   color: var(--muted);
 }
 .success-qr-copy-btn {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   display: inline-flex;
   align-items: center;
-  height: 28px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid rgba(7, 193, 96, 0.4);
   border-radius: 6px;
   background: rgba(7, 193, 96, 0.08);
   color: #059669;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--motion), color var(--motion);
@@ -3506,8 +3506,8 @@ body {
   color: #059669;
 }
 .success-qr-inline-desc {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: 8px 0 0;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.4;
 }
