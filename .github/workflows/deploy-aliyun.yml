@@ -117,11 +117,8 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout Scripts
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts
-          sparse-checkout-cone-mode: true
 
       - name: Validate SSH Key
         env:
@@ -565,6 +562,35 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             "${USER}@${HOST}" \
             "${REMOTE_ENV} bash -s -- promote" < scripts/remote-deploy.sh
+
+      - name: Drift Detection (Deploy Mode)
+        continue-on-error: true
+        if: needs.prepare-candidate.result == 'success' && needs.browser-e2e-gate.result == 'success' && github.event.inputs.mode == 'deploy'
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+        run: |
+          set -euo pipefail
+          HOST="${ALIYUN_HOST:-121.40.214.5}"
+          USER="${ALIYUN_USER:-root}"
+
+          SSH_HOST="${USER}@${HOST}" \
+          SSH_KEY_PATH="${HOME}/.ssh/id_aliyun" \
+          ./scripts/report-deploy-drift.sh
+
+      - name: Purge CDN Cache (Deploy Mode)
+        continue-on-error: true
+        if: needs.prepare-candidate.result == 'success' && needs.browser-e2e-gate.result == 'success' && github.event.inputs.mode == 'deploy' && secrets.ALIYUN_CDN_ACCESS_KEY_ID != '' && secrets.ALIYUN_CDN_ACCESS_KEY_SECRET != ''
+        env:
+          ALIYUN_CDN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_CDN_ACCESS_KEY_ID }}
+          ALIYUN_CDN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_CDN_ACCESS_KEY_SECRET }}
+          CDN_API_ENDPOINT: ${{ secrets.ALIYUN_CDN_API_ENDPOINT }}
+          CDN_DOMAIN: ${{ secrets.CDN_DOMAIN }}
+          CDN_OBJECT_PATHS: ${{ secrets.CDN_OBJECT_PATHS }}
+          CDN_OBJECT_TYPE: ${{ secrets.CDN_OBJECT_TYPE }}
+        run: |
+          set -euo pipefail
+          ./scripts/purge-cdn-cache.sh
 
       - name: Discard Candidate (Dry-Run Or Gate Failed)
         if: needs.prepare-candidate.result == 'success' && (github.event.inputs.mode != 'deploy' || needs.browser-e2e-gate.result != 'success')
