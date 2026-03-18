@@ -11,10 +11,11 @@ function parseEnvBool(value: unknown, fallback = false) {
   return fallback;
 }
 
-const envSchema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(8080),
-  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(3),
+  // Proxy hops: Caddy→Nginx = 2 (default). With CDN: CDN→Caddy→Nginx = 3.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(2),
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().min(1),
   // Prisma pool config (applied by rewriting DATABASE_URL at runtime).
@@ -77,64 +78,18 @@ const envSchema = z.object({
   FEISHU_ALERT_ENABLED: z.boolean().default(true)
 });
 
-export const env = envSchema.parse({
-  NODE_ENV: process.env.NODE_ENV,
-  PORT: process.env.PORT,
-  WEB_ORIGIN: process.env.WEB_ORIGIN,
-  DATABASE_URL: process.env.DATABASE_URL,
-  DB_POOL_CONNECTION_LIMIT: process.env.DB_POOL_CONNECTION_LIMIT,
-  DB_POOL_TIMEOUT_S: process.env.DB_POOL_TIMEOUT_S,
-  REDIS_URL: process.env.REDIS_URL,
-  DATA_KEY: process.env.DATA_KEY,
-  DATA_HASH_SALT: process.env.DATA_HASH_SALT,
-  FEISHU_APP_ID: process.env.FEISHU_APP_ID,
-  FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
-  FEISHU_APP_TOKEN: process.env.FEISHU_APP_TOKEN,
-  FEISHU_TABLE_ID: process.env.FEISHU_TABLE_ID,
-  RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
-  RATE_LIMIT_BURST: process.env.RATE_LIMIT_BURST,
-  CSRF_RATE_LIMIT_WINDOW_MS: process.env.CSRF_RATE_LIMIT_WINDOW_MS,
-  CSRF_RATE_LIMIT_MAX: process.env.CSRF_RATE_LIMIT_MAX,
-  SYNC_POLL_TIMEOUT_MS: process.env.SYNC_POLL_TIMEOUT_MS,
+// Pre-process fields that need special handling before zod parsing.
+// Boolean env vars need parseEnvBool (zod can't parse "yes"/"on"/etc).
+// Empty FEISHU_ALERT_WEBHOOK must become undefined (not empty string).
+function preprocessEnv(): Record<string, unknown> {
+  return {
+    ...process.env,
+    ID_VERIFY_ENABLED: parseEnvBool(process.env.ID_VERIFY_ENABLED, false),
+    FEISHU_ALERT_ENABLED: parseEnvBool(process.env.FEISHU_ALERT_ENABLED, true),
+    FEISHU_ALERT_WEBHOOK: process.env.FEISHU_ALERT_WEBHOOK || undefined,
+  };
+}
 
-  FEISHU_SYNC_ATTEMPTS: process.env.FEISHU_SYNC_ATTEMPTS,
-  FEISHU_SYNC_BACKOFF_MS: process.env.FEISHU_SYNC_BACKOFF_MS,
-  FEISHU_SYNC_BACKOFF_MAX_MS: process.env.FEISHU_SYNC_BACKOFF_MAX_MS,
-  FEISHU_WORKER_CONCURRENCY: process.env.FEISHU_WORKER_CONCURRENCY,
-  FEISHU_WORKER_QPS: process.env.FEISHU_WORKER_QPS,
-  FEISHU_SELECT_WRITE_MODE: process.env.FEISHU_SELECT_WRITE_MODE,
-  FEISHU_QUEUE_HIGH_WATERMARK: process.env.FEISHU_QUEUE_HIGH_WATERMARK,
-  FEISHU_QUEUE_CRITICAL_WATERMARK: process.env.FEISHU_QUEUE_CRITICAL_WATERMARK,
-  FEISHU_QUEUE_PRESSURE_CACHE_MS: process.env.FEISHU_QUEUE_PRESSURE_CACHE_MS,
-  FEISHU_ENQUEUE_DELAY_HIGH_MS: process.env.FEISHU_ENQUEUE_DELAY_HIGH_MS,
-  FEISHU_ENQUEUE_DELAY_CRITICAL_MS: process.env.FEISHU_ENQUEUE_DELAY_CRITICAL_MS,
-  FEISHU_RETRY_BACKOFF_HIGH_MULTIPLIER: process.env.FEISHU_RETRY_BACKOFF_HIGH_MULTIPLIER,
-  FEISHU_RETRY_BACKOFF_CRITICAL_MULTIPLIER: process.env.FEISHU_RETRY_BACKOFF_CRITICAL_MULTIPLIER,
-
-  MAX_PROOF_URLS: process.env.MAX_PROOF_URLS,
-  MAX_PROOF_URL_LENGTH: process.env.MAX_PROOF_URL_LENGTH,
-
-  OSS_ACCESS_KEY_ID: process.env.OSS_ACCESS_KEY_ID,
-  OSS_ACCESS_KEY_SECRET: process.env.OSS_ACCESS_KEY_SECRET,
-  OSS_BUCKET: process.env.OSS_BUCKET,
-  OSS_REGION: process.env.OSS_REGION,
-  OSS_HOST: process.env.OSS_HOST,
-  OSS_PUBLIC_BASE_URL: process.env.OSS_PUBLIC_BASE_URL,
-  OSS_UPLOAD_PREFIX: process.env.OSS_UPLOAD_PREFIX,
-  OSS_MAX_UPLOAD_MB: process.env.OSS_MAX_UPLOAD_MB,
-  OSS_POLICY_EXPIRE_SECONDS: process.env.OSS_POLICY_EXPIRE_SECONDS,
-  OSS_OBJECT_ACL: process.env.OSS_OBJECT_ACL,
-
-  ID_VERIFY_ENABLED: parseEnvBool(process.env.ID_VERIFY_ENABLED, false),
-  ID_VERIFY_ALIYUN_HOST: process.env.ID_VERIFY_ALIYUN_HOST,
-  ID_VERIFY_ALIYUN_PATH: process.env.ID_VERIFY_ALIYUN_PATH,
-  ID_VERIFY_APPCODE: process.env.ID_VERIFY_APPCODE,
-  ID_VERIFY_TIMEOUT_MS: process.env.ID_VERIFY_TIMEOUT_MS,
-  ID_VERIFY_TOKEN_TTL_SECONDS: process.env.ID_VERIFY_TOKEN_TTL_SECONDS,
-
-  FEISHU_ALERT_WEBHOOK: process.env.FEISHU_ALERT_WEBHOOK || undefined,
-  FEISHU_ALERT_ENABLED: parseEnvBool(process.env.FEISHU_ALERT_ENABLED, true)
-});
+export const env = envSchema.parse(preprocessEnv());
 
 export const isProd = env.NODE_ENV === 'production';
