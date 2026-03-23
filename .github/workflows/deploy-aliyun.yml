@@ -219,7 +219,6 @@ jobs:
     outputs:
       candidate_slot: ${{ steps.prepare.outputs.candidate_slot }}
       candidate_api_port: ${{ steps.prepare.outputs.candidate_api_port }}
-      candidate_web_port: ${{ steps.prepare.outputs.candidate_web_port }}
 
     steps:
       - name: Checkout Scripts
@@ -375,15 +374,12 @@ jobs:
 
           CANDIDATE_SLOT="$(grep '^CANDIDATE_SLOT=' "${PREPARE_LOG}" | tail -n 1 | cut -d= -f2-)"
           CANDIDATE_API_PORT="$(grep '^CANDIDATE_API_PORT=' "${PREPARE_LOG}" | tail -n 1 | cut -d= -f2-)"
-          CANDIDATE_WEB_PORT="$(grep '^CANDIDATE_WEB_PORT=' "${PREPARE_LOG}" | tail -n 1 | cut -d= -f2-)"
 
           [ -n "${CANDIDATE_SLOT}" ] || { echo '::error::Missing CANDIDATE_SLOT from prepare output'; exit 1; }
           [ -n "${CANDIDATE_API_PORT}" ] || { echo '::error::Missing CANDIDATE_API_PORT from prepare output'; exit 1; }
-          [ -n "${CANDIDATE_WEB_PORT}" ] || { echo '::error::Missing CANDIDATE_WEB_PORT from prepare output'; exit 1; }
 
           echo "candidate_slot=${CANDIDATE_SLOT}" >> "$GITHUB_OUTPUT"
           echo "candidate_api_port=${CANDIDATE_API_PORT}" >> "$GITHUB_OUTPUT"
-          echo "candidate_web_port=${CANDIDATE_WEB_PORT}" >> "$GITHUB_OUTPUT"
 
       - name: Cleanup
         if: always()
@@ -452,7 +448,7 @@ jobs:
         env:
           ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
           ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
-          CANDIDATE_WEB_PORT: ${{ needs.prepare-candidate.outputs.candidate_web_port }}
+          APP_DIR: ${{ secrets.APP_DIR }}
           E2E_DISABLE_WEB_SECURITY: '1'
           VERIFY_NAME: 郑梽煌
           VERIFY_ID: 35052519981217001X
@@ -461,6 +457,7 @@ jobs:
           set -euo pipefail
           HOST="${ALIYUN_HOST:-121.40.214.5}"
           USER="${ALIYUN_USER:-root}"
+          APP_ROOT="${APP_DIR:-/opt/web-fbif-form}"
           LOCAL_TUNNEL_PORT=39001
 
           cleanup() {
@@ -469,6 +466,21 @@ jobs:
             fi
           }
           trap cleanup EXIT
+
+          CANDIDATE_WEB_PORT="$(
+            ssh \
+              -i ~/.ssh/id_aliyun \
+              -o BatchMode=yes \
+              -o ConnectTimeout=20 \
+              -o StrictHostKeyChecking=accept-new \
+              "${USER}@${HOST}" \
+              "set -euo pipefail; PENDING_FILE='${APP_ROOT}/shared/pending_release.env'; [ -f \"\$PENDING_FILE\" ] || exit 1; awk -F= '/^CANDIDATE_WEB_PORT=/{print \$2}' \"\$PENDING_FILE\" | tail -n 1"
+          )"
+
+          [ -n "${CANDIDATE_WEB_PORT}" ] || {
+            echo "::error::Missing CANDIDATE_WEB_PORT from remote pending_release.env"
+            exit 1
+          }
 
           ssh \
             -i ~/.ssh/id_aliyun \
