@@ -580,7 +580,7 @@ jobs:
 
       - name: Purge CDN Cache (Deploy Mode)
         continue-on-error: true
-        if: needs.prepare-candidate.result == 'success' && needs.browser-e2e-gate.result == 'success' && github.event.inputs.mode == 'deploy' && secrets.ALIYUN_CDN_ACCESS_KEY_ID != '' && secrets.ALIYUN_CDN_ACCESS_KEY_SECRET != ''
+        if: needs.prepare-candidate.result == 'success' && needs.browser-e2e-gate.result == 'success' && github.event.inputs.mode == 'deploy'
         env:
           ALIYUN_CDN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_CDN_ACCESS_KEY_ID }}
           ALIYUN_CDN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_CDN_ACCESS_KEY_SECRET }}
