@@ -29,6 +29,7 @@ GH_SHA="${GH_SHA:-}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-fbif-form}"
 PRIMARY_WEB_PORT="${PRIMARY_WEB_PORT:-3001}"
 CANDIDATE_WEB_PORT="${CANDIDATE_WEB_PORT:-3002}"
+CANDIDATE_WEB_PORT_FALLBACKS="${CANDIDATE_WEB_PORT_FALLBACKS:-3202,3402}"
 NGINX_SITE_NAME="${NGINX_SITE_NAME:-fbif-form}"
 CANDIDATE_SITE_NAME="${NGINX_SITE_NAME}-candidate"
 
@@ -326,6 +327,39 @@ port_listener_count() {
   die "either ss or netstat is required for port checks"
 }
 
+candidate_web_port_candidates() {
+  printf '%s\n' "${CANDIDATE_WEB_PORT},${CANDIDATE_WEB_PORT_FALLBACKS}" \
+    | tr ',' '\n' \
+    | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+    | awk 'NF && $0 ~ /^[0-9]+$/ && !seen[$0]++ { print $0 }'
+}
+
+find_free_candidate_web_port() {
+  local port
+  local listeners
+
+  while IFS= read -r port; do
+    [ -n "${port}" ] || continue
+    listeners="$(port_listener_count "${port}")"
+    if [ "${listeners}" -eq 0 ]; then
+      echo "${port}"
+      return 0
+    fi
+  done < <(candidate_web_port_candidates)
+
+  return 1
+}
+
+candidate_web_port_plan() {
+  local values
+  values="$(candidate_web_port_candidates | paste -sd, -)"
+  if [ -n "${values}" ]; then
+    echo "${values}"
+  else
+    echo "${CANDIDATE_WEB_PORT}"
+  fi
+}
+
 assert_port_listening() {
   local port="$1"
   local label="$2"
@@ -575,7 +609,8 @@ configure_primary_nginx() {
 
 configure_candidate_nginx() {
   local candidate_api_port="$1"
-  write_nginx_site "${CANDIDATE_SITE_NAME}" "${CANDIDATE_WEB_PORT}" "${STATIC_NEW}" "${candidate_api_port}"
+  local candidate_web_port="$2"
+  write_nginx_site "${CANDIDATE_SITE_NAME}" "${candidate_web_port}" "${STATIC_NEW}" "${candidate_api_port}"
 }
 
 switch_static_symlink() {
@@ -799,8 +834,10 @@ cmd_preflight() {
   local active_slot
   local active_api_port
   local active_container
+  local free_candidate_web_port
   active_slot="$(read_active_slot)"
   active_api_port="$(slot_api_port "${active_slot}")"
+  free_candidate_web_port="$(find_free_candidate_web_port || true)"
 
   case "${active_slot}" in
     blue|green)
@@ -844,7 +881,7 @@ cmd_preflight() {
 
   assert_port_listening "${PRIMARY_WEB_PORT}" "primary web"
   assert_port_listening "${active_api_port}" "active api"
-  assert_port_not_listening "${CANDIDATE_WEB_PORT}" "candidate web"
+  [ -n "${free_candidate_web_port}" ] || die "no free candidate web port among: $(candidate_web_port_plan)"
 
   nginx -t >/dev/null 2>&1 || die "nginx config test failed"
 
@@ -852,7 +889,8 @@ cmd_preflight() {
   echo "ACTIVE_API_PORT=${active_api_port}"
   echo "ACTIVE_API_CONTAINER=${active_container}"
   echo "PRIMARY_WEB_PORT=${PRIMARY_WEB_PORT}"
-  echo "CANDIDATE_WEB_PORT=${CANDIDATE_WEB_PORT}"
+  echo "CANDIDATE_WEB_PORT=${free_candidate_web_port}"
+  echo "CANDIDATE_WEB_PORT_PLAN=$(candidate_web_port_plan)"
   echo "BLUE_API_PORT=${BLUE_API_PORT}"
   echo "GREEN_API_PORT=${GREEN_API_PORT}"
   echo "FREE_MB=${free_mb}"
@@ -873,6 +911,7 @@ cmd_prepare() {
   local active_slot
   local candidate_slot
   local candidate_api_port
+  local candidate_web_port
   local prev_release
   local prev_static_target
   local nginx_present=0
@@ -880,6 +919,8 @@ cmd_prepare() {
   active_slot="$(read_active_slot)"
   candidate_slot="$(candidate_slot_from_active "${active_slot}")"
   candidate_api_port="$(slot_api_port "${candidate_slot}")"
+  candidate_web_port="$(find_free_candidate_web_port || true)"
+  [ -n "${candidate_web_port}" ] || die "no free candidate web port among: $(candidate_web_port_plan)"
 
   prev_release="$(readlink -f "${CURRENT_LINK}" 2>/dev/null || true)"
   prev_static_target="$(current_static_target)"
@@ -896,11 +937,11 @@ cmd_prepare() {
   if is_nginx_available; then
     nginx_present=1
     configure_primary_nginx "${active_slot}"
-    configure_candidate_nginx "${candidate_api_port}"
+    configure_candidate_nginx "${candidate_api_port}" "${candidate_web_port}"
     reload_nginx
 
-    if ! wait_http "http://127.0.0.1:${CANDIDATE_WEB_PORT}/healthz" 20 1; then
-      die "candidate web healthz failed on port ${CANDIDATE_WEB_PORT}"
+    if ! wait_http "http://127.0.0.1:${candidate_web_port}/healthz" 20 1; then
+      die "candidate web healthz failed on port ${candidate_web_port}"
     fi
   else
     log "nginx not found, skip candidate /healthz probe and candidate site setup"
@@ -910,14 +951,15 @@ cmd_prepare() {
     "${active_slot}" \
     "${candidate_slot}" \
     "${candidate_api_port}" \
-    "${CANDIDATE_WEB_PORT}" \
+    "${candidate_web_port}" \
     "${prev_release}" \
     "${prev_static_target}"
 
   log "Candidate prepared"
   echo "CANDIDATE_SLOT=${candidate_slot}"
   echo "CANDIDATE_API_PORT=${candidate_api_port}"
-  echo "CANDIDATE_WEB_PORT=${CANDIDATE_WEB_PORT}"
+  echo "CANDIDATE_WEB_PORT=${candidate_web_port}"
+  echo "CANDIDATE_WEB_PORT_PLAN=$(candidate_web_port_plan)"
   echo "CANDIDATE_NGINX_READY=${nginx_present}"
   echo "RELEASE_DIR=${RELEASE_DIR}"
   echo "STATIC_NEW=${STATIC_NEW}"
