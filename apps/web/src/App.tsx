@@ -116,7 +116,8 @@ function getTencentClickAttribution(): {
 
 const industryBusinessOptions = [
   '品牌',
-  '渠道',
+  '零售',
+  '餐饮',
   '供应商',
   '其他'
 ] as const;
