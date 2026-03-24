@@ -35,3 +35,4 @@ release.tgz
 # Design / preview artifacts should never live at repo root
 /*.html
 /*.png
+.gstack/
