@@ -31,6 +31,7 @@
 fbif2026ticket.foodtalks.cn {
     import security_headers_common
     import security_headers_prod
+    encode gzip zstd
 
     # Let's Encrypt ACME 挑战必须直达 Caddy，不能被 CDN 缓存
     handle /.well-known/acme-challenge/* {
@@ -87,6 +88,7 @@ fbif2026ticket.foodtalks.cn {
 # ── 测试环境（IP:3003 直连）──────────────────────────────────────
 :3003 {
     import security_headers_common
+    encode gzip zstd
 
     handle /api/* {
         reverse_proxy localhost:3101
