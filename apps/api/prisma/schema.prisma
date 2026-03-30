@@ -69,3 +69,28 @@ model Submission {
   @@index([syncStatus, createdAt])
   @@index([nextAttemptAt])
 }
+
+model ClickEvent {
+  id            String   @id @default(uuid())
+  accountId     String?  @db.VarChar(64)
+  clickId       String   @db.VarChar(256)
+  clickTime     String?  @db.VarChar(32)
+  adgroupId     String?  @db.VarChar(64)
+  callback      String?  @db.Text
+  creativeId    String?  @db.VarChar(64)
+  adType        String?  @db.VarChar(16)
+  siteSet       String?  @db.VarChar(64)
+  requestId     String?  @db.VarChar(256)
+  deviceOs      String?  @db.VarChar(32)
+  muid          String?  @db.VarChar(128)
+  ip            String?  @db.VarChar(64)
+  userAgent     String?  @db.Text
+  impressionId  String?  @db.VarChar(256)
+  rawQuery      String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([clickId])
+  @@index([impressionId])
+  @@index([requestId])
+  @@index([createdAt])
+}
