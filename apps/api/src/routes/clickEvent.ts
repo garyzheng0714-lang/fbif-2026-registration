@@ -22,18 +22,20 @@ clickEventRouter.get('/click-callback', async (req, res) => {
       clickTime: String(req.query.click_time || '').trim() || undefined,
       adgroupId: String(req.query.adgroup_id || '').trim() || undefined,
       callback: String(req.query.callback || '').trim() || undefined,
-      creativeId: String(req.query.creative_id || '').trim() || undefined,
+      creativeId: String(req.query.creative_id || req.query.dynamic_creative_id || '').trim() || undefined,
       adType: String(req.query.ad_type || '').trim() || undefined,
-      siteSet: String(req.query.site_set || '').trim() || undefined,
+      siteSet: String(req.query.site_set || req.query.site_set_name || '').trim() || undefined,
       requestId: String(req.query.request_id || '').trim() || undefined,
-      deviceOs: String(req.query.device_os || '').trim() || undefined,
+      deviceOs: String(req.query.device_os || req.query.device_os_type || '').trim() || undefined,
       muid: String(req.query.muid || '').trim() || undefined,
       ip: String(req.query.ip || '').trim() || undefined,
       userAgent: String(req.query.user_agent || '').trim() || undefined,
       impressionId: String(req.query.impression_id || '').trim() || undefined,
+      rawQuery: JSON.stringify(req.query),
     });
 
-    return res.json({ success: true });
+    // 腾讯广告要求的响应格式
+    return res.json({ ret: 0, msg: 'ok' });
   } catch (err) {
     logger.error({ err }, 'click-callback failed');
     return res.status(500).json({ error: 'internal_error' });

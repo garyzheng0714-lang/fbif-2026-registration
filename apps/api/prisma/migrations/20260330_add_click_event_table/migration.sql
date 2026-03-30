@@ -15,6 +15,7 @@ CREATE TABLE "ClickEvent" (
     "ip" VARCHAR(64),
     "userAgent" TEXT,
     "impressionId" VARCHAR(256),
+    "rawQuery" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ClickEvent_pkey" PRIMARY KEY ("id")

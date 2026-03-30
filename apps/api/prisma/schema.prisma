@@ -86,6 +86,7 @@ model ClickEvent {
   ip            String?  @db.VarChar(64)
   userAgent     String?  @db.Text
   impressionId  String?  @db.VarChar(256)
+  rawQuery      String?  @db.Text
   createdAt     DateTime @default(now())
 
   @@index([clickId])
