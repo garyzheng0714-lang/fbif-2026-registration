@@ -3440,10 +3440,15 @@ body {
   border: 1px solid rgba(7, 193, 96, 0.2);
 }
 .success-qr-inline-title {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
+}
+.success-qr-inline-subtitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--ink-light);
 }
 .success-qr-inline-content {
   display: flex;
