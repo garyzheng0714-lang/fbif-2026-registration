@@ -50,7 +50,7 @@ const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
 const TOP_BANNER_URL = topBannerUrl;
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
-const SUCCESS_TOP_BANNER_URL = '/success-banner.webp';
+const SUCCESS_TOP_BANNER_URL = topBannerUrl;
 const BOTTOM_LONG_BANNER_URL =
   'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v4.webp';
 const CARRIE_WECHAT_QR_URL =
@@ -2684,6 +2684,7 @@ export default function App() {
 
               <div className="success-qr-inline">
                 <h3 className="success-qr-inline-title">观展、参展、参会咨询</h3>
+                <p className="success-qr-inline-subtitle">加入现场群，获取行业创新资料包</p>
                 <div className="success-qr-inline-content">
                   <img
                     className="success-qr-inline-image"
