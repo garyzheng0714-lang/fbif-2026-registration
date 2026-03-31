@@ -8,6 +8,7 @@ FBIF 食品创新展 2026 观众注册表单系统 — 高并发表单采集 + �
 - `apps/mock-api`: Mock API (本地开发用)
 - `docs/`: 部署、API、测试与使用文档
 - `tests/k6`: K6 压测脚本
+- `tests/load`: Shell 压测脚本（含 OSS 上传混合场景）
 
 ## 本地开发
 
@@ -73,5 +74,6 @@ node scripts/local-stack.mjs status
 - `FEISHU_APP_SECRET` 必须从环境变量注入
 - `FEISHU_TABLE_ID` 需填写多维表格的 Table ID
 - `DATA_KEY` 使用 32 字节 base64 密钥
+- `DATA_HASH_SALT` 至少 8 字符的哈希盐值
 
 更多内容见 `docs/`。
