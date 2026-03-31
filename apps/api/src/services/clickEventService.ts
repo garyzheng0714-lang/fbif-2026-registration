@@ -17,6 +17,7 @@ export interface ClickEventInput {
   userAgent?: string;
   impressionId?: string;
   rawQuery?: string;
+  vendor?: string;
 }
 
 /** 保存广告点击事件 */
@@ -38,6 +39,7 @@ export async function saveClickEvent(input: ClickEventInput) {
       userAgent: input.userAgent || null,
       impressionId: input.impressionId || null,
       rawQuery: input.rawQuery || null,
+      vendor: input.vendor || null,
     },
   });
   logger.info({ clickId: input.clickId }, 'click event saved');
@@ -70,6 +72,7 @@ export async function lookupClickEvent(trackingId: string) {
       muid: true,
       ip: true,
       userAgent: true,
+      vendor: true,
       createdAt: true,
     },
   });

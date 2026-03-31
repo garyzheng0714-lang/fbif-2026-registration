@@ -87,10 +87,12 @@ model ClickEvent {
   userAgent     String?  @db.Text
   impressionId  String?  @db.VarChar(256)
   rawQuery      String?  @db.Text
+  vendor        String?  @db.VarChar(64)
   createdAt     DateTime @default(now())
 
   @@index([clickId])
   @@index([impressionId])
   @@index([requestId])
   @@index([createdAt])
+  @@index([vendor])
 }
