@@ -32,6 +32,7 @@ clickEventRouter.get('/click-callback', async (req, res) => {
       userAgent: String(req.query.user_agent || '').trim() || undefined,
       impressionId: String(req.query.impression_id || '').trim() || undefined,
       rawQuery: JSON.stringify(req.query),
+      vendor: String(req.query.vendor || '').trim() || undefined,
     });
 
     // 腾讯广告要求的响应格式
@@ -75,6 +76,7 @@ clickEventRouter.get('/click-lookup', async (req, res) => {
       muid: record.muid,
       ip: record.ip,
       user_agent: record.userAgent,
+      vendor: record.vendor,
       created_at: record.createdAt,
     });
   } catch (err) {
