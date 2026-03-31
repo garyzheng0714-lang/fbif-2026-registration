@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useThrottleCallback } from './hooks/useThrottleCallback';
+import topBannerUrl from './assets/banner.webp';
 import {
   FeishuButton,
   FeishuCard,
@@ -46,7 +47,7 @@ function apiUrl(path: string) {
   return `${base}${normalizedPath}`;
 }
 const FORM_DRAFT_KEY = 'fbif_form_draft_v2';
-const TOP_BANNER_URL = '/banner.webp';
+const TOP_BANNER_URL = topBannerUrl;
 const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
 const SUCCESS_TOP_BANNER_URL = '/success-banner.webp';
