@@ -11,7 +11,6 @@ import { csrfRouter } from './routes/csrf.js';
 import { ossRouter } from './routes/oss.js';
 import { submissionsRouter } from './routes/submissions.js';
 import { idVerifyRouter } from './routes/idVerify.js';
-import { clickEventRouter } from './routes/clickEvent.js';
 import { feishuSyncQueue } from './queue/index.js';
 import { logger } from './utils/logger.js';
 import {
@@ -29,8 +28,6 @@ function normalizeMetricsPath(rawUrl: string) {
   if (path === '/api/id-verify') return '/api/id-verify';
   if (path === '/api/submissions') return '/api/submissions';
   if (/^\/api\/submissions\/[^/]+\/status$/.test(path)) return '/api/submissions/:id/status';
-  if (path === '/api/click-callback') return '/api/click-callback';
-  if (path === '/api/click-lookup') return '/api/click-lookup';
   if (path === '/health') return '/health';
   if (path === '/metrics') return '/metrics';
   return path;
@@ -101,7 +98,6 @@ export function createServer() {
     }
   });
 
-  app.use('/api', clickEventRouter);
   app.use('/api/csrf', csrfLimiter, csrfRouter);
   app.use('/api', apiLimiter);
   app.use('/api/oss', ossRouter);
