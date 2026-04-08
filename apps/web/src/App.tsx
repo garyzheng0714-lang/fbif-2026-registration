@@ -52,7 +52,7 @@ const SUCCESS_VERTICAL_BANNER_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/02/tblu5FXYOkS5dTd9_gbuDN4Q9JoJvSEnQZzkedw_1771995529125/img_v3_02v8_5f987292-5078-4999-b5c1-45f30e9db97g_1771995529400.png';
 const SUCCESS_TOP_BANNER_URL = topBannerUrl;
 const BOTTOM_LONG_BANNER_URL =
-  'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/04/tblMQeXvSGd7Hebf_CplwaVVX7RQAyfpgr3tOkg_1775635691670/20260408-160656_1775635692339.jpeg';
+  'https://fbif-2026-registration.oss-cn-shanghai.aliyuncs.com/fbif-form/assets/banner-long-2026-v5.webp';
 const CARRIE_WECHAT_QR_URL =
   'https://fbif-feishu-base.oss-cn-shanghai.aliyuncs.com/fbif-attachment-to-url/2026/03/tblMQeXvSGd7Hebf_ZqRI5Leu1y91z9OU8LtpOg_1773644300555/img_v3_02vr_01c7aa2d-3e94-400a-b442-de1b254103dg_1773644300778.png';
 const MAX_PROOF_UPLOAD_CONCURRENCY = 3;
