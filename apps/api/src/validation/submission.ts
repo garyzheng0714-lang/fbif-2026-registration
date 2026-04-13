@@ -221,7 +221,7 @@ export const submissionSchema = z.object({
           path: ['idNumber'],
           message: '年龄过大'
         });
-      } else if (data.role === 'industry' && age > 99) {
+      } else if (data.role === 'industry' && age > 65) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['idNumber'],
