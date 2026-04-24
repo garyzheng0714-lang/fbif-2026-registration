@@ -1,32 +1,68 @@
-# FBIF Form
+# FBIF 2026 Registration
 
-FBIF 食品创新展 2026 观众注册表单系统 — 高并发表单采集 + 飞书多维表格异步同步。
+FBIF 食品创新展 2026 观众注册表单系统，用于收集观众报名信息、校验提交数据，并异步同步到飞书多维表格。
 
-## 目录结构
-- `apps/web`: React 表单前端 (Vite + TypeScript)
-- `apps/api`: Express + Prisma 后端 (BullMQ 异步任务)
-- `apps/mock-api`: Mock API (本地开发用)
-- `docs/`: 部署、API、测试与使用文档
-- `tests/k6`: K6 压测脚本
-- `tests/load`: Shell 压测脚本（含 OSS 上传混合场景）
+## Overview
 
-## 本地开发
+本仓库是一个前后端分离的注册系统。前端提供移动端优先的报名表单，后端负责表单校验、CSRF/rate limit 防护、数据落库、队列任务和飞书多维表格同步。系统还包含本地 mock API、部署脚本、压测记录和生产运维文档。
 
-1. 启动依赖
+## Features
+
+- 区分专业观众和普通观众的报名表单
+- 手机号、证件类型、身份证二要素验证等校验流程
+- 腾讯广告点击参数和访问跟踪字段采集
+- 可选 OSS 附件上传策略接口
+- Express API 接收提交并返回同步状态
+- PostgreSQL 存储报名记录，Redis + BullMQ 异步同步飞书
+- 飞书多维表格字段映射、选项映射和重试机制
+- CSRF、限流、Helmet、结构化日志和 Prometheus 指标
+- Preview 与生产环境的 Docker/GitHub Actions 部署文档
+
+## Tech Stack
+
+- Frontend: React 18, TypeScript, Vite, Vitest
+- API: Node.js, Express, TypeScript, Prisma, Zod
+- Queue: BullMQ, Redis
+- Database: PostgreSQL
+- Integrations: Feishu/Lark Bitable, Aliyun OSS, optional Aliyun ID verification
+- Deployment: Docker Compose, Nginx/Caddy, GitHub Actions
+
+## Project Structure
+
+```text
+.
+├── apps/
+│   ├── web/        # React registration form
+│   ├── api/        # Express API, Prisma schema and worker
+│   └── mock-api/   # Local mock server for frontend development
+├── deploy/         # Caddy/Nginx deployment templates
+├── docs/           # API, deployment, runbook and environment docs
+├── scripts/        # Local stack, deploy, rollback and verification helpers
+├── docker-compose.yml
+└── docker-compose.production.yml
+```
+
+## Getting Started
+
+Start local infrastructure:
+
 ```bash
 docker compose up -d
 ```
 
-2. 后端
+Set up and run the API:
+
 ```bash
 cd apps/api
 cp .env.example .env
 npm ci
+npm run prisma:generate
 npm run prisma:migrate
 npm run dev
 ```
 
-3. 前端
+Set up and run the web app:
+
 ```bash
 cd apps/web
 cp .env.example .env
@@ -34,46 +70,83 @@ npm ci
 npm run dev
 ```
 
-## 本地前后端联调
+For a frontend-only workflow, run the mock API:
+
+```bash
+cd apps/mock-api
+cp .env.example .env
+npm ci
+npm run dev
+```
+
+## Useful Commands
+
+API:
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run worker:dev
+npm run test
+npm run prisma:migrate
+```
+
+Web:
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run test
+npm run preview:start
+npm run preview:status
+npm run preview:stop
+```
+
+Mock API:
+
+```bash
+npm run dev
+npm run start
+npm run test
+npm run smoke:feishu
+```
+
+Local full-stack helper:
+
 ```bash
 node scripts/local-stack.mjs start
 node scripts/local-stack.mjs status
+node scripts/local-stack.mjs stop
 ```
 
-同时启动前端预览 (`http://localhost:4173`) 和模拟后端 (`http://localhost:8080`)。
+## Configuration
 
-详见 `docs/local-dev-environment.md`。
+Copy each app's `.env.example` before local development. Important backend settings include:
 
-## 部署架构
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection used by Prisma |
+| `REDIS_URL` | Redis connection used by BullMQ |
+| `DATA_KEY` | 32-byte base64 encryption key |
+| `DATA_HASH_SALT` | Salt for hashed sensitive fields |
+| `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | Feishu app credentials |
+| `FEISHU_APP_TOKEN` / `FEISHU_TABLE_ID` | Target Bitable app and table |
+| `FEISHU_FIELD_*` | Optional overrides for Bitable column names |
+| `OSS_*` | Optional direct-to-OSS upload configuration |
+| `ID_VERIFY_*` | Optional Aliyun ID verification configuration |
 
-单服务器 (121.40.214.5) 双环境部署:
+The frontend usually uses `VITE_API_URL` for local development. Production is expected to use same-origin `/api` routing through the reverse proxy.
 
-| 环境 | 前端 | API | 触发方式 |
-|------|------|-----|----------|
-| 生产 | `:3001` (Caddy HTTPS -> Nginx) | `:8080 / :18080` (blue/green) | 手动 GitHub Actions dispatch |
-| Preview | `:3003` (HTTP) | `:8083` | push to main 自动触发 |
+## Deployment Notes
 
-两套环境通过不同 Docker 项目名和数据库完全隔离。
+The repository includes GitHub Actions and server scripts for Preview and production deployment. Existing documentation describes:
 
-生产稳定性基线（防串线）：
-- 生产域名 API 必须经 `localhost:3001`，不允许直连 `localhost:8080`
-- Preview 蓝绿槽位不得占用生产 API 端口 `8080/18080`
-- `nginx sites-enabled` 不允许出现 `fbif-form-staging*` 条目
+- Preview deployment: `docs/github-actions-deploy.md`
+- Production release flow: `docs/release-flow.md`
+- Environment model: `docs/repo-environment-model.md`
+- Runbook and incident response: `docs/runbook.md`
+- Port isolation and rollback: `docs/production-port-isolation-runbook.md`
 
-## CI/CD
-
-- **Preview**: push to `main` → 自动部署到 `http://121.40.214.5:3003`
-- **生产**: 手动触发 GitHub Actions `Deploy To Aliyun` → 部署到 `https://fbif2026ticket.foodtalks.cn`
-
-说明文档: `docs/github-actions-deploy.md`
-发布规则: `docs/release-flow.md`
-应急与防复发手册: `docs/production-port-isolation-runbook.md`
-
-## 重要配置
-
-- `FEISHU_APP_SECRET` 必须从环境变量注入
-- `FEISHU_TABLE_ID` 需填写多维表格的 Table ID
-- `DATA_KEY` 使用 32 字节 base64 密钥
-- `DATA_HASH_SALT` 至少 8 字符的哈希盐值
-
-更多内容见 `docs/`。
+The existing README documented production at `https://fbif2026ticket.foodtalks.cn` and Preview at `http://121.40.214.5:3003`; verify current infrastructure before changing deployment settings.
