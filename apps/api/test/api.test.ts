@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 
+function chineseIdForBirthYear(year: number) {
+  const base = `110105${year}0101002`;
+  const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+  const codes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+  const sum = base.split('').reduce((acc, char, index) => acc + Number(char) * weights[index], 0);
+  return `${base}${codes[sum % 11]}`;
+}
+
 function ensureTestEnv() {
   process.env.NODE_ENV = 'test';
   process.env.WEB_ORIGIN = process.env.WEB_ORIGIN || 'http://localhost:5173';
@@ -174,6 +182,53 @@ test('consumer submission is accepted and returns id + traceId', async () => {
   assert.equal(saved?.trackingParams, 'utm_source=ad&qz_gdt=QZ-123&foo=bar');
   assert.equal(saved?.trackingId, 'QZ-123');
   assert.equal(saved?.trackingIdType, 'qz_gdt');
+});
+
+test('consumer cn_id over 50 and within 65 is accepted', async () => {
+  const csrfRes = await request(server).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const submitRes = await request(server)
+    .post('/api/submissions')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .send({
+      clientRequestId: 'req-consumer-age-60',
+      role: 'consumer',
+      idType: 'cn_id',
+      idNumber: chineseIdForBirthYear(new Date().getFullYear() - 60),
+      phone: '13800138000',
+      name: '张三',
+      title: '消费者',
+      company: '个人消费者'
+    });
+
+  assert.equal(submitRes.status, 202);
+});
+
+test('consumer cn_id over 65 is rejected', async () => {
+  const csrfRes = await request(server).get('/api/csrf');
+  const cookie = csrfRes.headers['set-cookie'][0];
+  const token = csrfRes.body.csrfToken;
+
+  const submitRes = await request(server)
+    .post('/api/submissions')
+    .set('Cookie', cookie)
+    .set('X-CSRF-Token', token)
+    .send({
+      clientRequestId: 'req-consumer-age-66',
+      role: 'consumer',
+      idType: 'cn_id',
+      idNumber: chineseIdForBirthYear(new Date().getFullYear() - 66),
+      phone: '13800138000',
+      name: '张三',
+      title: '消费者',
+      company: '个人消费者'
+    });
+
+  assert.equal(submitRes.status, 400);
+  assert.deepEqual(submitRes.body.details?.fieldErrors?.idNumber, ['年龄过大']);
 });
 
 test('clientRequestId is idempotent', async () => {
