@@ -215,7 +215,7 @@ export const submissionSchema = z.object({
           path: ['idNumber'],
           message: '年龄过小'
         });
-      } else if (data.role === 'consumer' && age > 50) {
+      } else if (data.role === 'consumer' && age > 65) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['idNumber'],

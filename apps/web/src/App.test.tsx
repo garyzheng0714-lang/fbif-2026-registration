@@ -19,6 +19,14 @@ async function selectFeishuOption(
   await user.click(await screen.findByRole('option', { name: optionLabel }));
 }
 
+function chineseIdForBirthYear(year: number) {
+  const base = `110105${year}0101002`;
+  const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+  const codes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+  const sum = base.split('').reduce((acc, char, index) => acc + Number(char) * weights[index], 0);
+  return `${base}${codes[sum % 11]}`;
+}
+
 describe('App dynamic form', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
@@ -37,6 +45,9 @@ describe('App dynamic form', () => {
 
     expect(screen.queryByLabelText('姓名')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /返回选择身份/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('请选择您的观展身份，我们将为您发放对应的观展票。本活动为特定年龄段主题场，主要面向16–65岁观众开放，请理解与配合。')
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '专业观众注册' }));
     await screen.findByLabelText('公司');
@@ -175,9 +186,45 @@ describe('App dynamic form', () => {
     expect(submitBody.idType).toBe('cn_id');
   });
 
-  it('blocks consumer age over 50 with toast', async () => {
+  it('allows consumer age over 50 when within 65', async () => {
     const user = userEvent.setup();
     const fetchMock = vi.mocked(fetch);
+    const sixtyYearOldId = chineseIdForBirthYear(new Date().getFullYear() - 60);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ csrfToken: 'csrf-token' }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          verified: true,
+          result: 1,
+          message: '实名验证通过',
+          verificationToken: 'verify-token'
+        })
+      )
+      .mockResolvedValueOnce(jsonResponse({ id: 'submission-id', traceId: 'trace-id', syncStatus: 'PENDING' }, 202));
+
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '消费者注册' }));
+    await screen.findByLabelText('姓名');
+
+    await user.type(screen.getByLabelText('姓名'), '张三');
+    await selectFeishuOption(user, '证件类型', '中国居民身份证');
+    await user.type(screen.getByLabelText('证件号码'), sixtyYearOldId);
+    await user.type(screen.getByLabelText('手机号'), '13800000000');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: '领取观展票' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://localhost:8080/api/id-verify');
+    expect(screen.queryByText('16岁以下及65岁以上观众禁止入场，请勿注册！')).not.toBeInTheDocument();
+  });
+
+  it('blocks consumer age over 65 with toast', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.mocked(fetch);
+    const sixtySixYearOldId = chineseIdForBirthYear(new Date().getFullYear() - 66);
     fetchMock.mockResolvedValueOnce(jsonResponse({ csrfToken: 'csrf-token' }));
 
     render(<App />);
@@ -186,14 +233,12 @@ describe('App dynamic form', () => {
 
     await user.type(screen.getByLabelText('姓名'), '张三');
     await selectFeishuOption(user, '证件类型', '中国居民身份证');
-    await user.type(screen.getByLabelText('证件号码'), '11010519491231002X');
+    await user.type(screen.getByLabelText('证件号码'), sixtySixYearOldId);
     await user.type(screen.getByLabelText('手机号'), '13800000000');
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: '领取观展票' }));
 
-    expect(
-      await screen.findByText('因场内人流管控需要，16岁以下、50岁以上群体暂无法报名，感谢您的理解。')
-    ).toBeInTheDocument();
+    expect(await screen.findAllByText('16岁以下及65岁以上观众禁止入场，请勿注册！')).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

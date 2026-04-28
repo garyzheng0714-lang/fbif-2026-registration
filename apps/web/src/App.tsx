@@ -500,8 +500,8 @@ function checkAgeLimit(role: 'industry' | 'consumer', idType: IdType, idNumber: 
   if (age == null) {
     return { ok: true as const };
   }
-  if (role === 'consumer' && (age < 16 || age > 50)) {
-    return { ok: false as const, message: '因场内人流管控需要，16岁以下、50岁以上群体暂无法报名，感谢您的理解。' };
+  if (role === 'consumer' && (age < 16 || age > 65)) {
+    return { ok: false as const, message: '16岁以下及65岁以上观众禁止入场，请勿注册！' };
   }
   if (role === 'industry' && (age < 16 || age > 65)) {
     return { ok: false as const, message: '因场内人流管控需要，16岁以下、65岁以上群体暂无法报名，感谢您的理解。' };
@@ -1912,7 +1912,7 @@ export default function App() {
   const identityAgeNotice =
     identity === 'industry'
       ? '16岁以下及65岁以上观众禁止入场，请勿注册！'
-      : '16岁以下及50岁以上观众禁止入场，请勿注册！';
+      : '16岁以下及65岁以上观众禁止入场，请勿注册！';
   const canCloseSubmitDialog = !(submitDialog.status === 'submitting' && isSubmitting);
   const closeSubmitDialog = () => {
     if (!canCloseSubmitDialog) return;
@@ -1999,7 +1999,9 @@ export default function App() {
           <>
             <FeishuCard className="role-card">
               <h2>请选择您的观展身份</h2>
-            <p className="tips">请选择您的观展身份，我们将为您发放对应的观展票。</p>
+              <p className="tips">
+                请选择您的观展身份，我们将为您发放对应的观展票。本活动为特定年龄段主题场，主要面向16–65岁观众开放，请理解与配合。
+              </p>
 
             <div className="role-options">
               <button
