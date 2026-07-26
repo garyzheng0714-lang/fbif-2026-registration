@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">FBIF 2026 观众注册系统</title>
+  <desc id="heroDesc">行业观众与消费者共用一个单页报名流程，提交先可靠写入 PostgreSQL，再经 BullMQ 异步同步到飞书多维表格。图中左边是报名表单，右边是提交后的三段可靠链路。</desc>
+
+  <defs>
+    <style>
+      .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, "Cascadia Mono", monospace; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="380" rx="26" fill="#0B0F17"/>
+
+  <!-- 左：标题区 -->
+  <g id="title-block" class="sans">
+    <rect x="64" y="76" width="6" height="22" rx="3" fill="#2563EB"/>
+    <text x="82" y="94" font-size="22" font-weight="600" fill="#6E9BF5" letter-spacing="1">FBIF 2026 · 观众注册</text>
+
+    <text x="64" y="166" font-size="52" font-weight="700" fill="#FFFFFF" letter-spacing="1">观众注册系统</text>
+
+    <text x="64" y="216" font-size="24" fill="#94A3B8">行业观众和消费者用同一个报名页，提交先可靠</text>
+    <text x="64" y="252" font-size="24" fill="#94A3B8">写进 PostgreSQL，再异步同步到飞书多维表格。</text>
+
+    <text x="64" y="316" font-size="18" class="mono" fill="#59657C">React 18 · Express · Prisma · BullMQ · Redis</text>
+  </g>
+
+  <!-- 中：报名表单 -->
+  <g id="form" class="sans">
+    <rect x="620" y="52" width="200" height="292" rx="18" fill="#FFFFFF"/>
+    <text x="636" y="86" font-size="17" font-weight="700" fill="#1A1D26">FBIF 2026 报名</text>
+
+    <rect x="636" y="98" width="88" height="30" rx="8" fill="#2563EB"/>
+    <text x="680" y="118" font-size="16" fill="#FFFFFF" text-anchor="middle">行业观众</text>
+    <rect x="730" y="98" width="74" height="30" rx="8" fill="#F1F3F6"/>
+    <text x="767" y="118" font-size="16" fill="#7A828E" text-anchor="middle">消费者</text>
+
+    <rect x="636" y="146" width="168" height="36" rx="7" fill="#F5F7FA"/>
+    <text x="650" y="169" font-size="16" fill="#98A0AC">姓名</text>
+
+    <rect x="636" y="192" width="168" height="36" rx="7" fill="#F5F7FA"/>
+    <text x="650" y="215" font-size="16" fill="#98A0AC">手机号</text>
+
+    <rect x="636" y="238" width="168" height="36" rx="7" fill="#F5F7FA"/>
+    <text x="650" y="261" font-size="16" fill="#98A0AC">公司 / 职位</text>
+
+    <rect x="636" y="292" width="168" height="38" rx="9" fill="#2563EB"/>
+    <text x="720" y="316" font-size="17" font-weight="600" fill="#FFFFFF" text-anchor="middle">提交报名</text>
+  </g>
+
+  <!-- 右：可靠链路 -->
+  <g id="pipeline" class="sans">
+    <line x1="878" y1="86" x2="878" y2="256" stroke="#1F2A3C" stroke-width="2"/>
+
+    <circle cx="878" cy="86" r="8" fill="#4ADE80"/>
+    <text x="906" y="80" font-size="19" font-weight="600" fill="#FFFFFF">写入 PostgreSQL</text>
+    <text x="906" y="104" font-size="16" fill="#7C8AA3">事实源 · clientRequestId 幂等</text>
+
+    <circle cx="878" cy="172" r="8" fill="#2563EB"/>
+    <text x="906" y="166" font-size="19" font-weight="600" fill="#FFFFFF">进入 BullMQ 队列</text>
+    <text x="906" y="190" font-size="16" fill="#7C8AA3">并发 · QPS 控制 · 指数退避</text>
+
+    <circle cx="878" cy="256" r="8" fill="#00B96B"/>
+    <text x="906" y="250" font-size="19" font-weight="600" fill="#FFFFFF">同步飞书多维表格</text>
+    <text x="906" y="274" font-size="16" fill="#7C8AA3">失败告警 · 孤儿扫描重投</text>
+
+    <text x="878" y="322" font-size="16" class="mono" fill="#4E5A70">接口成功 ≠ 飞书已同步，状态另查</text>
+  </g>
+</svg>

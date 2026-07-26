@@ -1,14 +1,23 @@
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="FBIF 2026 观众注册系统：报名表单，以及提交先写 PostgreSQL、再经 BullMQ 异步同步飞书的可靠链路">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/%E7%B1%BB%E5%9E%8B-%E6%B4%BB%E5%8A%A8%E6%8A%A5%E5%90%8D-2563eb?style=flat-square" alt="活动报名">
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=061a23" alt="React 18.3">
+  <img src="https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 20">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis 7">
+  <img src="https://img.shields.io/badge/%E7%8A%B6%E6%80%81-%E5%86%85%E9%83%A8%E7%94%9F%E4%BA%A7%E7%B3%BB%E7%BB%9F-16a34a?style=flat-square" alt="内部生产系统">
+</p>
+
 # FBIF 2026 观众注册系统
 
-![类型](https://img.shields.io/badge/%E7%B1%BB%E5%9E%8B-%E6%B4%BB%E5%8A%A8%E6%8A%A5%E5%90%8D-2563eb)
-![状态](https://img.shields.io/badge/%E7%8A%B6%E6%80%81-%E5%86%85%E9%83%A8%E7%94%9F%E4%BA%A7%E7%B3%BB%E7%BB%9F-16a34a)
-![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=061a23)
-![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=nodedotjs&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
-![README](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-0f766e)
+行业观众和消费者用同一个单页报名流程，按角色呈现不同字段和校验规则。
 
-FBIF 食品创新展 2026 观众注册系统。系统面向行业观众和消费者提供单页报名流程，先将提交可靠写入 PostgreSQL，再通过 BullMQ 异步同步到飞书多维表格；附件上传、身份验证、广告归因、失败重试和告警均围绕这条主链路展开。
+提交这一步做了明确取舍：**表单先可靠写入 PostgreSQL，再通过 BullMQ 异步同步到飞书多维表格**。PostgreSQL 是报名的事实源，飞书是协作和运营消费端，不承担接收入口的可靠性。附件上传、身份验证、广告归因、失败重试和告警都围绕这条主链路展开。
+
+> **HTTP 接口返回成功，只代表数据已可靠进入本系统。** 最终飞书同步状态要通过提交状态接口单独查询。
 
 ## 核心能力
 
