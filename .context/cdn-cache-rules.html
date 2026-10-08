@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDN 缓存规则详解 — FBIF 2026</title>
+<style>
+  :root {
+    --blue: #1677ff;
+    --blue-light: #e6f4ff;
+    --green: #52c41a;
+    --green-bg: #f6ffed;
+    --green-border: #b7eb8f;
+    --red: #ff4d4f;
+    --red-bg: #fff2f0;
+    --red-border: #ffccc7;
+    --orange: #fa8c16;
+    --orange-bg: #fff7e6;
+    --orange-border: #ffd591;
+    --gray: #8c8c8c;
+    --gray-bg: #fafafa;
+    --border: #f0f0f0;
+    --text: #262626;
+    --text-secondary: #595959;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    color: var(--text);
+    background: #f5f7fa;
+    line-height: 1.8;
+    padding: 20px;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 40px 20px 30px;
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header p { color: var(--text-secondary); font-size: 16px; }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card h3 { font-size: 17px; margin: 20px 0 12px; }
+
+  /* Analogy section */
+  .analogy {
+    background: var(--blue-light);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .analogy-title {
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+
+  /* The big diagram */
+  .diagram-wrapper {
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 600px;
+  }
+  .flow-item {
+    flex: 1;
+    text-align: center;
+    padding: 16px 10px;
+    position: relative;
+  }
+  .flow-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 10px;
+  }
+  .flow-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .flow-desc { font-size: 12px; color: var(--text-secondary); }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    flex-shrink: 0;
+    font-size: 20px;
+    color: var(--gray);
+  }
+
+  /* Request path visualization */
+  .path-group {
+    margin: 20px 0;
+  }
+  .path-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .path-row.cache { background: var(--green-bg); border: 1px solid var(--green-border); }
+  .path-row.no-cache { background: var(--red-bg); border: 1px solid var(--red-border); }
+  .path-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag-green { background: var(--green); color: #fff; }
+  .tag-red { background: var(--red); color: #fff; }
+  .tag-blue { background: var(--blue); color: #fff; }
+  .path-url {
+    font-family: 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .path-explain {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-left: auto;
+  }
+
+  /* Rule table */
+  .rule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .rule-table th {
+    background: var(--gray-bg);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+  }
+  .rule-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .rule-table tr:hover { background: var(--gray-bg); }
+  .rule-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* Scenario comparison */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  @media (max-width: 600px) {
+    .scenario-grid { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; align-items: center; min-width: 0; }
+    .flow-arrow { transform: rotate(90deg); width: auto; height: 30px; }
+  }
+  .scenario {
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .scenario.good { background: var(--green-bg); border: 1px solid var(--green-border); }
+  .scenario.bad { background: var(--red-bg); border: 1px solid var(--red-border); }
+  .scenario-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .scenario.good .scenario-title { color: var(--green); }
+  .scenario.bad .scenario-title { color: var(--red); }
+  .scenario p { font-size: 14px; line-height: 1.7; }
+
+  /* Callout boxes */
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout-danger { background: var(--red-bg); border-left: 4px solid var(--red); }
+  .callout-warning { background: var(--orange-bg); border-left: 4px solid var(--orange); }
+  .callout-success { background: var(--green-bg); border-left: 4px solid var(--green); }
+  .callout-info { background: var(--blue-light); border-left: 4px solid var(--blue); }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  /* Bandwidth animation */
+  .bandwidth-demo {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--gray-bg);
+    border-radius: 10px;
+  }
+  .bandwidth-bar {
+    height: 30px;
+    border-radius: 6px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .bandwidth-bar.narrow {
+    width: 15%;
+    min-width: 120px;
+    background: var(--red);
+  }
+  .bandwidth-bar.wide {
+    width: 100%;
+    background: var(--green);
+  }
+  .bandwidth-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Summary box */
+  .summary-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    margin: 24px 0;
+    text-align: center;
+  }
+  .summary-box h3 { font-size: 18px; margin-bottom: 12px; }
+  .summary-box p { font-size: 15px; opacity: 0.95; }
+
+  code {
+    font-family: 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    background: var(--gray-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .step-list { list-style: none; padding: 0; }
+  .step-list li {
+    padding: 10px 0 10px 36px;
+    position: relative;
+    border-left: 2px solid var(--border);
+    margin-left: 12px;
+  }
+  .step-list li:last-child { border-left-color: transparent; }
+  .step-list li::before {
+    content: attr(data-step);
+    position: absolute;
+    left: -13px;
+    top: 10px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>CDN 缓存规则详解</h1>
+    <p>为什么需要配置规则？每条规则的作用是什么？</p>
+  </div>
+
+  <!-- Section 1: 为什么需要规则 -->
+  <div class="card">
+    <h2>先搞清楚一件事：CDN 不知道你的网站长什么样</h2>
+    <p>你把域名接到了 CDN，CDN 就像一个<strong>新来的快递员</strong>，他不知道哪些包裹可以提前备货在仓库（缓存），哪些必须每次都去工厂现拿（回源）。</p>
+
+    <div class="analogy">
+      <div class="analogy-title">类比：便利店进货</div>
+      <p>你开了一家便利店（CDN 节点），需要告诉店员：</p>
+      <ul style="margin: 10px 0 0 20px;">
+        <li><strong>矿泉水、零食</strong>（静态文件）→ 大量囤货，卖完再补 → <strong>缓存 30 天</strong></li>
+        <li><strong>现做咖啡</strong>（表单提交 API）→ 不能囤，每杯都要现做 → <strong>不缓存</strong></li>
+        <li><strong>今日菜单</strong>（首页 HTML）→ 每天都在变，必须实时更新 → <strong>不缓存</strong></li>
+      </ul>
+      <p style="margin-top: 10px;"><strong>如果你不告诉他，他会按默认规则乱来</strong> —— 可能把「现做咖啡」也囤货了，顾客喝到的就是凉的。</p>
+    </div>
+  </div>
+
+  <!-- Section 2: Your site's structure -->
+  <div class="card">
+    <h2>你的网站有哪些「路径」？</h2>
+    <p>当用户打开 <code>fbif2026ticket.foodtalks.cn</code>，浏览器会请求以下内容：</p>
+
+    <div class="diagram-wrapper">
+      <div class="flow">
+        <div class="flow-item">
+          <div class="flow-icon" style="background: var(--blue-light); color: var(--blue);">🌐</div>
+          <div class="flow-label">用户打开网站</div>
+          <div class="flow-desc">浏览器发起请求</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-icon" style="background: var(--orange-bg); color: var(--orange);">📄</div>
+          <div class="flow-label">index.html</div>
+          <div class="flow-desc">首页，告诉浏览器<br>需要加载哪些文件</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-icon" style="background: var(--green-bg); color: var(--green);">📦</div>
+          <div class="flow-label">/assets/index-xxx.js</div>
+          <div class="flow-desc">页面代码和样式<br>（文件名每次构建都不同）</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-icon" style="background: var(--red-bg); color: var(--red);">📡</div>
+          <div class="flow-label">/api/submissions</div>
+          <div class="flow-desc">提交表单数据<br>（每个人的数据都不同）</div>
+        </div>
+      </div>
+    </div>
+
+    <p>这些路径的性质<strong>完全不同</strong>，所以需要不同的缓存策略：</p>
+
+    <div class="path-group">
+      <div class="path-row cache">
+        <span class="path-tag tag-green">缓存 30 天</span>
+        <span class="path-url">/assets/*</span>
+        <span class="path-explain">JS/CSS 静态文件，文件名含哈希，内容永远不变</span>
+      </div>
+      <div class="path-row no-cache">
+        <span class="path-tag tag-red">不缓存</span>
+        <span class="path-url">/api/*</span>
+        <span class="path-explain">表单提交、获取验证码等动态接口</span>
+      </div>
+      <div class="path-row no-cache">
+        <span class="path-tag tag-red">不缓存</span>
+        <span class="path-url">/</span>
+        <span class="path-explain">首页 HTML，每次更新后内容都会变</span>
+      </div>
+      <div class="path-row no-cache">
+        <span class="path-tag tag-red">不缓存</span>
+        <span class="path-url">/.well-known/*</span>
+        <span class="path-explain">HTTPS 证书续期验证，必须回源</span>
+      </div>
+      <div class="path-row no-cache">
+        <span class="path-tag tag-red">不缓存</span>
+        <span class="path-url">/health</span>
+        <span class="path-explain">服务器健康检查</span>
+      </div>
+      <div class="path-row no-cache">
+        <span class="path-tag tag-red">不缓存</span>
+        <span class="path-url">/metrics</span>
+        <span class="path-explain">服务器监控指标</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: What happens without rules -->
+  <div class="card">
+    <h2>如果不配规则会怎样？</h2>
+
+    <div class="scenario-grid">
+      <div class="scenario bad">
+        <div class="scenario-title">不配规则（默认行为）</div>
+        <p>CDN 可能把 <code>/api/*</code> 的响应也缓存了。</p>
+        <p style="margin-top: 8px;">结果：用户 A 提交表单后，用户 B 提交时<strong>拿到了用户 A 的结果</strong>（因为 CDN 返回了缓存的响应）。</p>
+        <p style="margin-top: 8px;">更严重：CSRF 验证码被缓存，所有人拿到同一个 token，<strong>表单全部提交失败</strong>。</p>
+      </div>
+      <div class="scenario good">
+        <div class="scenario-title">正确配置规则后</div>
+        <p><code>/api/*</code> 设为不缓存，每个请求都回源。</p>
+        <p style="margin-top: 8px;">每个用户拿到自己的 CSRF token，提交各自的表单数据。</p>
+        <p style="margin-top: 8px;">同时 <code>/assets/*</code> 缓存 30 天，全国各地的用户都能<strong>秒开页面</strong>。</p>
+      </div>
+    </div>
+
+    <div class="callout callout-danger">
+      <strong>最严重的后果：API 被缓存 = 网站「瘫痪」</strong>
+      表单看起来能打开，但提交永远失败。用户以为网站坏了。而且这个问题很难排查 —— 因为你在自己电脑上测试可能是好的（CDN 节点缓存内容不同）。
+    </div>
+  </div>
+
+  <!-- Section 4: The 6 rules explained -->
+  <div class="card">
+    <h2>6 条规则详解</h2>
+    <p>在阿里云 DCDN 控制台的「缓存配置」→「缓存规则」中，按以下顺序添加：</p>
+
+    <div class="callout callout-warning">
+      <strong>顺序很重要！</strong>
+      规则是从上到下匹配的。如果把「/ 不缓存」放在「/assets 缓存 30 天」前面，那 /assets 也会变成不缓存，因为 / 先匹配到了。
+    </div>
+
+    <table class="rule-table">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>路径</th>
+          <th>缓存</th>
+          <th>为什么？</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="rule-num" style="background:var(--red);">1</span></td>
+          <td><code>/.well-known</code></td>
+          <td>不缓存</td>
+          <td>
+            <strong>HTTPS 证书续期</strong><br>
+            你的服务器每 90 天需要续期 HTTPS 证书。续期时，证书机构会访问这个路径来验证你是域名拥有者。如果 CDN 把验证结果缓存了，续期会失败，<strong>90 天后网站 HTTPS 会失效</strong>。
+          </td>
+        </tr>
+        <tr>
+          <td><span class="rule-num" style="background:var(--red);">2</span></td>
+          <td><code>/api</code></td>
+          <td>不缓存</td>
+          <td>
+            <strong>表单提交、验证码等所有接口</strong><br>
+            每个用户的请求数据都不同（姓名、手机号、证件号），绝对不能缓存。缓存了就会串数据。
+          </td>
+        </tr>
+        <tr>
+          <td><span class="rule-num" style="background:var(--red);">3</span></td>
+          <td><code>/health</code></td>
+          <td>不缓存</td>
+          <td>
+            <strong>健康检查</strong><br>
+            监控系统定期访问这个地址确认服务器是否正常。缓存了就检测不到服务器宕机。
+          </td>
+        </tr>
+        <tr>
+          <td><span class="rule-num" style="background:var(--red);">4</span></td>
+          <td><code>/metrics</code></td>
+          <td>不缓存</td>
+          <td>
+            <strong>监控指标</strong><br>
+            实时性能数据，必须是最新的。
+          </td>
+        </tr>
+        <tr>
+          <td><span class="rule-num" style="background:var(--green);">5</span></td>
+          <td><code>/assets</code></td>
+          <td style="color:var(--green); font-weight:700;">缓存 30 天</td>
+          <td>
+            <strong>JS、CSS 等静态文件 —— CDN 加速的核心</strong><br>
+            这些文件名里有哈希值（如 <code>index-BpFqvz53.js</code>），内容一旦发布就不会变。缓存 30 天，全国用户都从最近的 CDN 节点拿，<strong>不再占用你服务器的 1Mbps 带宽</strong>。
+          </td>
+        </tr>
+        <tr>
+          <td><span class="rule-num" style="background:var(--orange);">6</span></td>
+          <td><code>/</code></td>
+          <td>不缓存</td>
+          <td>
+            <strong>兜底规则 —— 包括首页 HTML</strong><br>
+            用户访问网站首先加载 <code>index.html</code>。这个文件每次发布都会变（里面引用了新的 JS 文件名）。如果被缓存，用户会一直看到旧版本。
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 5: Visual - what gets cached -->
+  <div class="card">
+    <h2>一张图看懂：用户访问时发生了什么</h2>
+
+    <h3>配置规则后的请求流程：</h3>
+
+    <ol class="step-list">
+      <li data-step="1">
+        <strong>用户打开网站</strong> → 浏览器请求 <code>/</code>（首页 HTML）<br>
+        <span class="path-tag tag-red" style="font-size:12px;">规则 6：不缓存</span>
+        CDN 每次都去你的服务器拿最新的 HTML
+      </li>
+      <li data-step="2">
+        <strong>浏览器读到 HTML</strong>，发现需要加载 <code>/assets/index-BpFqvz53.js</code><br>
+        <span class="path-tag tag-green" style="font-size:12px;">规则 5：缓存 30 天</span>
+        CDN 发现本地有缓存 → 直接返回，<strong>不需要去服务器拿</strong>
+      </li>
+      <li data-step="3">
+        <strong>页面渲染完成</strong>，用户填写表单，点击提交 → 请求 <code>/api/submissions</code><br>
+        <span class="path-tag tag-red" style="font-size:12px;">规则 2：不缓存</span>
+        CDN 透传到你的服务器，服务器处理并存入数据库
+      </li>
+      <li data-step="4">
+        <strong>完成！</strong> 静态资源走 CDN 缓存（快），动态请求走源站（安全）
+      </li>
+    </ol>
+
+    <h3 style="margin-top: 24px;">带宽效果对比：</h3>
+    <div class="bandwidth-demo">
+      <div style="font-size:14px; margin-bottom:6px; font-weight:600;">没有 CDN 时 —— 所有请求都走你的服务器</div>
+      <div class="bandwidth-bar narrow">1 Mbps</div>
+      <div class="bandwidth-label">
+        <span>HTML + JS + CSS + API 全部挤在这条窄管道里</span>
+        <span style="color:var(--red);">2-3 人同时访问就卡</span>
+      </div>
+
+      <div style="font-size:14px; margin: 20px 0 6px; font-weight:600;">有 CDN + 正确规则后 —— 静态资源走 CDN</div>
+      <div class="bandwidth-bar wide">CDN 带宽（Gbps 级别，几乎无限）</div>
+      <div class="bandwidth-label">
+        <span>JS、CSS 从全国 2800+ 节点就近返回</span>
+        <span style="color:var(--green);">几百人同时访问都没问题</span>
+      </div>
+      <div class="bandwidth-bar narrow" style="margin-top:10px;">1 Mbps（只跑 API）</div>
+      <div class="bandwidth-label">
+        <span>只有表单提交（每次几 KB）走服务器</span>
+        <span style="color:var(--green);">绰绰有余</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 6: What if I update frontend -->
+  <div class="card">
+    <h2>更新前端后，CDN 缓存的旧文件怎么办？</h2>
+
+    <div class="callout callout-success">
+      <strong>完全不用担心，自动更新。</strong>
+      原因在于我们的文件命名策略：每次构建都会生成不同的文件名。
+    </div>
+
+    <div class="scenario-grid">
+      <div class="scenario" style="background: var(--gray-bg); border: 1px solid var(--border);">
+        <div class="scenario-title" style="color: var(--text);">更新前</div>
+        <p><code>index.html</code> 引用：</p>
+        <p style="margin-top:4px;"><code>/assets/index-<strong>ABC123</strong>.js</code></p>
+        <p style="margin-top:8px; font-size:13px; color:var(--text-secondary);">CDN 缓存了这个文件 ✓</p>
+      </div>
+      <div class="scenario" style="background: var(--green-bg); border: 1px solid var(--green-border);">
+        <div class="scenario-title" style="color: var(--green);">更新后</div>
+        <p><code>index.html</code> 引用：</p>
+        <p style="margin-top:4px;"><code>/assets/index-<strong>DEF456</strong>.js</code></p>
+        <p style="margin-top:8px; font-size:13px; color:var(--green);">新文件名！CDN 没有缓存 → 去源站拿 → 缓存新文件 ✓</p>
+      </div>
+    </div>
+
+    <p style="font-size:14px; color:var(--text-secondary); margin-top:8px;">
+      旧文件 <code>ABC123</code> 还在 CDN 上，但没人请求它了（因为新 HTML 指向 <code>DEF456</code>），30 天后自动过期清除。
+    </p>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-box">
+    <h3>总结：6 条规则的核心逻辑</h3>
+    <p style="margin-top:12px;">
+      <strong>能缓存的尽量缓存</strong>（/assets → 30 天）<br>
+      给用户提速，给服务器减压
+    </p>
+    <p style="margin-top:12px;">
+      <strong>不能缓存的绝对不缓存</strong>（/api、/、其他）<br>
+      保证数据安全、内容实时、功能正常
+    </p>
+    <p style="margin-top:16px; font-size:14px; opacity:0.85;">
+      配置完成后你可以截图给我，我帮你核对每一条是否正确。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

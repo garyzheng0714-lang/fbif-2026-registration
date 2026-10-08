@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDN 加速指南 — FBIF 2026 注册系统</title>
+<style>
+:root {
+  --blue: #1677ff;
+  --blue-light: #e6f4ff;
+  --blue-bg: #f0f5ff;
+  --green: #52c41a;
+  --green-light: #f6ffed;
+  --green-border: #b7eb8f;
+  --yellow: #faad14;
+  --yellow-light: #fffbe6;
+  --yellow-border: #ffe58f;
+  --red: #ff4d4f;
+  --red-light: #fff2f0;
+  --red-border: #ffccc7;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e8e8e8;
+  --gray-300: #d9d9d9;
+  --gray-500: #8c8c8c;
+  --gray-700: #434343;
+  --gray-900: #141414;
+  --radius: 12px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  color: var(--gray-900);
+  background: var(--gray-100);
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+/* Navigation */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 12px 0;
+  overflow-x: auto;
+}
+.nav-inner {
+  max-width: 860px; margin: 0 auto; padding: 0 20px;
+  display: flex; gap: 8px; flex-wrap: nowrap;
+}
+.nav a {
+  color: var(--gray-500); text-decoration: none;
+  font-size: 13px; white-space: nowrap;
+  padding: 4px 10px; border-radius: 6px;
+  transition: all 0.2s;
+}
+.nav a:hover { color: var(--blue); background: var(--blue-light); }
+
+/* Main */
+.container { max-width: 860px; margin: 0 auto; padding: 20px; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, var(--blue) 0%, #4096ff 100%);
+  color: white; padding: 60px 40px; border-radius: var(--radius);
+  margin-bottom: 32px; text-align: center;
+}
+.hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+.hero p { font-size: 18px; opacity: 0.9; }
+.hero .badge {
+  display: inline-block; margin-top: 16px;
+  background: rgba(255,255,255,0.2); padding: 6px 16px;
+  border-radius: 20px; font-size: 14px;
+}
+
+/* Section */
+.section {
+  background: white; border-radius: var(--radius);
+  padding: 36px; margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.section h2 {
+  font-size: 24px; font-weight: 700; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.section h2 .num {
+  background: var(--blue); color: white;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.section h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; }
+.section p { margin-bottom: 16px; color: var(--gray-700); }
+
+/* Callout boxes */
+.callout {
+  padding: 16px 20px; border-radius: 8px;
+  margin: 16px 0; border-left: 4px solid;
+}
+.callout-info { background: var(--blue-light); border-color: var(--blue); }
+.callout-success { background: var(--green-light); border-color: var(--green); }
+.callout-warning { background: var(--yellow-light); border-color: var(--yellow); }
+.callout-danger { background: var(--red-light); border-color: var(--red); }
+.callout-title { font-weight: 600; margin-bottom: 4px; }
+
+/* Diagrams */
+.diagram {
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: 8px; padding: 24px; margin: 20px 0;
+  overflow-x: auto;
+}
+.diagram-title {
+  font-size: 14px; font-weight: 600; color: var(--gray-500);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 16px; text-align: center;
+}
+
+/* Flow diagrams */
+.flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.flow-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.flow-box {
+  padding: 10px 18px; border-radius: 8px; font-size: 14px;
+  font-weight: 500; text-align: center; white-space: nowrap;
+}
+.flow-box.user { background: #e6f4ff; border: 2px solid var(--blue); color: var(--blue); }
+.flow-box.cdn { background: #f6ffed; border: 2px solid var(--green); color: #389e0d; }
+.flow-box.server { background: #fff7e6; border: 2px solid #fa8c16; color: #d46b08; }
+.flow-box.bad { background: var(--red-light); border: 2px solid var(--red); color: var(--red); }
+.flow-arrow {
+  font-size: 20px; color: var(--gray-300); font-weight: bold;
+}
+.flow-arrow.down { display: block; text-align: center; padding: 4px 0; }
+.flow-label {
+  font-size: 12px; color: var(--gray-500); text-align: center;
+  padding: 2px 0;
+}
+
+/* Comparison */
+.compare {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  margin: 20px 0;
+}
+@media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+.compare-card {
+  padding: 20px; border-radius: 8px; border: 2px solid;
+}
+.compare-card.before { border-color: var(--red); background: var(--red-light); }
+.compare-card.after { border-color: var(--green); background: var(--green-light); }
+.compare-card h4 {
+  font-size: 16px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Bandwidth bar */
+.bw-bar-container { margin: 12px 0; }
+.bw-bar {
+  height: 24px; border-radius: 4px; position: relative;
+  display: flex; align-items: center; padding: 0 8px;
+  font-size: 12px; font-weight: 600; color: white;
+  transition: width 0.5s;
+}
+.bw-bar.narrow { width: 8%; background: var(--red); min-width: 60px; }
+.bw-bar.wide { width: 100%; background: var(--green); }
+.bw-label { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+
+/* Math box */
+.math-box {
+  background: white; border: 1px solid var(--gray-200);
+  border-radius: 8px; padding: 20px; margin: 16px 0;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 15px; line-height: 2;
+}
+.math-box .highlight { color: var(--red); font-weight: 700; }
+.math-box .good { color: var(--green); font-weight: 700; }
+
+/* Form mockup */
+.form-mockup {
+  background: white; border: 1px solid var(--gray-200);
+  border-radius: 8px; padding: 24px; margin: 20px 0;
+}
+.form-field { margin-bottom: 20px; }
+.form-field label {
+  display: block; font-size: 14px; font-weight: 600;
+  margin-bottom: 6px; color: var(--gray-700);
+}
+.form-field label .required { color: var(--red); }
+.form-field .input-mock {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300);
+  border-radius: 6px; font-size: 15px; background: var(--blue-light);
+  color: var(--blue); font-weight: 500;
+}
+.form-field .hint {
+  font-size: 13px; color: var(--gray-500); margin-top: 4px;
+}
+.form-field .checkmark {
+  color: var(--green); font-weight: bold; margin-left: 8px;
+}
+
+/* Timeline */
+.timeline { position: relative; margin: 24px 0; padding-left: 32px; }
+.timeline::before {
+  content: ''; position: absolute; left: 14px; top: 0; bottom: 0;
+  width: 3px; background: var(--gray-200); border-radius: 2px;
+}
+.timeline-item { position: relative; margin-bottom: 24px; }
+.timeline-item::before {
+  content: ''; position: absolute; left: -25px; top: 6px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--blue); border: 3px solid white;
+  box-shadow: 0 0 0 2px var(--blue);
+}
+.timeline-item.safe::before { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+.timeline-item h4 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.timeline-item .time { font-size: 13px; color: var(--gray-500); }
+.timeline-item .impact {
+  display: inline-block; font-size: 12px; padding: 2px 8px;
+  border-radius: 4px; margin-top: 4px;
+}
+.timeline-item .impact.none { background: var(--green-light); color: #389e0d; }
+.timeline-item .impact.zero { background: var(--blue-light); color: var(--blue); }
+
+/* Risk table */
+.risk-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.risk-table th {
+  background: var(--gray-50); padding: 10px 12px; text-align: left;
+  border-bottom: 2px solid var(--gray-200); font-weight: 600;
+}
+.risk-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: top; }
+.risk-dot {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 6px;
+}
+.risk-dot.green { background: var(--green); }
+.risk-dot.yellow { background: var(--yellow); }
+.risk-dot.red { background: var(--red); }
+
+/* Checklist */
+.checklist { list-style: none; margin: 16px 0; }
+.checklist li {
+  padding: 12px 16px; border: 1px solid var(--gray-200);
+  border-radius: 8px; margin-bottom: 8px;
+  display: flex; align-items: flex-start; gap: 12px;
+  background: white; font-size: 15px;
+}
+.checklist li input[type="checkbox"] {
+  width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0;
+  accent-color: var(--blue);
+}
+.checklist li .step-num {
+  background: var(--gray-100); color: var(--gray-500);
+  width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+
+/* Apartment diagram */
+.apartment {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; margin: 20px 0;
+}
+.apartment-building {
+  border: 2px solid var(--gray-300); border-radius: 8px;
+  padding: 16px; width: 100%; max-width: 400px;
+}
+.apartment-title {
+  text-align: center; font-weight: 600; font-size: 15px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--gray-200);
+  margin-bottom: 12px;
+}
+.mailbox {
+  padding: 8px 12px; border-radius: 6px; margin-bottom: 6px;
+  font-size: 14px; display: flex; align-items: center; gap: 8px;
+}
+.mailbox.highlight {
+  background: var(--blue-light); border: 2px solid var(--blue);
+  font-weight: 600;
+}
+.mailbox.normal {
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  color: var(--gray-500);
+}
+.mailbox-icon { font-size: 18px; }
+
+/* Hash demo */
+.hash-demo {
+  display: flex; flex-direction: column; gap: 16px;
+  margin: 20px 0;
+}
+.hash-step {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; background: var(--gray-50);
+  border-radius: 8px; font-size: 14px;
+}
+.hash-step .step-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.hash-step .step-icon.blue { background: var(--blue-light); }
+.hash-step .step-icon.green { background: var(--green-light); }
+.hash-step .step-icon.orange { background: #fff7e6; }
+.hash-step code {
+  background: white; padding: 2px 6px; border-radius: 4px;
+  font-size: 13px; border: 1px solid var(--gray-200);
+  font-family: 'SF Mono', monospace;
+}
+
+/* Footer */
+.footer {
+  text-align: center; padding: 40px 20px;
+  color: var(--gray-500); font-size: 13px;
+}
+
+/* Cost table */
+.cost-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.cost-table th, .cost-table td {
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+.cost-table th { background: var(--gray-50); font-weight: 600; }
+.cost-table .total { font-weight: 700; background: var(--green-light); }
+
+/* Rollback */
+.rollback-steps {
+  display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap;
+  justify-content: center;
+}
+.rollback-step {
+  flex: 1; min-width: 180px; padding: 20px;
+  background: var(--gray-50); border-radius: 8px;
+  text-align: center;
+}
+.rollback-step .big-num {
+  font-size: 36px; font-weight: 700; color: var(--blue);
+}
+.rollback-step .desc { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+
+/* Scroll behavior */
+html { scroll-behavior: smooth; }
+
+/* Print */
+@media print {
+  .nav { display: none; }
+  .section { break-inside: avoid; box-shadow: none; border: 1px solid var(--gray-200); }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#what">CDN 是什么</a>
+    <a href="#why">为什么需要</a>
+    <a href="#dcdn">全站加速</a>
+    <a href="#domain">域名安全</a>
+    <a href="#form">表单怎么填</a>
+    <a href="#update">自动更新</a>
+    <a href="#zero-downtime">零停机</a>
+    <a href="#risks">风险</a>
+    <a href="#rollback">回退</a>
+    <a href="#cost">费用</a>
+    <a href="#checklist">操作清单</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- Hero -->
+<div class="hero">
+  <h1>CDN 加速指南</h1>
+  <p>FBIF 2026 注册系统 — 写给非技术人员的完整说明</p>
+  <div class="badge">阅读时间约 10 分钟</div>
+</div>
+
+<!-- Section 1: What is CDN -->
+<div class="section" id="what">
+  <h2><span class="num">1</span> CDN 是什么？</h2>
+
+  <p>CDN（Content Delivery Network，内容分发网络）就像是<strong>全国各地的快递分仓</strong>。</p>
+
+  <h3>用一个比喻来理解</h3>
+  <p>想象你开了一家工厂，在杭州生产商品。没有 CDN 的时候，全国的客户都要亲自跑到杭州工厂来取货。工厂的大门很窄（你的服务器带宽只有 1Mbps），同一时间只能让 1-2 个人通过。</p>
+
+  <div class="compare">
+    <div class="compare-card before">
+      <h4>现在的情况（没有 CDN）</h4>
+      <div class="flow">
+        <div class="flow-row">
+          <span class="flow-box user">北京用户</span>
+          <span class="flow-box user">上海用户</span>
+          <span class="flow-box user">广州用户</span>
+        </div>
+        <div class="flow-arrow down">&#8595; &#8595; &#8595; 全部挤向杭州</div>
+        <div class="flow-box bad" style="width:100%">
+          杭州服务器（1Mbps 窄门）<br>
+          <small>同时只能服务 1-2 人</small>
+        </div>
+      </div>
+    </div>
+    <div class="compare-card after">
+      <h4>有了 CDN 之后</h4>
+      <div class="flow">
+        <div class="flow-row">
+          <span class="flow-box user">北京用户</span>
+          <span class="flow-box user">上海用户</span>
+          <span class="flow-box user">广州用户</span>
+        </div>
+        <div class="flow-arrow down">&#8595;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#8595;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#8595; 就近取货</div>
+        <div class="flow-row">
+          <span class="flow-box cdn">北京仓库</span>
+          <span class="flow-box cdn">上海仓库</span>
+          <span class="flow-box cdn">广州仓库</span>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#389e0d;text-align:center;margin-top:12px">全国 2800+ 个节点，每个节点带宽都很大</p>
+    </div>
+  </div>
+
+  <p>有了 CDN 后，你的网页文件（代码、样式、图片）会被<strong>提前复制到全国各地的 CDN 节点</strong>。用户访问时，会自动连接离他最近的节点，而不是都挤到杭州的服务器。</p>
+
+  <div class="callout callout-info">
+    <div class="callout-title">关键理解</div>
+    CDN 只是帮你「分发」网页文件，你的服务器还是「大本营」。用户填写的表单数据仍然直接发送到你的服务器处理，CDN 不会接触这些数据。
+  </div>
+</div>
+
+<!-- Section 2: Why CDN -->
+<div class="section" id="why">
+  <h2><span class="num">2</span> 为什么我们需要 CDN？</h2>
+
+  <p>你的服务器带宽是 <strong>1Mbps</strong>，换算成传输速度就是 <strong>128KB/秒</strong>。看看这意味着什么：</p>
+
+  <div class="diagram">
+    <div class="diagram-title">带宽对比</div>
+    <div class="bw-bar-container">
+      <div class="bw-bar narrow">1 Mbps</div>
+      <div class="bw-label">你的服务器带宽（所有用户共享这根"管道"）</div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="bw-bar-container">
+      <div class="bw-bar wide">CDN 节点：独立带宽，每个节点 Gbps 级别</div>
+      <div class="bw-label">CDN 节点带宽（每个城市有独立的"管道"）</div>
+    </div>
+  </div>
+
+  <h3>算一笔账</h3>
+
+  <div class="math-box">
+    你的注册页面总大小 ≈ 250KB（代码 + 样式 + 图标）<br>
+    服务器传输速度 = 128KB/秒<br><br>
+    <strong>1 个人</strong>打开页面：250 ÷ 128 ≈ <span class="highlight">2 秒</span><br>
+    <strong>5 个人同时</strong>打开：每人分到 128÷5 = 25KB/秒 → <span class="highlight">10 秒</span><br>
+    <strong>20 个人同时</strong>打开：每人分到 6KB/秒 → <span class="highlight">40+ 秒（超时）</span><br><br>
+    有了 CDN 后：<br>
+    网页文件从 CDN 节点加载 → <span class="good">不占服务器带宽</span><br>
+    服务器只处理表单提交（每次约 2KB）→ <span class="good">同时 100 人提交也没问题</span>
+  </div>
+
+  <div class="callout callout-warning">
+    <div class="callout-title">真实场景</div>
+    FBIF 展会推广期，你可能在微信公众号发一篇文章，文末附上注册链接。如果有 200 人同时点击链接打开注册页面，没有 CDN 的话，绝大多数人会看到白屏或加载超时。有了 CDN，这 200 人各自从最近的节点拿到页面，服务器完全无感。
+  </div>
+</div>
+
+<!-- Section 3: DCDN -->
+<div class="section" id="dcdn">
+  <h2><span class="num">3</span> "全站加速"是什么意思？</h2>
+
+  <p>阿里云有两种 CDN 产品，名字容易混淆：</p>
+
+  <div class="compare">
+    <div class="compare-card" style="border-color:var(--gray-300);background:var(--gray-50)">
+      <h4>普通 CDN</h4>
+      <p style="font-size:14px">只加速<strong>静态文件</strong>（网页代码、图片等）。</p>
+      <p style="font-size:14px">用户提交表单（动态请求）时，数据还是走普通的网络路线到你的服务器，没有任何优化。</p>
+      <p style="font-size:14px;color:var(--gray-500)">类比：给你建了本地仓库，但去工厂的路还是老路。</p>
+    </div>
+    <div class="compare-card" style="border-color:var(--blue);background:var(--blue-light)">
+      <h4>全站加速（DCDN）&nbsp;&#11088;</h4>
+      <p style="font-size:14px">加速静态文件 <strong>+</strong> 优化动态请求的网络路径。</p>
+      <p style="font-size:14px">用户提交表单时，数据走阿里云优化过的「快速通道」到你的服务器，连接更快更稳定。</p>
+      <p style="font-size:14px;color:var(--blue)">类比：建了本地仓库，<strong>还</strong>修了一条高速公路到工厂。</p>
+    </div>
+  </div>
+
+  <div class="callout callout-success">
+    <div class="callout-title">建议选择"全站加速"</div>
+    费用差别很小，但动态请求（表单提交）的网络路径也会被优化。对于注册系统来说，表单提交的速度和稳定性很重要。
+  </div>
+</div>
+
+<!-- Section 4: Domain isolation -->
+<div class="section" id="domain">
+  <h2><span class="num">4</span> 加速这个域名会影响其他网站吗？</h2>
+
+  <p><strong>不会。绝对不会。</strong></p>
+
+  <p>你担心的是：<code>foodtalks.cn</code> 这个主域名下还有其他网站（比如 <code>www.foodtalks.cn</code>），给 <code>fbif2026ticket.foodtalks.cn</code> 加 CDN 会不会影响它们？</p>
+
+  <p>答案是：CDN 是按<strong>具体的子域名</strong>独立配置的，就像公寓楼里的信箱一样：</p>
+
+  <div class="apartment">
+    <div class="apartment-building">
+      <div class="apartment-title">foodtalks.cn 大楼</div>
+      <div class="mailbox normal">
+        <span class="mailbox-icon">&#128234;</span>
+        www.foodtalks.cn — 不受影响，该怎么投递还怎么投递
+      </div>
+      <div class="mailbox normal">
+        <span class="mailbox-icon">&#128234;</span>
+        api.foodtalks.cn — 不受影响
+      </div>
+      <div class="mailbox highlight">
+        <span class="mailbox-icon">&#128230;</span>
+        fbif2026ticket.foodtalks.cn — 只有这个改走 CDN 加速
+      </div>
+      <div class="mailbox normal">
+        <span class="mailbox-icon">&#128234;</span>
+        其他子域名... — 统统不受影响
+      </div>
+    </div>
+  </div>
+
+  <p>你只是改变了 <code>fbif2026ticket.foodtalks.cn</code> 这<strong>一个信箱</strong>的邮递方式（从直送改为就近中转站）。其他所有信箱的邮递方式完全不变。</p>
+
+  <div class="callout callout-success">
+    <div class="callout-title">结论</div>
+    在阿里云 CDN 表单里填入 <code>fbif2026ticket.foodtalks.cn</code>，只会对这一个子域名生效。<code>foodtalks.cn</code> 下的其他任何网站都不会受到任何影响。
+  </div>
+</div>
+
+<!-- Section 5: How to fill the form -->
+<div class="section" id="form">
+  <h2><span class="num">5</span> 阿里云表单怎么填？</h2>
+
+  <p>下面是你在阿里云 DCDN 控制台「添加域名」时需要填写的每个字段：</p>
+
+  <div class="form-mockup">
+    <div class="form-field">
+      <label><span class="required">*</span> 加速域名</label>
+      <div class="input-mock">fbif2026ticket.foodtalks.cn <span class="checkmark">&#10004;</span></div>
+      <div class="hint">填写你要加速的完整域名。就是用户访问的那个网址，不带 https://</div>
+    </div>
+
+    <div class="form-field">
+      <label><span class="required">*</span> 业务类型</label>
+      <div class="input-mock">全站加速 <span class="checkmark">&#10004;</span></div>
+      <div class="hint">选择"全站加速"（不是"图片小文件"或"大文件下载"）。参见第 3 节的解释。</div>
+    </div>
+
+    <div class="form-field">
+      <label><span class="required">*</span> 源站信息</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+        <div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">源站类型</div>
+          <div class="input-mock">IP <span class="checkmark">&#10004;</span></div>
+          <div class="hint">选 "IP"，因为你的服务器有固定 IP 地址</div>
+        </div>
+        <div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">源站地址</div>
+          <div class="input-mock">121.40.214.5 <span class="checkmark">&#10004;</span></div>
+          <div class="hint">你的服务器 IP 地址</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">协议</div>
+          <div class="input-mock">HTTPS <span class="checkmark">&#10004;</span></div>
+          <div class="hint">你的网站已经是 HTTPS</div>
+        </div>
+        <div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">端口</div>
+          <div class="input-mock">443 <span class="checkmark">&#10004;</span></div>
+          <div class="hint">HTTPS 标准端口，不用改</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">提交后会发生什么？</div>
+    阿里云会分配一个 <strong>CNAME 地址</strong>给你，格式类似：<br>
+    <code>fbif2026ticket.foodtalks.cn.w.kunlunaq.com</code><br><br>
+    <strong>请把这个地址记下来</strong>，后面修改 DNS 的时候需要用。这一步只是在阿里云那边「登记」了你的域名，还没有对你的网站产生任何影响。
+  </div>
+</div>
+
+<!-- Section 6: Auto update -->
+<div class="section" id="update">
+  <h2><span class="num">6</span> 前端更新后，CDN 会自动更新吗？</h2>
+
+  <p><strong>会，完全自动，不需要你做任何额外操作。</strong></p>
+
+  <p>这是很多人最担心的问题。让我用一个简单的例子解释为什么不用担心：</p>
+
+  <h3>我们的"智能文件命名"机制</h3>
+
+  <p>每次更新代码并部署时，系统会自动给文件生成一个<strong>独一无二的名字</strong>：</p>
+
+  <div class="hash-demo">
+    <div class="hash-step">
+      <div class="step-icon blue">1</div>
+      <div>
+        <strong>第一次部署</strong>：生成文件 <code>index-ABC123.js</code><br>
+        <small style="color:var(--gray-500)">网页入口（index.html）写着：「请加载 index-ABC123.js」</small>
+      </div>
+    </div>
+    <div class="hash-step">
+      <div class="step-icon blue">2</div>
+      <div>
+        <strong>CDN 缓存</strong>：把 <code>index-ABC123.js</code> 存到全国各节点<br>
+        <small style="color:var(--gray-500)">后续用户从 CDN 节点快速获取这个文件</small>
+      </div>
+    </div>
+    <div class="hash-step">
+      <div class="step-icon orange">3</div>
+      <div>
+        <strong>你更新了代码，重新部署</strong>：生成新文件 <code>index-DEF456.js</code><br>
+        <small style="color:var(--gray-500)">注意！文件名变了！网页入口更新为：「请加载 index-DEF456.js」</small>
+      </div>
+    </div>
+    <div class="hash-step">
+      <div class="step-icon green">4</div>
+      <div>
+        <strong>用户访问</strong>：CDN 发现用户要的是 <code>index-DEF456.js</code>，这个文件它没见过<br>
+        <small style="color:var(--gray-500)">→ CDN 自动去你的服务器拿新文件 → 缓存到节点 → 返回给用户</small>
+      </div>
+    </div>
+    <div class="hash-step">
+      <div class="step-icon green">5</div>
+      <div>
+        <strong>旧文件</strong> <code>index-ABC123.js</code> 还在 CDN 上，但没人再请求它了<br>
+        <small style="color:var(--gray-500)">→ 30 天后自然过期清除，不占空间不影响任何事</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-success">
+    <div class="callout-title">双保险</div>
+    我们的自动部署流程里已经内置了「CDN 缓存刷新」脚本。每次部署后，会主动通知 CDN 清除旧的网页入口文件缓存。所以即使在极端情况下，用户也能在几秒内拿到最新版本。
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">一句话总结</div>
+    接入 CDN 后，你的部署流程<strong>完全不变</strong>。像往常一样推代码、部署就行，CDN 会自动拿到新版本。
+  </div>
+</div>
+
+<!-- Section 7: Zero downtime -->
+<div class="section" id="zero-downtime">
+  <h2><span class="num">7</span> 零停机迁移方案</h2>
+
+  <p>整个切换过程大约 30 分钟，<strong>用户不会感知到任何中断</strong>。原因是前面 4 个阶段都不影响线上，只有 DNS 切换那一步才涉及线上，而 DNS 切换本身是零停机的。</p>
+
+  <div class="timeline">
+    <div class="timeline-item safe">
+      <h4>阶段一：在阿里云控制台添加域名、配置规则</h4>
+      <div class="time">约 10 分钟 | 你在阿里云网页上操作</div>
+      <div class="impact none">对线上零影响</div>
+      <p style="font-size:14px;margin-top:8px;color:var(--gray-500)">这一步只是在阿里云那边「注册」你的域名，告诉它以后可能会有流量过来。但因为 DNS 还没改，所以用户的流量还是直连你的服务器。</p>
+    </div>
+
+    <div class="timeline-item safe">
+      <h4>阶段二：配置 CDN 的 HTTPS 证书</h4>
+      <div class="time">约 5 分钟 | 在阿里云申请免费证书</div>
+      <div class="impact none">对线上零影响</div>
+      <p style="font-size:14px;margin-top:8px;color:var(--gray-500)">给 CDN 配上 HTTPS 证书，确保用户通过 CDN 访问时也是安全连接。</p>
+    </div>
+
+    <div class="timeline-item safe">
+      <h4>阶段三：更新服务器配置</h4>
+      <div class="time">约 10 分钟 | 开发者通过正常部署流程操作</div>
+      <div class="impact none">对线上零影响</div>
+      <p style="font-size:14px;margin-top:8px;color:var(--gray-500)">调整一个配置参数，让服务器能正确识别通过 CDN 来的用户的真实 IP 地址。</p>
+    </div>
+
+    <div class="timeline-item">
+      <h4>阶段四：切换 DNS</h4>
+      <div class="time">约 2 分钟 | 在域名管理控制台操作</div>
+      <div class="impact zero">零停机切换</div>
+      <p style="font-size:14px;margin-top:8px;color:var(--gray-500)">这是唯一涉及线上的步骤。但为什么是零停机？因为：</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-title">DNS 切换期间，两条路径同时存在，都能正常工作</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">
+      <div style="text-align:center">
+        <div style="font-weight:600;margin-bottom:8px;color:var(--gray-500)">路径 A：旧 DNS 缓存的用户</div>
+        <div class="flow">
+          <span class="flow-box user">用户</span>
+          <div class="flow-arrow down">&#8595;</div>
+          <span class="flow-box server">直连服务器 121.40.214.5</span>
+          <div class="flow-arrow down">&#8595;</div>
+          <div style="color:var(--green);font-weight:600">正常工作 &#10004;</div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-weight:600;margin-bottom:8px;color:var(--gray-500)">路径 B：新 DNS 解析的用户</div>
+        <div class="flow">
+          <span class="flow-box user">用户</span>
+          <div class="flow-arrow down">&#8595;</div>
+          <span class="flow-box cdn">CDN 节点</span>
+          <div class="flow-arrow down">&#8595; 回源</div>
+          <span class="flow-box server">服务器 121.40.214.5</span>
+          <div class="flow-arrow down">&#8595;</div>
+          <div style="color:var(--green);font-weight:600">正常工作 &#10004;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p>不管用户走哪条路径，最终都是你的服务器在提供服务。区别只是走 CDN 的用户静态资源加载更快。所以切换过程中<strong>不存在中断窗口</strong>。</p>
+</div>
+
+<!-- Section 8: Risks -->
+<div class="section" id="risks">
+  <h2><span class="num">8</span> 可能出什么问题？</h2>
+
+  <h3 style="color:var(--green)">&#128994; 已确认安全（零风险）</h3>
+  <table class="risk-table">
+    <tr><th>项目</th><th>为什么安全</th></tr>
+    <tr>
+      <td><span class="risk-dot green"></span>用户数据安全</td>
+      <td>表单数据直接发送到你的服务器，CDN 不缓存、不接触这些数据</td>
+    </tr>
+    <tr>
+      <td><span class="risk-dot green"></span>网站域名不变</td>
+      <td>用户看到的网址还是 <code>fbif2026ticket.foodtalks.cn</code>，完全没变化</td>
+    </tr>
+    <tr>
+      <td><span class="risk-dot green"></span>表单提交功能</td>
+      <td>前端代码使用的是相对路径 <code>/api/*</code>，不依赖具体域名，CDN 不影响</td>
+    </tr>
+    <tr>
+      <td><span class="risk-dot green"></span>部署流程</td>
+      <td>部署是通过 SSH 直连服务器 IP，不走域名 DNS，完全不受影响</td>
+    </tr>
+    <tr>
+      <td><span class="risk-dot green"></span>其他网站</td>
+      <td>CDN 按子域名独立配置，不影响 <code>foodtalks.cn</code> 下的其他站点</td>
+    </tr>
+  </table>
+
+  <h3 style="color:var(--yellow)">&#128992; 需要注意（低风险，容易处理）</h3>
+  <table class="risk-table">
+    <tr><th>风险</th><th>什么时候会出现</th><th>怎么预防</th></tr>
+    <tr>
+      <td><span class="risk-dot yellow"></span>CDN 缓存规则配错</td>
+      <td>如果不小心让 CDN 缓存了 <code>/api/*</code> 的请求，表单提交会异常</td>
+      <td>严格按照文档配置 6 条缓存规则，配完后逐个验证</td>
+    </tr>
+    <tr>
+      <td><span class="risk-dot yellow"></span>用户 IP 识别</td>
+      <td>接入 CDN 后，服务器可能看到 CDN 节点的 IP 而非用户真实 IP</td>
+      <td>开发者会提前更新一个配置参数（已在计划中）</td>
+    </tr>
+  </table>
+
+  <h3 style="color:var(--red)">&#128308; 必须处理（可控，但不能忘）</h3>
+  <table class="risk-table">
+    <tr><th>风险</th><th>后果</th><th>预防措施</th></tr>
+    <tr>
+      <td><span class="risk-dot red"></span>HTTPS 证书未配就切 DNS</td>
+      <td>用户打开页面会看到「不安全」警告</td>
+      <td><strong>必须</strong>先在 CDN 配好证书，确认生效后，再修改 DNS。顺序不能反。</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-info">
+    <div class="callout-title">总结</div>
+    只要按正确顺序操作（先配 CDN → 再切 DNS），风险几乎为零。而且随时可以回退（见下一节）。
+  </div>
+</div>
+
+<!-- Section 9: Rollback -->
+<div class="section" id="rollback">
+  <h2><span class="num">9</span> 回退方案：60 秒恢复原状</h2>
+
+  <p>如果切换后发现任何问题，回退操作<strong>极其简单</strong>：</p>
+
+  <div class="rollback-steps">
+    <div class="rollback-step">
+      <div class="big-num">1</div>
+      <div style="font-weight:600;margin:8px 0">改 DNS</div>
+      <div class="desc">在域名管理控制台，把 CNAME 记录改回 A 记录，指向 <code>121.40.214.5</code></div>
+    </div>
+    <div class="rollback-step">
+      <div class="big-num">2</div>
+      <div style="font-weight:600;margin:8px 0">等 60 秒</div>
+      <div class="desc">DNS 缓存刷新（我们提前把 TTL 设为 60 秒）</div>
+    </div>
+    <div class="rollback-step">
+      <div class="big-num">3</div>
+      <div style="font-weight:600;margin:8px 0">完成</div>
+      <div class="desc">一切恢复到接入 CDN 之前的状态</div>
+    </div>
+  </div>
+
+  <div class="callout callout-success">
+    <div class="callout-title">为什么回退这么简单？</div>
+    因为<strong>服务器上什么都没改</strong>。CDN 只是在「外面」加了一层加速，你的服务器还是照常运行。取消 CDN 只需要改一下 DNS 指向，让用户重新直连服务器就行了。不需要改任何代码、不需要重启任何服务。
+  </div>
+</div>
+
+<!-- Section 10: Cost -->
+<div class="section" id="cost">
+  <h2><span class="num">10</span> 费用估算</h2>
+
+  <p>阿里云 CDN 按实际使用量收费，没有最低消费。以 FBIF 展会注册场景估算：</p>
+
+  <table class="cost-table">
+    <tr><th>计费项</th><th>单价</th><th>1 万次访问预估</th></tr>
+    <tr>
+      <td>HTTPS 请求次数</td>
+      <td>约 0.01 元 / 万次</td>
+      <td>&lt; 1 元</td>
+    </tr>
+    <tr>
+      <td>CDN 到用户的流量</td>
+      <td>0.15 元 / GB</td>
+      <td>约 0.4 元</td>
+    </tr>
+    <tr>
+      <td>回源流量（CDN 到服务器）</td>
+      <td>0.10 元 / GB</td>
+      <td>极少</td>
+    </tr>
+    <tr class="total">
+      <td>合计</td>
+      <td></td>
+      <td>约 2 ~ 5 元</td>
+    </tr>
+  </table>
+
+  <p>即使有 10 万次访问，费用也不会超过 50 元。<strong>比一杯咖啡还便宜。</strong></p>
+</div>
+
+<!-- Section 11: Checklist -->
+<div class="section" id="checklist">
+  <h2><span class="num">11</span> 操作清单</h2>
+
+  <p>按顺序逐个完成，每完成一项打个勾：</p>
+
+  <h3>阶段一：准备（不影响线上）</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"><span class="step-num">1</span>确认域名 <code>fbif2026ticket.foodtalks.cn</code> 已完成 ICP 备案</li>
+    <li><input type="checkbox"><span class="step-num">2</span>开通阿里云「全站加速 DCDN」服务（按量计费）</li>
+    <li><input type="checkbox"><span class="step-num">3</span>添加加速域名（按第 5 节填写表单）</li>
+    <li><input type="checkbox"><span class="step-num">4</span>记录阿里云分配的 CNAME 地址</li>
+  </ul>
+
+  <h3>阶段二：配置 CDN 规则（不影响线上）</h3>
+  <ul class="checklist">
+    <li>
+      <input type="checkbox"><span class="step-num">5</span>
+      <div>配置 6 条缓存规则（按以下优先级）：
+        <table class="risk-table" style="margin-top:8px;font-size:13px">
+          <tr><th>优先级</th><th>路径</th><th>缓存策略</th></tr>
+          <tr><td>1</td><td><code>/.well-known/*</code></td><td>不缓存</td></tr>
+          <tr><td>2</td><td><code>/api/*</code></td><td>不缓存</td></tr>
+          <tr><td>3</td><td><code>/health</code></td><td>不缓存</td></tr>
+          <tr><td>4</td><td><code>/metrics</code></td><td>不缓存</td></tr>
+          <tr><td>5</td><td><code>/assets/*</code></td><td>缓存 30 天</td></tr>
+          <tr><td>6</td><td><code>/*</code></td><td>不缓存</td></tr>
+        </table>
+      </div>
+    </li>
+    <li><input type="checkbox"><span class="step-num">6</span>开启 HTTPS：申请免费证书 + 强制 HTTPS + HTTP/2</li>
+    <li><input type="checkbox"><span class="step-num">7</span>确认 CDN 域名状态显示为「正常运行」</li>
+  </ul>
+
+  <h3>阶段三：服务器准备（不影响线上）</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"><span class="step-num">8</span>通知开发者更新 TRUST_PROXY_HOPS 配置（2 → 3）</li>
+    <li><input type="checkbox"><span class="step-num">9</span>配置 GitHub Secrets（CDN 缓存刷新密钥）</li>
+  </ul>
+
+  <h3>阶段四：DNS 切换（零停机）</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"><span class="step-num">10</span>在 DNS 管理控制台，将 TTL 改为 60 秒，等待当前 TTL 过期</li>
+    <li><input type="checkbox"><span class="step-num">11</span>添加 CNAME 记录指向 CDN 地址，删除原 A 记录</li>
+    <li><input type="checkbox"><span class="step-num">12</span>等待 1-2 分钟 DNS 生效</li>
+  </ul>
+
+  <h3>阶段五：验证</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"><span class="step-num">13</span>打开 <code>https://fbif2026ticket.foodtalks.cn</code> 确认页面正常</li>
+    <li><input type="checkbox"><span class="step-num">14</span>确认浏览器地址栏有锁图标（HTTPS 正常）</li>
+    <li><input type="checkbox"><span class="step-num">15</span>填写并提交一个测试表单，确认提交成功</li>
+    <li><input type="checkbox"><span class="step-num">16</span>完成！</li>
+  </ul>
+</div>
+
+</div>
+
+<div class="footer">
+  FBIF 2026 注册系统 CDN 加速指南 | 生成于 2026-03-26
+</div>
+
+</body>
+</html>
