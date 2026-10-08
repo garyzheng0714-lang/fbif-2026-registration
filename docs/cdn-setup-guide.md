@@ -136,13 +136,9 @@ curl -sf https://fbif2026ticket.foodtalks.cn/health
 curl -vI https://fbif2026ticket.foodtalks.cn 2>&1 | grep -E "subject|issuer|expire|SSL"
 
 # 6. 验证 CSRF + 表单提交完整流程
-CSRF_TOKEN=$(curl -sc cookies.txt https://fbif2026ticket.foodtalks.cn/api/csrf | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
-curl -sb cookies.txt \
-  -H "X-CSRF-Token: $CSRF_TOKEN" \
-  -H "Content-Type: application/json" \
-  -X POST https://fbif2026ticket.foodtalks.cn/api/submissions \
-  -d '{"role":"consumer","name":"CDN测试","phone":"13800138000","idType":"cn_id","idNumber":"110101199001011234","title":"测试","company":"测试公司","clientRequestId":"cdn-test-'$(date +%s)'"}'
-# 应返回 202
+# 使用团队批准的专用测试身份和唯一 clientRequestId，通过真实页面提交。
+# 不要把姓名、手机号、证件号或完整报名 JSON 写进命令历史和文档。
+# 页面受理应返回 202；随后用 submissionId 查询最终同步状态，并清理测试记录。
 ```
 
 ### 验证清单

@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESA 零停机迁移指南 - fbif2026ticket.foodtalks.cn</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 40px 20px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+  .subtitle code {
+    background: #1e293b;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #60a5fa;
+    font-size: 13px;
+  }
+
+  /* Phase */
+  .phase {
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .phase-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .phase-1 .phase-number { background: #1e3a5f; color: #60a5fa; }
+  .phase-2 .phase-number { background: #3b2f1e; color: #fbbf24; }
+  .phase-3 .phase-number { background: #1e3b2f; color: #34d399; }
+  .phase-title { font-size: 20px; font-weight: 600; }
+  .phase-1 .phase-title { color: #60a5fa; }
+  .phase-2 .phase-title { color: #fbbf24; }
+  .phase-3 .phase-title { color: #34d399; }
+  .phase-badge {
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  .phase-1 .phase-badge { background: #1e3a5f; color: #93c5fd; }
+  .phase-2 .phase-badge { background: #3b2f1e; color: #fcd34d; }
+  .phase-3 .phase-badge { background: #1e3b2f; color: #6ee7b7; }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 16px; padding-left: 18px; border-left: 2px solid #334155; }
+  .step {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+  }
+  .step::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 24px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #475569;
+    background: #0f172a;
+  }
+  .phase-1 .step::before { border-color: #60a5fa; }
+  .phase-2 .step::before { border-color: #fbbf24; }
+  .phase-3 .step::before { border-color: #34d399; }
+
+  .step-number {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .phase-1 .step-number { color: #60a5fa; }
+  .phase-2 .step-number { color: #fbbf24; }
+  .phase-3 .step-number { color: #34d399; }
+
+  .step-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 10px;
+  }
+  .step-content { color: #94a3b8; font-size: 14px; }
+  .step-content ul { padding-left: 20px; margin-top: 8px; }
+  .step-content li { margin-bottom: 4px; }
+
+  .config-table {
+    width: 100%;
+    margin-top: 12px;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .config-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #334155;
+  }
+  .config-table td:first-child {
+    color: #94a3b8;
+    width: 140px;
+    font-weight: 500;
+  }
+  .config-table td:last-child { color: #e2e8f0; }
+
+  code {
+    background: #334155;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #e2e8f0;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+  pre {
+    background: #0d1117;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 12px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #c9d1d9;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+
+  .warning {
+    background: #3b2f1e;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #fcd34d;
+  }
+  .success-box {
+    background: #1e3b2f;
+    border-left: 3px solid #34d399;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #6ee7b7;
+  }
+
+  /* Architecture */
+  .arch-section {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid #334155;
+  }
+  .arch-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    text-align: center;
+    color: #e2e8f0;
+  }
+  .arch-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 640px) {
+    .arch-compare { grid-template-columns: 1fr; }
+  }
+  .arch-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .arch-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .arch-before .arch-card-title { color: #94a3b8; }
+  .arch-after .arch-card-title { color: #34d399; }
+
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .arch-node {
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .arch-node-user { background: #334155; color: #e2e8f0; }
+  .arch-node-dns { background: #1e3a5f; color: #93c5fd; }
+  .arch-node-esa { background: #3b1e5f; color: #c4b5fd; }
+  .arch-node-server { background: #1e3b2f; color: #6ee7b7; }
+  .arch-arrow {
+    text-align: center;
+    color: #475569;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* Guarantees */
+  .guarantees {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid #334155;
+  }
+  .guarantees-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    text-align: center;
+    color: #e2e8f0;
+  }
+  .guarantee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+  .guarantee-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .guarantee-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  .guarantee-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .guarantee-desc {
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  /* Rollback */
+  .rollback {
+    margin-top: 48px;
+    padding: 24px;
+    background: #2d1b1b;
+    border: 1px solid #7f1d1d;
+    border-radius: 12px;
+  }
+  .rollback-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fca5a5;
+    margin-bottom: 12px;
+  }
+  .rollback-content {
+    font-size: 14px;
+    color: #fecaca;
+  }
+
+  /* Checklist */
+  .checklist {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid #334155;
+  }
+  .checklist-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    text-align: center;
+    color: #e2e8f0;
+  }
+  .checklist-items {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .checklist-group-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #334155;
+  }
+  .phase-1-title { color: #60a5fa; }
+  .phase-2-title { color: #fbbf24; }
+  .phase-3-title { color: #34d399; }
+
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: #cbd5e1;
+  }
+  .checklist-box {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #475569;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .checklist-group { margin-bottom: 24px; }
+  .checklist-group:last-child { margin-bottom: 0; }
+
+  .footer {
+    margin-top: 48px;
+    text-align: center;
+    color: #475569;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>ESA 零停机迁移指南</h1>
+  <p class="subtitle">
+    <code>fbif2026ticket.foodtalks.cn</code> 接入阿里云边缘安全加速
+  </p>
+
+  <!-- Phase 1 -->
+  <div class="phase phase-1">
+    <div class="phase-header">
+      <div class="phase-number">1</div>
+      <div class="phase-title">ESA 侧配置</div>
+      <span class="phase-badge">不影响线上，可提前数天</span>
+    </div>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-number">Step 1</div>
+        <div class="step-title">新增站点</div>
+        <div class="step-content">
+          <table class="config-table">
+            <tr><td>站点</td><td><code>fbif2026ticket.foodtalks.cn</code></td></tr>
+            <tr><td>接入方式</td><td>CNAME</td></tr>
+            <tr><td>加速区域</td><td>中国内地 或 全球（需 ICP 备案）</td></tr>
+            <tr><td>套餐</td><td>按需选择</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 2</div>
+        <div class="step-title">添加 DNS 记录</div>
+        <div class="step-content">
+          <table class="config-table">
+            <tr><td>记录类型</td><td>A/AAAA</td></tr>
+            <tr><td>主机记录</td><td><code>@</code>（代表站点本身）</td></tr>
+            <tr><td>记录值/源站</td><td><code>121.40.214.5</code></td></tr>
+            <tr><td>代理状态</td><td>开启代理加速</td></tr>
+          </table>
+          <div class="warning">ESA 会分配一个 CNAME 目标地址，记下来，后面要用。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 3</div>
+        <div class="step-title">配置回源</div>
+        <div class="step-content">
+          <table class="config-table">
+            <tr><td>回源协议</td><td>HTTPS</td></tr>
+            <tr><td>回源端口</td><td>443（Caddy 继续处理源站 HTTPS）</td></tr>
+            <tr><td>源站地址</td><td><code>121.40.214.5</code></td></tr>
+          </table>
+          <p style="margin-top: 10px;">ESA 节点会将请求转发到你的 Caddy，Caddy 再转 Nginx 再转 API 容器，现有架构完全不动。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 4</div>
+        <div class="step-title">申请 SSL 证书</div>
+        <div class="step-content">
+          <p>进入 <code>SSL/TLS → 边缘证书</code>，为域名申请免费证书。</p>
+          <div class="warning">
+            证书状态必须变为「已签发」才能继续！HTTPS 握手依赖此证书，未签发时 HTTPS 访问会报错。这是之前测试域名踩过的坑。
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 5</div>
+        <div class="step-title">配置缓存规则</div>
+        <div class="step-content">
+          <table class="config-table">
+            <tr><td><code>/assets/*</code></td><td>缓存 30 天 (immutable)</td></tr>
+            <tr><td><code>/api/*</code></td><td>不缓存（回源）</td></tr>
+            <tr><td><code>/health</code></td><td>不缓存（回源）</td></tr>
+            <tr><td><code>/</code></td><td>不缓存 (no-store)</td></tr>
+          </table>
+          <p style="margin-top: 10px;">与现有 Caddy 缓存策略保持一致。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 6</div>
+        <div class="step-title">配置安全防护</div>
+        <div class="step-content">
+          <ul>
+            <li>WAF — 开启托管规则</li>
+            <li>DDoS — 默认已开启基础防护</li>
+            <li>速率限制 — 按需配置（现有 API 已有 express-rate-limit）</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="phase phase-2">
+    <div class="phase-header">
+      <div class="phase-number">2</div>
+      <div class="phase-title">本地验证</div>
+      <span class="phase-badge">仍不影响线上</span>
+    </div>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-number">Step 7</div>
+        <div class="step-title">确认 SSL 证书已签发</div>
+        <div class="step-content">
+          <p>ESA 控制台 <code>SSL/TLS → 边缘证书</code>，确认证书状态为「已签发」。</p>
+          <div class="warning">未签发不要继续！否则切换后 HTTPS 会中断。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 8</div>
+        <div class="step-title">获取 ESA 节点 IP</div>
+        <div class="step-content">
+          <pre>dig fbif2026ticket.foodtalks.cn.a2.initac.com +short
+# 得到类似 47.x.x.x 的 IP</pre>
+          <p style="margin-top: 8px;">CNAME 目标地址以 ESA 控制台显示的为准，<code>.a2.initac.com</code> 只是示例后缀。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 9</div>
+        <div class="step-title">修改本机 hosts 测试</div>
+        <div class="step-content">
+          <pre># 临时将域名指向 ESA 节点（只影响你自己的电脑）
+sudo vi /etc/hosts
+
+# 添加这一行（IP 替换为上一步获取的）
+47.x.x.x  fbif2026ticket.foodtalks.cn</pre>
+          <p style="margin-top: 12px;">然后用浏览器访问 <code>https://fbif2026ticket.foodtalks.cn</code>，逐项验证：</p>
+          <ul>
+            <li>页面正常加载，样式正确</li>
+            <li>表单可以填写和提交</li>
+            <li>API 请求正常（<code>/api/submissions</code>、<code>/api/csrf</code> 等）</li>
+            <li>证书有效，浏览器无安全警告</li>
+            <li>响应头包含 <code>Server: ESA</code></li>
+          </ul>
+          <div class="success-box">
+            全部通过后，删除 hosts 记录，准备正式切换。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="phase phase-3">
+    <div class="phase-header">
+      <div class="phase-number">3</div>
+      <div class="phase-title">正式切换</div>
+      <span class="phase-badge">唯一影响线上的操作</span>
+    </div>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-number">Step 10（提前 1-2 天）</div>
+        <div class="step-title">降低 DNS TTL</div>
+        <div class="step-content">
+          <p>去 DNS 服务商，将 <code>fbif2026ticket</code> 记录的 TTL 从默认值（通常 600s）改为 <code>60</code> 秒。</p>
+          <p style="margin-top: 8px;">等待旧 TTL 过期后，全网 DNS 缓存刷新，切换时就能在 60 秒内生效。</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 11</div>
+        <div class="step-title">修改 DNS 记录</div>
+        <div class="step-content">
+          <table class="config-table">
+            <tr>
+              <td style="color: #f87171;">改之前</td>
+              <td><code>fbif2026ticket</code> → A → <code>121.40.214.5</code></td>
+            </tr>
+            <tr>
+              <td style="color: #34d399;">改之后</td>
+              <td><code>fbif2026ticket</code> → CNAME → <code>ESA 分配的 CNAME 地址</code></td>
+            </tr>
+          </table>
+          <div class="success-box">
+            DNS 传播期间，两条路都通：<br>
+            &nbsp;&nbsp;旧缓存用户 → 直连源站 121.40.214.5 → 正常<br>
+            &nbsp;&nbsp;新解析用户 → ESA 节点 → 回源 121.40.214.5 → 正常<br>
+            <strong>零停机。</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">Step 12</div>
+        <div class="step-title">验证生效</div>
+        <div class="step-content">
+          <pre># 确认 DNS 已切换
+dig fbif2026ticket.foodtalks.cn +short
+# 应看到 CNAME → ESA 节点 IP
+
+# 确认流量走 ESA
+curl -sI https://fbif2026ticket.foodtalks.cn | grep Server
+# 应看到 Server: ESA
+
+# 浏览器访问确认一切正常
+# https://fbif2026ticket.foodtalks.cn</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="arch-section">
+    <div class="arch-title">切换前后架构对比</div>
+    <div class="arch-compare">
+      <div class="arch-card arch-before">
+        <div class="arch-card-title">切换前</div>
+        <div class="arch-flow">
+          <div class="arch-node arch-node-user">用户</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-dns">DNS A 记录 → 121.40.214.5</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-server">Caddy (HTTPS + 静态文件)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-server">Nginx (:3001)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-server">API 容器 (蓝/绿)</div>
+        </div>
+      </div>
+      <div class="arch-card arch-after">
+        <div class="arch-card-title">切换后</div>
+        <div class="arch-flow">
+          <div class="arch-node arch-node-user">用户</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-dns">DNS CNAME → ESA</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-esa">ESA 边缘节点 (加速 + WAF + DDoS + 缓存)</div>
+          <div class="arch-arrow">↓ 回源</div>
+          <div class="arch-node arch-node-server">Caddy (HTTPS + 静态文件)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-server">Nginx (:3001)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node arch-node-server">API 容器 (蓝/绿)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guarantees -->
+  <div class="guarantees">
+    <div class="guarantees-title">零停机保障</div>
+    <div class="guarantee-grid">
+      <div class="guarantee-card">
+        <div class="guarantee-icon">1</div>
+        <div class="guarantee-name">证书先签好</div>
+        <div class="guarantee-desc">ESA 边缘证书在切换前已签发，切换瞬间 HTTPS 即可用。</div>
+      </div>
+      <div class="guarantee-card">
+        <div class="guarantee-icon">2</div>
+        <div class="guarantee-name">本地先验证</div>
+        <div class="guarantee-desc">通过 hosts 文件模拟切换，确保 ESA 回源链路完全正常。</div>
+      </div>
+      <div class="guarantee-card">
+        <div class="guarantee-icon">3</div>
+        <div class="guarantee-name">源站不动</div>
+        <div class="guarantee-desc">Caddy/Nginx/API 容器完全不变，旧路径和新路径都通。</div>
+      </div>
+      <div class="guarantee-card">
+        <div class="guarantee-icon">4</div>
+        <div class="guarantee-name">TTL 提前改短</div>
+        <div class="guarantee-desc">DNS TTL 降至 60 秒，切换后最多 1 分钟全网生效。</div>
+      </div>
+      <div class="guarantee-card">
+        <div class="guarantee-icon">5</div>
+        <div class="guarantee-name">原子操作</div>
+        <div class="guarantee-desc">只改一条 DNS 记录，出问题改回 A 记录即可秒回滚。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rollback -->
+  <div class="rollback">
+    <div class="rollback-title">紧急回滚方案</div>
+    <div class="rollback-content">
+      如果切换后发现问题，去 DNS 服务商将 CNAME 记录改回 A 记录：<br><br>
+      <code>fbif2026ticket</code> → A → <code>121.40.214.5</code><br><br>
+      因为 TTL 已设为 60 秒，回滚后 1 分钟内全网恢复直连源站。ESA 侧配置不用删，下次测试好了再切回来。
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="checklist">
+    <div class="checklist-title">操作清单</div>
+    <div class="checklist-items">
+
+      <div class="checklist-group">
+        <div class="checklist-group-title phase-1-title">阶段一：ESA 配置（提前数天）</div>
+        <div class="checklist-item"><div class="checklist-box"></div> ESA 控制台新增站点 fbif2026ticket.foodtalks.cn</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 添加 A 记录 → 121.40.214.5，开启代理</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 配置回源协议和端口 (HTTPS 443)</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 申请 SSL 边缘证书</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 配置缓存规则（/assets 30天，/api 不缓存）</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 配置安全防护（WAF / DDoS）</div>
+      </div>
+
+      <div class="checklist-group">
+        <div class="checklist-group-title phase-2-title">阶段二：本地验证</div>
+        <div class="checklist-item"><div class="checklist-box"></div> SSL 证书状态已签发</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 获取 ESA 节点 IP</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 修改本机 hosts 测试 HTTPS 访问</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 验证页面加载、表单提交、API 正常</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 验证 Server: ESA 响应头</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 删除 hosts 记录</div>
+      </div>
+
+      <div class="checklist-group">
+        <div class="checklist-group-title phase-3-title">阶段三：正式切换</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 提前 1-2 天将 DNS TTL 降至 60 秒</div>
+        <div class="checklist-item"><div class="checklist-box"></div> DNS 记录从 A 改为 CNAME（指向 ESA）</div>
+        <div class="checklist-item"><div class="checklist-box"></div> dig 确认 CNAME 生效</div>
+        <div class="checklist-item"><div class="checklist-box"></div> curl 确认 Server: ESA</div>
+        <div class="checklist-item"><div class="checklist-box"></div> 浏览器访问最终确认</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    生成日期：2026-03-30 | FBIF 2026 观众注册系统
+  </div>
+
+</div>
+</body>
+</html>

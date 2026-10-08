@@ -139,8 +139,7 @@ Preview 环境写入值要求：
 如果未来再次拆成 preview 专用表，还必须同时更新：
 
 1. `.github/workflows/deploy-preview.yml`
-2. `docs/repo-environment-model.md`
-3. `docs/repo-deploy-truth-map.md`
+2. `docs/repo-deploy-truth-map.md`
 
 ## 相关环境变量
 

@@ -5,7 +5,7 @@
 | 工作流 | 文件 | 触发方式 | 环境 | 端口 |
 |--------|------|---------|------|------|
 | Deploy Preview | `deploy-preview.yml` | push 到 `main` 自动触发 | 预览 | Web 3003（入口） / API active slot 28080/28081（经 3101） |
-| Deploy Production | `deploy-aliyun.yml` | 手动 `workflow_dispatch` | 生产 | Web 3001 / API 8080 |
+| Deploy Production | `deploy-aliyun.yml` | 手动 `workflow_dispatch` | 生产 | Web 3001 / API active slot 8080/18080 |
 
 飞书同步说明：
 - 生产和预览共用飞书表 `tbl0CQ74guMS1IDd`
@@ -104,5 +104,5 @@
 | 预览前端 | `http://121.40.214.5:3003` |
 | 预览后端健康 | `http://121.40.214.5:3003/health`（外部） / `http://127.0.0.1:3101/healthz`（服务器内） |
 | 生产前端 | `https://fbif2026ticket.foodtalks.cn` |
-| 生产后端健康 | `http://127.0.0.1:8080/health`（服务器内） |
+| 生产后端健康 | 稳定入口 `http://127.0.0.1:3001/healthz`；当前 API 槽位按 `active_slot` 检查 8080/18080 |
 | Actions 日志 | 仓库 `Actions` 页面查看 `Deploy Preview` / `Deploy To Aliyun` |

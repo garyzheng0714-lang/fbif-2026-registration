@@ -1,5 +1,7 @@
 # FBIF 2026 观众注册系统 — 部署指南
 
+> 状态：本文仅保留新服务器初始化参考，不是现役环境的发布入口。现役发布必须按 `release-flow.md` 和当前 GitHub Actions：`main` push 只更新 Preview，Production 需用户确认后手动触发。不得在现役服务器照抄本文的手工命令。
+
 ## 前置条件
 
 - Ubuntu Linux 服务器（2 核 2GB 以上），开放 80/443/22 端口
@@ -125,7 +127,7 @@ systemctl restart caddy
 
 ## 第五步：部署代码
 
-**方式 A：手动部署（推荐先用这个验证）**
+**方式 A：新机隔离环境的历史初始化参考（不得用于现役服务器）**
 
 ```bash
 # 1. 安装 Node.js 20（如果没有）
@@ -168,7 +170,7 @@ ssh-copy-id -i fbif-deploy-key.pub root@服务器IP
 cat fbif-deploy-key  # 复制内容到 GitHub Secret
 ```
 
-之后每次 `git push origin main` 自动部署。
+之后 `git push origin main` 只自动部署 Preview；Production 必须在 Preview 验收后手动触发 `Deploy To Aliyun`。
 
 ## 验证
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESA 正式站切换</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; line-height: 1.7; padding: 40px 20px;
+  }
+  .container { max-width: 700px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 24px; font-weight: 700; color: #60a5fa; margin-bottom: 6px; }
+  .sub { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 40px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+  .h2-1 { color: #60a5fa; }
+  .h2-2 { color: #fbbf24; }
+  .h2-3 { color: #34d399; }
+  .h2-r { color: #f87171; }
+  .step { background: #1e293b; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; }
+  .step-head { font-weight: 600; color: #f1f5f9; margin-bottom: 6px; font-size: 15px; }
+  .step p, .step li { color: #94a3b8; font-size: 14px; }
+  .step ul { padding-left: 18px; margin-top: 4px; }
+  .step li { margin-bottom: 2px; }
+  code { background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 13px; color: #e2e8f0; font-family: "SF Mono", Monaco, monospace; }
+  pre { background: #0d1117; border: 1px solid #334155; border-radius: 6px; padding: 12px 16px; margin-top: 8px; font-size: 13px; color: #c9d1d9; font-family: "SF Mono", Monaco, monospace; overflow-x: auto; }
+  .warn { color: #fbbf24; font-size: 13px; margin-top: 8px; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+  .tag-safe { background: #1e3b2f; color: #6ee7b7; }
+  .tag-live { background: #3b2f1e; color: #fcd34d; }
+  .rollback { background: #2d1b1b; border: 1px solid #7f1d1d; border-radius: 10px; padding: 16px 20px; margin-top: 12px; }
+  .rollback p { color: #fecaca; font-size: 14px; }
+  .footer { margin-top: 40px; text-align: center; color: #475569; font-size: 12px; }
+
+  .checklist { margin-top: 36px; }
+  .ci { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; color: #cbd5e1; cursor: pointer; }
+  .ci:hover { color: #f1f5f9; }
+  .cb { width: 18px; height: 18px; border: 2px solid #475569; border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .ci.done .cb { background: #34d399; border-color: #34d399; }
+  .ci.done .cb::after { content: ''; width: 5px; height: 9px; border: solid #0f172a; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -2px; }
+  .ci.done { color: #64748b; text-decoration: line-through; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ESA 正式站切换</h1>
+  <p class="sub">fbif2026ticket.foodtalks.cn</p>
+
+  <!-- Phase 1 -->
+  <h2 class="h2-1">阶段一：在 ESA 控制台配置 <span class="tag tag-safe">不影响线上</span></h2>
+
+  <div class="step">
+    <div class="step-head">1. 新增站点</div>
+    <p>站点管理 → 新增站点 → 输入 <code>fbif2026ticket.foodtalks.cn</code> → 接入方式选 <strong>CNAME</strong> → 加速区域选 <strong>中国内地</strong></p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">2. 验证域名归属权</div>
+    <p>ESA 会要求你证明这个域名是你的。去你的 DNS 服务商（管理 foodtalks.cn 的地方）加一条记录：</p>
+    <ul>
+      <li>类型：<strong>TXT</strong></li>
+      <li>主机记录：ESA 页面显示的值（类似 <code>_esaauth.fbif2026ticket</code>）</li>
+      <li>记录值：ESA 页面显示的验证码（点复制按钮）</li>
+    </ul>
+    <p>加完后回 ESA 点「点击验证」，通过后进入下一步。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">3. 添加 DNS 记录</div>
+    <p>DNS → 记录 → 添加记录：</p>
+    <ul>
+      <li>类型：A/AAAA</li>
+      <li>主机记录：<code>@</code></li>
+      <li>记录值：<code>121.40.214.5</code></li>
+      <li>代理状态：<strong>开启</strong></li>
+    </ul>
+    <p>添加后页面会显示一个 CNAME 地址，<strong>复制保存</strong>。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">4. 申请 SSL 证书</div>
+    <p>SSL/TLS → 边缘证书 → 申请免费证书 → 域名填 <code>fbif2026ticket.foodtalks.cn</code></p>
+    <p>ESA 会再让你去 DNS 服务商加一条 CNAME 验证记录（和第 2 步类似，按页面显示的值填）。</p>
+    <p class="warn">等证书状态变为「已签发」再继续，这步最关键。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">5. 配置缓存</div>
+    <p>缓存 → 缓存规则 → 添加：</p>
+    <ul>
+      <li><code>/assets/*</code> → 缓存 30 天</li>
+      <li>其他（<code>/api/*</code>、<code>/</code>）→ 不缓存</li>
+    </ul>
+  </div>
+
+  <!-- Phase 2 -->
+  <h2 class="h2-2">阶段二：本地验证 <span class="tag tag-safe">不影响线上</span></h2>
+
+  <div class="step">
+    <div class="step-head">6. 用 hosts 文件模拟切换</div>
+    <pre># 查 ESA 节点 IP（CNAME 地址换成第 2 步保存的）
+dig &lt;你的CNAME地址&gt; +short
+
+# 改 hosts（IP 换成上面查到的）
+sudo vi /etc/hosts
+47.x.x.x  fbif2026ticket.foodtalks.cn
+
+# 刷新 DNS
+sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head">7. 打开浏览器验证</div>
+    <p>访问 <code>https://fbif2026ticket.foodtalks.cn</code>，检查：</p>
+    <ul>
+      <li>页面正常、证书有效（有锁）</li>
+      <li>身份证验证能通过</li>
+      <li>表单能提交成功</li>
+    </ul>
+    <p>验证完，<strong>删掉 hosts 里加的那行</strong>，再刷新 DNS 缓存。</p>
+  </div>
+
+  <!-- Phase 3 -->
+  <h2 class="h2-3">阶段三：正式切换 <span class="tag tag-live">影响线上</span></h2>
+
+  <div class="step">
+    <div class="step-head">8. 提前 1-2 天：降低 DNS TTL</div>
+    <p>去 DNS 服务商，把 <code>fbif2026ticket</code> 的 TTL 改成 <code>60</code> 秒。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">9. 改 DNS 记录（一步完成切换）</div>
+    <p>把 <code>fbif2026ticket</code> 的记录从：</p>
+    <ul>
+      <li>A → <code>121.40.214.5</code></li>
+    </ul>
+    <p>改成：</p>
+    <ul>
+      <li>CNAME → <code>第 2 步保存的 CNAME 地址</code></li>
+    </ul>
+    <p>改完后最多 60 秒全网生效，期间新旧路径都通，<strong>零停机</strong>。</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">10. 验证</div>
+    <pre>curl -sI https://fbif2026ticket.foodtalks.cn | grep Server
+# 看到 Server: ESA 就成功了</pre>
+  </div>
+
+  <!-- Rollback -->
+  <h2 class="h2-r">出问题？回滚</h2>
+  <div class="rollback">
+    <p>把 DNS 改回 A 记录 → <code>121.40.214.5</code>，60 秒恢复。</p>
+  </div>
+
+  <!-- Checklist -->
+  <div class="checklist">
+    <h2 style="color: #e2e8f0;">操作清单</h2>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>ESA 新增站点，CNAME 接入</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>添加 A 记录 → 121.40.214.5，开代理</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>保存 ESA 分配的 CNAME 地址</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>申请 SSL 证书 + DCV 验证</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>证书状态：已签发</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>配置缓存规则</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>改 hosts 本地测试通过</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>删除 hosts 记录</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>DNS TTL 改为 60 秒（提前 1-2 天）</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>DNS 从 A 改为 CNAME</div>
+    <div class="ci" onclick="this.classList.toggle('done')"><div class="cb"></div>curl 确认 Server: ESA</div>
+  </div>
+
+  <div class="footer">2026-03-30 | 共 10 步</div>
+</div>
+</body>
+</html>

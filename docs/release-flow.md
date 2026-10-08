@@ -9,7 +9,7 @@
 | 环境 | 触发方式 | 服务器 | Web 端口 | API 端口 | 服务器目录 |
 |------|---------|--------|---------|---------|-----------|
 | 预览 | push 到 `main` 自动触发 | 121.40.214.5 | 3003 | active slot `28080/28081`（经 `3101`） | `/opt/web-fbif-form-staging` |
-| 生产 | 手动 workflow_dispatch | 121.40.214.5 | 3001 | 8080 | `/opt/web-fbif-form` |
+| 生产 | 手动 workflow_dispatch | 121.40.214.5 | 3001 | active slot `8080/18080` | `/opt/web-fbif-form` |
 
 两个环境共用同一台服务器，通过不同端口和目录隔离。
 
@@ -66,7 +66,7 @@
 - 预览前端：`http://121.40.214.5:3003`
 - 预览后端健康：`http://121.40.214.5:3003/health`（外部）或 `http://127.0.0.1:3101/healthz`（服务器内）
 - 生产前端：`https://fbif2026ticket.foodtalks.cn`
-- 生产后端健康：`http://127.0.0.1:8080/health`（服务器内）
+- 生产后端健康：先读 `/opt/web-fbif-form/shared/active_slot`，再检查对应的 `8080` 或 `18080` 槽位；稳定入口是 `http://127.0.0.1:3001/healthz`。
 - GitHub Actions 日志：仓库 `Actions` 页面查看对应 workflow
 - 端口隔离检查：参考 `docs/production-port-isolation-runbook.md`
 

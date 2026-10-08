@@ -1,23 +1,29 @@
-# FBIF Form
+# FBIF 2026 观众注册系统
 
-FBIF 食品创新展 2026 观众注册表单系统 — 高并发表单采集 + 飞书多维表格异步同步。
+FBIF 食品创新展 2026 的观众注册站：React 表单负责采集，Express API 先把提交写入 PostgreSQL，再由 BullMQ worker 异步同步到飞书多维表格。附件通过阿里云 OSS 直传。
 
-## 目录结构
-- `apps/web`: React 表单前端 (Vite + TypeScript)
-- `apps/api`: Express + Prisma 后端 (BullMQ 异步任务)
-- `apps/mock-api`: Mock API (本地开发用)
-- `docs/`: 部署、API、测试与使用文档
-- `tests/k6`: K6 压测脚本
-- `tests/load`: Shell 压测脚本（含 OSS 上传混合场景）
+本目录是本地唯一现役副本；`归档/fbif-2026-registration` 与 `归档/web-fbif-form` 只是旧快照，不参与开发或部署。仓库、分支和环境的权威对应关系见 [docs/repo-deploy-truth-map.md](docs/repo-deploy-truth-map.md)。
+
+## 目录
+
+- `apps/web/`：React + TypeScript + Vite 前端
+- `apps/api/`：Express + Prisma + BullMQ 后端
+- `apps/mock-api/`：本地联调用模拟 API
+- `scripts/`：本地联调、蓝绿发布、回滚与漂移检查
+- `deploy/`：Caddy 模板
+- `tests/`：k6 与 OSS 混合链路压测
+- `docs/`：现行接入、部署与运维文档；先看 [docs/README.md](docs/README.md)
 
 ## 本地开发
 
-1. 启动依赖
+先启动 PostgreSQL 与 Redis：
+
 ```bash
 docker compose up -d
 ```
 
-2. 后端
+后端：
+
 ```bash
 cd apps/api
 cp .env.example .env
@@ -26,7 +32,8 @@ npm run prisma:migrate
 npm run dev
 ```
 
-3. 前端
+前端：
+
 ```bash
 cd apps/web
 cp .env.example .env
@@ -34,46 +41,45 @@ npm ci
 npm run dev
 ```
 
-## 本地前后端联调
+也可以用仓库脚本同时启动前端预览和模拟 API：
+
 ```bash
 node scripts/local-stack.mjs start
 node scripts/local-stack.mjs status
 ```
 
-同时启动前端预览 (`http://localhost:4173`) 和模拟后端 (`http://localhost:8080`)。
+具体限制见 [docs/local-dev-environment.md](docs/local-dev-environment.md)。
 
-详见 `docs/local-dev-environment.md`。
+## 验证
 
-## 部署架构
+```bash
+cd apps/api && npm test && npm run build
+cd apps/web && npm test && npm run build
+docker compose -f docker-compose.production.yml config --quiet
+```
 
-单服务器 (121.40.214.5) 双环境部署:
+测试会写临时数据库时，只能使用测试配置；不得把生产凭据或真实报名数据带入本地测试。
 
-| 环境 | 前端 | API | 触发方式 |
-|------|------|-----|----------|
-| 生产 | `:3001` (Caddy HTTPS -> Nginx) | `:8080 / :18080` (blue/green) | 手动 GitHub Actions dispatch |
-| Preview | `:3003` (HTTP) | `:8083` | push to main 自动触发 |
+## 部署边界
 
-两套环境通过不同 Docker 项目名和数据库完全隔离。
+- `main` 推送自动部署 Preview；生产只能由人工确认后手动触发 `Deploy To Aliyun`。
+- Production 与 Preview 共用服务器，但端口、Docker 项目名和数据库必须隔离。
+- 生产域名流量必须经 Caddy → 主机 Nginx → 当前蓝绿 API 槽位；不得让 Preview 占用生产端口。
+- API 容器以 PM2 启动 3 个 API worker；BullMQ worker 是否启动由 `RUN_WORKER` 控制。
+- 真实密钥只允许放在环境文件或 GitHub Secrets；不要写入 Markdown、源码、截图或日志。
 
-生产稳定性基线（防串线）：
-- 生产域名 API 必须经 `localhost:3001`，不允许直连 `localhost:8080`
-- Preview 蓝绿槽位不得占用生产 API 端口 `8080/18080`
-- `nginx sites-enabled` 不允许出现 `fbif-form-staging*` 条目
+发布前读 [docs/release-flow.md](docs/release-flow.md)，故障处理读 [docs/runbook.md](docs/runbook.md) 和 [docs/production-port-isolation-runbook.md](docs/production-port-isolation-runbook.md)。
 
-## CI/CD
+## 核心接口
 
-- **Preview**: push to `main` → 自动部署到 `http://121.40.214.5:3003`
-- **生产**: 手动触发 GitHub Actions `Deploy To Aliyun` → 部署到 `https://fbif2026ticket.foodtalks.cn`
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `GET` | `/health` | 健康检查 |
+| `GET` | `/metrics` | Prometheus 指标 |
+| `GET` | `/api/csrf` | 获取 CSRF token |
+| `POST` | `/api/oss/policy` | 获取 OSS 直传策略 |
+| `POST` | `/api/id-verify` | 可选身份证二要素校验 |
+| `POST` | `/api/submissions` | 受理报名，成功返回 `202` |
+| `GET` | `/api/submissions/:id/status` | 查询飞书同步状态 |
 
-说明文档: `docs/github-actions-deploy.md`
-发布规则: `docs/release-flow.md`
-应急与防复发手册: `docs/production-port-isolation-runbook.md`
-
-## 重要配置
-
-- `FEISHU_APP_SECRET` 必须从环境变量注入
-- `FEISHU_TABLE_ID` 需填写多维表格的 Table ID
-- `DATA_KEY` 使用 32 字节 base64 密钥
-- `DATA_HASH_SALT` 至少 8 字符的哈希盐值
-
-更多内容见 `docs/`。
+完整请求约定见 [docs/api.md](docs/api.md)。
