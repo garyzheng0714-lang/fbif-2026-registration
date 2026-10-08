@@ -206,6 +206,8 @@ npm test
 
 ## 文档索引
 
+现行文档总入口见 [`docs/README.md`](./docs/README.md)。
+
 | 文档 | 用途 |
 | --- | --- |
 | [`docs/user-manual.md`](./docs/user-manual.md) | 报名用户与运营使用说明 |
@@ -213,8 +215,7 @@ npm test
 | [`docs/feishu-setup.md`](./docs/feishu-setup.md) | 飞书应用与字段映射配置 |
 | [`docs/aliyun-id-verify-integration.md`](./docs/aliyun-id-verify-integration.md) | 可选实名验证接入 |
 | [`docs/tencent-ads-attribution-spec.md`](./docs/tencent-ads-attribution-spec.md) | 广告归因字段规范 |
-| [`docs/stability-assessment.md`](./docs/stability-assessment.md) | 稳定性边界与整改记录 |
-| [`docs/performance-report.md`](./docs/performance-report.md) | 历史性能测试结果与前提 |
+| [`docs/performance-test.md`](./docs/performance-test.md) | 压测方法与历史结果前提 |
 
 ## 仓库边界
 

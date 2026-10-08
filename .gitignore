@@ -36,3 +36,10 @@ release.tgz
 /*.html
 /*.png
 .gstack/
+
+# 本地演示产物与 agent worktree
+artifacts/
+.claude/worktrees/
+.context/
+*.pem
+*.db

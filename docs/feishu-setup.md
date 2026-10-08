@@ -11,12 +11,15 @@
 ## 字段映射
 默认字段名：
 - 姓名
-- 手机号
-- 职位
-- 公司
-- 身份证号
-- 提交时间
-- 同步状态
+- 手机号（问卷题）
+- 职位（问卷题）
+- 公司（问卷题）
+- 证件号码（问卷题）
+- 观展身份、贵司的业务类型、您所处的部门（问卷题）
+- 专业观众证明（附件链接）
+- 访问跟踪参数、跟踪ID、跟踪ID类型、`ip`、实际提交时间、提交记录唯一值
+
+`FEISHU_FIELD_ID_TYPE`、`FEISHU_FIELD_CLICK_ID`、`FEISHU_FIELD_CLICK_ID_SOURCE_KEY`、`FEISHU_FIELD_SUBMITTED_AT`、`FEISHU_FIELD_SYNC_STATUS` 和 `FEISHU_FIELD_SOURCE` 默认为空，只有配置映射后才写入。精确默认值以 `apps/api/src/services/feishuService.ts` 为准。
 
 如需使用不同字段名，请设置以下环境变量覆盖：
 - `FEISHU_FIELD_NAME`
@@ -34,7 +37,7 @@
 - `腾讯广告点击ID来源字段`
 
 腾讯广告归因字段、正式/测试环境表配置、字段一致性要求，统一见：
-- `docs/tencent-ads-attribution-spec.md`
+- [`tencent-ads-attribution-spec.md`](tencent-ads-attribution-spec.md)
 
 ## 权限要求
 确保应用已获得多维表格读写权限，并安装到目标租户。

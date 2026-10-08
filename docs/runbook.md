@@ -21,7 +21,7 @@
 
 ## 3. 先看是否“受理成功”
 1. 客户端是否收到 `202`？
-2. 若无：看 PM2/API 日志是否出现 `403/429/5xx`。
+2. 若无：先看当前 API 容器日志是否出现 `403/429/5xx`；容器内部由 PM2 管理进程，但宿主机排障入口仍是 Docker 日志。
 3. 若有：用 `submissionId` 拉状态：
    - `GET /api/submissions/:id/status`
 
@@ -68,5 +68,4 @@
 1. 在 Redis 中为队列 `feishu-sync` 重新添加 job（jobId=submissionId）。
 2. 观察该 submission 的状态是否回到 `PROCESSING/RETRYING/SUCCESS`。
 
-> 备注：后续可补一个受保护的管理接口（不对公网开放）来做“点选重试/批量重试”。
-
+管理后台与批量补偿尚未排期，统一记录在 `../TODOS.md`；现阶段不要临时开放公网重试接口。
