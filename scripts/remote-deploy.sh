@@ -568,12 +568,20 @@ run_slot_api_container() {
     local database_url="postgresql://${db_user}:${db_pass}@${COMPOSE_PROJECT_NAME}-postgres-1:5432/${db_name}"
     local redis_url="redis://${COMPOSE_PROJECT_NAME}-redis-1:6379"
 
+    # Cap at 3 CPUs but never above what the host has (docker rejects --cpus > nproc).
+    local host_cpus api_cpus
+    host_cpus="$(nproc 2>/dev/null || echo 1)"
+    api_cpus=3
+    if [ "${host_cpus}" -lt "${api_cpus}" ]; then
+      api_cpus="${host_cpus}"
+    fi
+
     docker rm -f "${container_name}" >/dev/null 2>&1 || true
 
     docker run -d \
       --name "${container_name}" \
       --restart unless-stopped \
-      --cpus 3 \
+      --cpus "${api_cpus}" \
       --memory 2g \
       --network "${COMPOSE_PROJECT_NAME}_private" \
       -p "127.0.0.1:${slot_port}:${API_PORT_INTERNAL_VALUE}" \
