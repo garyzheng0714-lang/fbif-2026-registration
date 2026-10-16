@@ -22,7 +22,7 @@
 创建 PR -> main
     |
     v
-合并到 main -> 自动部署预览环境 (121.40.214.5:3003)
+合并到 main -> 自动部署预览环境（服务器本机 3003，经 SSH 隧道访问）
     |
     v
 用户在预览环境确认
@@ -36,7 +36,7 @@
 1. 从 `main` 创建功能分支（`feat/xxx` 或 `fix/xxx`）。
 2. 开发完成后提交 PR 到 `main`。
 3. PR 合并后，`deploy-preview.yml` 自动部署到预览环境。
-4. 将预览链接 `http://121.40.214.5:3003` 发给相关人员确认。
+4. 预览不对公网开放：先开隧道 `ssh -L 3003:127.0.0.1:3003 aliyun-prod-real`，再打开 `http://localhost:3003`，确认无误。
 5. 确认无误后，在 GitHub Actions 手动触发 `deploy-aliyun.yml` 部署生产。
 6. 检查生产环境 `https://fbif2026ticket.foodtalks.cn`。
 
@@ -63,8 +63,8 @@
 
 ## 发布后检查
 
-- 预览前端：`http://121.40.214.5:3003`
-- 预览后端健康：`http://121.40.214.5:3003/health`（外部）或 `http://127.0.0.1:3101/healthz`（服务器内）
+- 预览前端：先开隧道 `ssh -L 3003:127.0.0.1:3003 aliyun-prod-real`，再打开 `http://localhost:3003`
+- 预览后端健康：服务器内 `curl http://127.0.0.1:3003/health` 或 `http://127.0.0.1:3101/healthz`
 - 生产前端：`https://fbif2026ticket.foodtalks.cn`
 - 生产后端健康：先读 `/opt/web-fbif-form/shared/active_slot`，再检查对应的 `8080` 或 `18080` 槽位；稳定入口是 `http://127.0.0.1:3001/healthz`。
 - GitHub Actions 日志：仓库 `Actions` 页面查看对应 workflow

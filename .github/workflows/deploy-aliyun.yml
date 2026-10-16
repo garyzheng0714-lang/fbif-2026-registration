@@ -183,7 +183,7 @@ jobs:
             exit 1
           fi
 
-          STAGING_NGX_COLLISION="$(${SSH_CMD} 'for f in /etc/nginx/sites-enabled/fbif-form-staging*; do [ -f \"$f\" ] || continue; if grep -Eq \"listen[[:space:]]+3001\\\\b|listen[[:space:]]+3002\\\\b|listen[[:space:]]+\\\\[::\\\\]:3001\\\\b|listen[[:space:]]+\\\\[::\\\\]:3002\\\\b\" \"$f\"; then echo \"$f\"; fi; done')"
+          STAGING_NGX_COLLISION="$(${SSH_CMD} "grep -lE 'listen[[:space:]]+([0-9.]+:|\\[::\\]:)?300[12]\\b' /etc/nginx/sites-enabled/fbif-form-staging* 2>/dev/null || true")"
           if [ -n "${STAGING_NGX_COLLISION}" ]; then
             echo '::error::Staging nginx site is using production web ports (3001/3002).'
             echo "${STAGING_NGX_COLLISION}"

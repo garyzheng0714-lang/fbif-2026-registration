@@ -86,6 +86,7 @@ API 测试使用 Node test runner，Web 使用 Vitest。改动提交链路时至
 
 - Production：Caddy 提供 HTTPS/静态文件，API 经主机 Nginx `3001` 转到蓝/绿槽位 `8080/18080`。
 - Preview：Caddy `3003`，API 经独立网关和 `28080/28081` 临时槽位，不得复用生产槽位。
+- 端口只听本机：nginx `3001/3101`、Caddy `:3003` 都绑 `127.0.0.1`，公网只走 Caddy 443。不要改回监听所有网卡，预览走 SSH 隧道。
 - API 镜像入口为 `/entrypoint-pm2.sh`：先执行可选 Prisma migrate，再由 `pm2-runtime` 启动 3 个 `fbif-api` cluster 实例和可选 `fbif-worker`。
 - `scripts/remote-deploy.sh` 的 `preflight → prepare → promote` 是两套环境共同的发布骨架；不要手写一条旁路部署命令。
 - 生产发布前必须通过端口隔离门禁；串线时按 `docs/production-port-isolation-runbook.md` 止血，不要现场猜端口或删除未知容器。

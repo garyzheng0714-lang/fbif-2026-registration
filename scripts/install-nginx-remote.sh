@@ -23,8 +23,7 @@ fi
 
 cat > "/etc/nginx/sites-available/${NGINX_SITE_NAME_VALUE}" <<SITE
 server {
-    listen ${PRIMARY_WEB_PORT_VALUE};
-    listen [::]:${PRIMARY_WEB_PORT_VALUE};
+    listen 127.0.0.1:${PRIMARY_WEB_PORT_VALUE};
     server_name _;
 
     root ${STATIC_DIR_VALUE};

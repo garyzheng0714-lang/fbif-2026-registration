@@ -22,7 +22,7 @@
   - `API slot`: `8080/18080`
   - `Nginx`: `3001/3002`
 - 预览保留端口：
-  - 外部稳定入口：`3003 -> 3101`
+  - 稳定入口：`127.0.0.1:3003 -> 127.0.0.1:3101`（只听本机，外面走 SSH 隧道）
   - 预览蓝绿端口：`3101/3102`（Nginx）、`28080/28081`（API）
   - `8083` 仅作历史兼容口，不作为默认入口。
 
@@ -76,8 +76,8 @@ curl -sS https://fbif2026ticket.foodtalks.cn/health
 curl -sS -D /tmp/h -o /tmp/b https://fbif2026ticket.foodtalks.cn/api/csrf >/dev/null
 grep -i '^access-control-allow-origin:' /tmp/h
 
-# 预览直连健康
-curl -sS http://121.40.214.5:3003/health
+# 预览健康（服务器内）
+ssh aliyun-prod-real 'curl -sS http://127.0.0.1:3003/health'
 
 # 容器请求归属（生产域名应只在 fbif-form-api-* 出现）
 ssh aliyun-prod-real 'for c in fbif-form-api-blue fbif-form-api-green fbif-form-staging-api-1; do echo "--- $c"; docker logs --since 5m $c 2>&1 | grep -oE "\"host\":\"[^\"]+\"" | sed "s/\"host\":\"//;s/\"$//" | sort | uniq -c | sort -nr | head; done'

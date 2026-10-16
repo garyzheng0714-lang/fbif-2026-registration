@@ -232,8 +232,7 @@ write_nginx_site() {
 
   cat > "/etc/nginx/sites-available/${site_name}" <<SITE
 server {
-    listen ${listen_port};
-    listen [::]:${listen_port};
+    listen 127.0.0.1:${listen_port};
     server_name _;
 
     root ${root_dir};

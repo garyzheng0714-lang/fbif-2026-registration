@@ -85,8 +85,9 @@ fbif2026ticket.foodtalks.cn {
 #     }
 # }
 
-# ── 测试环境（IP:3003 直连）──────────────────────────────────────
+# ── 测试环境（只听本机 3003，经 SSH 隧道访问）──────────────────────
 :3003 {
+    bind 127.0.0.1
     import security_headers_common
     encode gzip zstd
 
