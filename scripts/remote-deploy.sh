@@ -580,6 +580,7 @@ run_slot_api_container() {
     docker run -d \
       --name "${container_name}" \
       --restart unless-stopped \
+      --init \
       --cpus "${api_cpus}" \
       --memory 2g \
       --network "${COMPOSE_PROJECT_NAME}_private" \
