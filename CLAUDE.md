@@ -124,9 +124,9 @@ API 测试使用 Node test runner，Web 使用 Vitest。改动提交链路时至
 ## 协作流程
 
 1. 开始前读 `git status --short`、相关源码、测试和上表中的权威文档。
-2. 在功能分支做最小修改；不要把 `.claude/worktrees/` 或本地证据目录当作现役代码。
-3. 本地测试、构建和 compose 静态校验通过后再提交 PR。
-4. 合并 `main` 后验证 Preview；将真实验证结果与不确定项明确告诉用户。
+2. 只在 `main` 上做最小修改，不开分支、PR 或 worktree；不要把 `.claude/worktrees/` 或本地证据目录当作现役代码。
+3. 本地测试、构建和 compose 静态校验通过后，再提交并推送 `main`。
+4. 推送 `main` 会自动部署 Preview（`deploy-preview.yml`）；验证 Preview 后，把真实验证结果与不确定项明确告诉用户。
 5. 只有用户确认后才手动触发生产发布；发布后按 workflow/Runbook 验证健康、CSRF、静态资源和报名受理链路。
 
 长期未排期事项统一放在 `TODOS.md`；临时执行计划完成或失效后应删除，不能把 CLAUDE.md、README 或 `docs/` 当任务流水账。
