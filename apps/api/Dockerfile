@@ -18,7 +18,8 @@ RUN npm run build
 FROM node:20-bookworm AS runtime
 WORKDIR /app
 
-RUN npm install -g pm2
+# 锁版本：pm2 7.1.1 在容器里打不开 /dev/stdout（ENXIO），实例反复退出；7.0.4 是线上验证过的
+RUN npm install -g pm2@7.0.4
 
 ENV NODE_ENV=production
 
