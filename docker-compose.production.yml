@@ -11,6 +11,11 @@ services:
     stop_grace_period: 15s
     ports:
       - "127.0.0.1:${API_PORT:-8080}:${API_PORT_INTERNAL:-8080}"
+    # FEISHU_APP_SECRET、ID_VERIFY_APPCODE、OSS 钥匙由 FBIF 中台的本机代理写这个文件。
+    # environment 会盖过 env_file，所以这 4 个不在下面写。线上 API 槽位是 remote-deploy.sh docker run 起的，同样叠这个文件。
+    env_file:
+      - path: /etc/fbif-hub/env/${COMPOSE_PROJECT_NAME:-fbif-form}.env
+        required: false
     environment:
       NODE_ENV: production
       PORT: ${API_PORT_INTERNAL:-8080}
@@ -22,7 +27,6 @@ services:
       DATA_KEY: ${DATA_KEY:?DATA_KEY is required}
       DATA_HASH_SALT: ${DATA_HASH_SALT:?DATA_HASH_SALT is required}
       FEISHU_APP_ID: ${FEISHU_APP_ID:?FEISHU_APP_ID is required}
-      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:?FEISHU_APP_SECRET is required}
       FEISHU_APP_TOKEN: ${FEISHU_APP_TOKEN:?FEISHU_APP_TOKEN is required}
       FEISHU_TABLE_ID: ${FEISHU_TABLE_ID:?FEISHU_TABLE_ID is required}
       FEISHU_FIELD_NAME: ${FEISHU_FIELD_NAME:-}
@@ -60,8 +64,6 @@ services:
       FEISHU_SELECT_WRITE_MODE: ${FEISHU_SELECT_WRITE_MODE:-label}
       MAX_PROOF_URLS: ${MAX_PROOF_URLS:-5}
       MAX_PROOF_URL_LENGTH: ${MAX_PROOF_URL_LENGTH:-2048}
-      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
-      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       OSS_BUCKET: ${OSS_BUCKET:-}
       OSS_REGION: ${OSS_REGION:-}
       OSS_HOST: ${OSS_HOST:-}
@@ -73,7 +75,6 @@ services:
       ID_VERIFY_ENABLED: ${ID_VERIFY_ENABLED:-false}
       ID_VERIFY_ALIYUN_HOST: ${ID_VERIFY_ALIYUN_HOST:-https://sxidcheck.market.alicloudapi.com}
       ID_VERIFY_ALIYUN_PATH: ${ID_VERIFY_ALIYUN_PATH:-/idcard/check}
-      ID_VERIFY_APPCODE: ${ID_VERIFY_APPCODE:-}
       ID_VERIFY_TIMEOUT_MS: ${ID_VERIFY_TIMEOUT_MS:-5000}
       ID_VERIFY_TOKEN_TTL_SECONDS: ${ID_VERIFY_TOKEN_TTL_SECONDS:-900}
       FEISHU_ALERT_WEBHOOK: ${FEISHU_ALERT_WEBHOOK:-}

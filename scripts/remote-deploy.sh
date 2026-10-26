@@ -27,6 +27,10 @@ RELEASE_TGZ="${RELEASE_TGZ:-/tmp/release.tgz}"
 GH_SHA="${GH_SHA:-}"
 
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-fbif-form}"
+# FBIF 中台的本机代理写这个文件（root 0600，部署不写它）：FEISHU_APP_SECRET、ID_VERIFY_APPCODE、OSS 钥匙。
+# 容器启动时叠在 backend.env 后面，同名以它为准；代理换值后跑 HUB_RESTART_SCRIPT 重建槽位容器。
+HUB_ENV_FILE="/etc/fbif-hub/env/${COMPOSE_PROJECT_NAME}.env"
+HUB_RESTART_SCRIPT="${APP_ROOT}/bin/recreate-api-slot.sh"
 PRIMARY_WEB_PORT="${PRIMARY_WEB_PORT:-3001}"
 CANDIDATE_WEB_PORT="${CANDIDATE_WEB_PORT:-3002}"
 CANDIDATE_WEB_PORT_FALLBACKS="${CANDIDATE_WEB_PORT_FALLBACKS:-3202,3402}"
@@ -375,12 +379,60 @@ assert_port_not_listening() {
   [ "${listeners}" -eq 0 ] || die "${label} port ${port} is already occupied (${listeners} listeners)"
 }
 
+require_hub_env_file() {
+  [ -s "${HUB_ENV_FILE}" ] || die "missing FBIF hub env file: ${HUB_ENV_FILE}"
+}
+
+# 把中台文件叠进当前 shell。按字面逐行读、不 source：值里就算有 ; | & 也不会被执行。
+load_hub_env() {
+  local line
+  local key
+
+  require_hub_env_file
+  while IFS= read -r line || [ -n "${line}" ]; do
+    case "${line}" in
+      ''|'#'*)
+        continue
+        ;;
+    esac
+    key="${line%%=*}"
+    [[ "${line}" == *=* && "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "unexpected line in ${HUB_ENV_FILE}"
+    export "${key}=${line#*=}"
+  done < "${HUB_ENV_FILE}"
+}
+
+# 中台文件里的变量名（逗号分隔），记在容器标签上，重建时据此去掉旧值
+hub_env_names() {
+  { grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "${HUB_ENV_FILE}" || true; } | tr -d '=' | paste -sd, -
+}
+
 load_live_env() {
   [ -f "${BACKEND_ENV_FILE}" ] || die "missing backend env: ${BACKEND_ENV_FILE}"
   set -a
   # shellcheck source=/dev/null
   . "${BACKEND_ENV_FILE}"
   set +a
+  load_hub_env
+}
+
+require_backend_env() {
+  require_non_empty_env_keys \
+    WEB_ORIGIN \
+    POSTGRES_USER \
+    POSTGRES_PASSWORD \
+    POSTGRES_DB \
+    DATA_KEY \
+    DATA_HASH_SALT \
+    FEISHU_APP_ID \
+    FEISHU_APP_SECRET \
+    FEISHU_APP_TOKEN \
+    FEISHU_TABLE_ID
+
+  case "$(printf '%s' "${ID_VERIFY_ENABLED:-false}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on)
+      require_non_empty_env_keys ID_VERIFY_APPCODE
+      ;;
+  esac
 }
 
 require_non_empty_env_keys() {
@@ -577,6 +629,7 @@ run_slot_api_container() {
 
     docker rm -f "${container_name}" >/dev/null 2>&1 || true
 
+    # 加参数时同步 scripts/recreate-api-slot.sh：中台换值时它照原容器的这些参数重建
     docker run -d \
       --name "${container_name}" \
       --restart unless-stopped \
@@ -585,7 +638,9 @@ run_slot_api_container() {
       --memory 2g \
       --network "${COMPOSE_PROJECT_NAME}_private" \
       -p "127.0.0.1:${slot_port}:${API_PORT_INTERNAL_VALUE}" \
+      --label "fbif-hub.env-names=$(hub_env_names)" \
       --env-file "${BACKEND_ENV_STAGED}" \
+      --env-file "${HUB_ENV_FILE}" \
       -e PORT="${API_PORT_INTERNAL_VALUE}" \
       -e NODE_ENV=production \
       -e GH_SHA="${GH_SHA}" \
@@ -860,23 +915,7 @@ cmd_preflight() {
   esac
 
   load_live_env
-  require_non_empty_env_keys \
-    WEB_ORIGIN \
-    POSTGRES_USER \
-    POSTGRES_PASSWORD \
-    POSTGRES_DB \
-    DATA_KEY \
-    DATA_HASH_SALT \
-    FEISHU_APP_ID \
-    FEISHU_APP_SECRET \
-    FEISHU_APP_TOKEN \
-    FEISHU_TABLE_ID
-
-  case "$(printf '%s' "${ID_VERIFY_ENABLED:-false}" | tr '[:upper:]' '[:lower:]')" in
-    1|true|yes|on)
-      require_non_empty_env_keys ID_VERIFY_APPCODE
-      ;;
-  esac
+  require_backend_env
 
   local free_mb
   free_mb="$(df -Pm "${APP_ROOT}" | awk 'NR==2 {print $4}')"
@@ -912,9 +951,19 @@ cmd_prepare() {
   require_cmd docker
   docker compose version >/dev/null 2>&1 || die "docker compose v2 is required"
   require_cmd curl
+  require_hub_env_file
 
   extract_release
   build_staged_env
+  # 候选容器拿到的是 staged + 中台文件，必填项按叠完的查
+  (
+    set -a
+    # shellcheck source=/dev/null
+    . "${BACKEND_ENV_STAGED}"
+    set +a
+    load_hub_env
+    require_backend_env
+  )
 
   local active_slot
   local candidate_slot
@@ -995,6 +1044,9 @@ cmd_promote() {
 
   echo "${candidate_slot}" > "${ACTIVE_SLOT_FILE}"
   ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+  # 装在固定路径、不放 current 下：回滚到不带它的旧版本也还在。装不上不拦发布，代理那边会报重启失败
+  install -D -m 0755 "${RELEASE_DIR}/scripts/recreate-api-slot.sh" "${HUB_RESTART_SCRIPT}" \
+    || log "WARN: failed to install ${HUB_RESTART_SCRIPT}"
 
   if is_nginx_available; then
     configure_primary_nginx "${candidate_slot}"

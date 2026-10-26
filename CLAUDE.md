@@ -37,6 +37,7 @@
 | `apps/api/prisma/schema.prisma` | 数据模型真身 |
 | `apps/api/ecosystem.config.cjs` | PM2：3 个 API 实例和可选 worker |
 | `scripts/remote-deploy.sh` | 蓝绿发布、门禁、提升与回滚 |
+| `scripts/recreate-api-slot.sh` | 中台换值后按原样重建一个槽位容器，不切流量 |
 | `.github/workflows/deploy-preview.yml` | `main` 推送后自动更新 Preview |
 | `.github/workflows/deploy-aliyun.yml` | 人工触发生产发布 |
 
@@ -102,6 +103,7 @@ API 测试使用 Node test runner，Web 使用 Vitest。改动提交链路时至
 - 身份验证：启用开关、服务地址、AppCode、超时与 token TTL。
 - 网关与限流：`WEB_ORIGIN`、`TRUST_PROXY_HOPS`、全局/突发/CSRF 限流参数。
 - 容器入口：`RUN_DB_MIGRATE`、`RUN_WORKER`。
+- `FEISHU_APP_SECRET`、`ID_VERIFY_APPCODE`、`OSS_ACCESS_KEY_ID/SECRET` 归 FBIF 中台：服务器上 `/etc/fbif-hub/env/<Docker 项目名>.env`，不进 GitHub Secrets 和 `backend.env`，换值走 `scripts/recreate-api-slot.sh`（见 `docs/github-actions-deploy.md`）。
 
 新增或改名环境变量时同步更新 schema、`.env.example`、compose/workflow，以及对应 runbook；不得只改某一套部署环境。
 

@@ -44,7 +44,6 @@
   - `FEISHU_APP_ID`: 默认 `cli_a9f7f8703778dcee`
   - `FEISHU_APP_TOKEN`: 默认 `<YOUR_FEISHU_APP_TOKEN>`
   - `FEISHU_TABLE_ID`: 默认 `tbl0CQ74guMS1IDd`
-  - `FEISHU_APP_SECRET`: 仅在服务器不存在旧 `apps/api/.env` 时必填（首次冷启动）
 
 - 首次冷启动必填（若服务器已存在旧 `apps/api/.env` 可不填）：
   - `DATABASE_URL`
@@ -53,13 +52,19 @@
   - `DATA_HASH_SALT`
 
 - OSS 直传（可选，前端启用上传功能时必须配置）：
-  - `OSS_ACCESS_KEY_ID`
-  - `OSS_ACCESS_KEY_SECRET`
   - `OSS_BUCKET`
   - `OSS_REGION`（或 `OSS_HOST`）
   - `OSS_PUBLIC_BASE_URL`（可选，默认使用 host）
   - `OSS_UPLOAD_PREFIX`（可选，默认 `fbif-form/proof`）
   - `OSS_OBJECT_ACL`（可选，建议 `public-read`）
+
+## 中台下发的 4 个
+
+`FEISHU_APP_SECRET`、`ID_VERIFY_APPCODE`、`OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET` 归 FBIF 中台，不进 GitHub Secrets，也不写 `backend.env`：
+
+- 服务器上的本机代理写 `/etc/fbif-hub/env/fbif-form.env`（生产）、`/etc/fbif-hub/env/fbif-form-staging.env`（预览），文件名就是 Docker 项目名。
+- `remote-deploy.sh` 起槽位容器时 `--env-file backend.env.staged.* --env-file <中台文件>`，同名以中台文件为准；`preflight`、`prepare` 叠上中台文件再查必填项，文件缺失就在切流量前失败。
+- 中台换值后，代理跑 `<APP_DIR>/bin/recreate-api-slot.sh <prod|staging> <blue|green>`：同一镜像、原有参数重建这一个颜色，`/health` 不过就起回原容器。脚本在每次 `promote` 时装好。
 
 ## 部署流程
 

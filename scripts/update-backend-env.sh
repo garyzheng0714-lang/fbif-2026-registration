@@ -60,7 +60,8 @@ get_env_value() {
 
 finalize_env_file() {
   local missing=0
-  for key in DATA_KEY DATA_HASH_SALT FEISHU_APP_SECRET FEISHU_APP_TOKEN; do
+  # FEISHU_APP_SECRET 在中台文件里，remote-deploy.sh 叠上中台文件后再查
+  for key in DATA_KEY DATA_HASH_SALT FEISHU_APP_TOKEN; do
     if [ -z "$(get_env_value "${key}")" ]; then
       echo "Missing required backend env: ${key}" >&2
       missing=1
@@ -157,6 +158,7 @@ apply_defaults() {
 }
 
 # --- 从环境变量覆盖 (GitHub Secrets → backend.env) ---
+# FEISHU_APP_SECRET、ID_VERIFY_APPCODE、OSS_ACCESS_KEY_ID/SECRET 归 FBIF 中台，不经 GitHub、不写 backend.env
 apply_overrides() {
   set_if_non_empty WEB_ORIGIN "${WEB_ORIGIN:-}"
   set_if_non_empty API_PORT "${API_PORT:-}"
@@ -168,11 +170,8 @@ apply_overrides() {
   set_if_non_empty DATA_KEY "${DATA_KEY:-}"
   set_if_non_empty DATA_HASH_SALT "${DATA_HASH_SALT:-}"
   set_if_non_empty FEISHU_APP_ID "${FEISHU_APP_ID:-}"
-  set_if_non_empty FEISHU_APP_SECRET "${FEISHU_APP_SECRET:-}"
   set_if_non_empty FEISHU_APP_TOKEN "${FEISHU_APP_TOKEN:-}"
   set_if_non_empty FEISHU_TABLE_ID "${FEISHU_TABLE_ID:-}"
-  set_if_non_empty OSS_ACCESS_KEY_ID "${OSS_ACCESS_KEY_ID:-}"
-  set_if_non_empty OSS_ACCESS_KEY_SECRET "${OSS_ACCESS_KEY_SECRET:-}"
   set_if_non_empty OSS_BUCKET "${OSS_BUCKET:-}"
   set_if_non_empty OSS_REGION "${OSS_REGION:-}"
   set_if_non_empty OSS_HOST "${OSS_HOST:-}"
@@ -184,7 +183,6 @@ apply_overrides() {
   set_if_non_empty ID_VERIFY_ENABLED "${ID_VERIFY_ENABLED:-}"
   set_if_non_empty ID_VERIFY_ALIYUN_HOST "${ID_VERIFY_ALIYUN_HOST:-}"
   set_if_non_empty ID_VERIFY_ALIYUN_PATH "${ID_VERIFY_ALIYUN_PATH:-}"
-  set_if_non_empty ID_VERIFY_APPCODE "${ID_VERIFY_APPCODE:-}"
   set_if_non_empty ID_VERIFY_TIMEOUT_MS "${ID_VERIFY_TIMEOUT_MS:-}"
   set_if_non_empty ID_VERIFY_TOKEN_TTL_SECONDS "${ID_VERIFY_TOKEN_TTL_SECONDS:-}"
   set_if_non_empty RATE_LIMIT_WINDOW_MS "${RATE_LIMIT_WINDOW_MS:-}"
