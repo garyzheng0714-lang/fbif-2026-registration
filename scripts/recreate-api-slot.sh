@@ -85,6 +85,10 @@ jq -e '[.Config.Env[] | select(contains("\n"))] | length == 0' <<<"${info}" >/de
   || die "${NAME} 的环境里有带换行的值，写不进 env 文件，没动它" 2
 
 image="$(jq -r '.Image' <<<"${info}")"
+# 部署时给槽位镜像留的固定名字（remote-deploy.sh run_slot_api_container）；老容器没有就补上，免得镜像没名字后消失
+docker image inspect "${image}" >/dev/null 2>&1 \
+  || die "${NAME} 的镜像 ${image:7:12} 已经不在本机（名字被别的构建挪走了），没动它；下次部署这个槽位会换新镜像" 2
+docker tag "${image}" "fbif-form-api:slot-${PROJECT}-$2"
 network="$(jq -r '.HostConfig.NetworkMode' <<<"${info}")"
 
 args=(--name "${NEW}" --network "${network}")

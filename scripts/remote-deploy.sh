@@ -628,6 +628,9 @@ run_slot_api_container() {
     fi
 
     docker rm -f "${container_name}" >/dev/null 2>&1 || true
+    # 镜像按提交号命名，正式和测试同一提交、或同一提交重跑都会把名字挪走；本机是 containerd 镜像存储，
+    # 没名字的镜像会消失，在跑的槽位就没法按原镜像重建。给每个槽位留一个固定名字，下次部署这个槽位时再挪。
+    docker tag "${image_tag}" "fbif-form-api:slot-${COMPOSE_PROJECT_NAME}-${slot}"
 
     # 加参数时同步 scripts/recreate-api-slot.sh：中台换值时它照原容器的这些参数重建
     docker run -d \
