@@ -4,44 +4,35 @@ on:
   push:
     branches:
       - main
+    # 只改说明文档不重新部署（代码、测试、部署脚本都不读 .md 和 docs/）
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
-concurrency:
-  group: deploy-preview
-  cancel-in-progress: true
-
 jobs:
+  # 每个 main 提交都完整测试，不被后来的推送取消。
   build-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fbif_form
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d fbif_form"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 原来写成 services：要等 Postgres/Redis 镜像拉完、健康才开始下一步。
+      # 改成后台起，和装依赖同时进行，跑迁移前再等它们就绪。
+      - name: Start Postgres And Redis In Background
+        run: |
+          nohup sh -c '
+            docker run -d --name ci-postgres -p 5432:5432 \
+              -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=fbif_form \
+              --health-cmd "pg_isready -U postgres -d fbif_form" --health-interval 2s --health-timeout 5s --health-retries 30 \
+              postgres:16
+            docker run -d --name ci-redis -p 6379:6379 \
+              --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30 \
+              redis:7
+          ' > /tmp/ci-services.log 2>&1 &
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -60,15 +51,28 @@ jobs:
           set -euo pipefail
           API_URL="${VITE_API_URL:-/api}"
 
+          # 不用数据库的部分先做
           npm ci --prefix apps/api
+          npm ci --prefix apps/mock-api
+          npm ci --prefix apps/web
+          npm test --prefix apps/mock-api
+          VITE_API_URL="${API_URL}" VITE_BUILD_SHA="${GITHUB_SHA:-dev}" npm run build --prefix apps/web
+
+          for i in $(seq 1 120); do
+            pg="$(docker inspect -f '{{.State.Health.Status}}' ci-postgres 2>/dev/null || true)"
+            rd="$(docker inspect -f '{{.State.Health.Status}}' ci-redis 2>/dev/null || true)"
+            [ "$pg" = healthy ] && [ "$rd" = healthy ] && break
+            sleep 1
+          done
+          if [ "$pg" != healthy ] || [ "$rd" != healthy ]; then
+            echo "::error::Postgres/Redis not healthy (postgres=$pg redis=$rd)"
+            cat /tmp/ci-services.log || true
+            exit 1
+          fi
+
           DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/fbif_form" npm run prisma:migrate --prefix apps/api
           npm test --prefix apps/api
           npm run build --prefix apps/api
-
-          npm ci --prefix apps/mock-api
-          npm test --prefix apps/mock-api
-          npm ci --prefix apps/web
-          VITE_API_URL="${API_URL}" VITE_BUILD_SHA="${GITHUB_SHA:-dev}" npm run build --prefix apps/web
 
       - name: Package Release
         run: |
@@ -104,6 +108,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: preview
+    # 部署串行、已开始的部署不中途取消（取消在 promote 中间会留下半切换的槽位）；
+    # 排队时有更新的提交，只部署最新的。
+    concurrency:
+      group: deploy-preview
+      cancel-in-progress: false
 
     steps:
       - name: Checkout Scripts
