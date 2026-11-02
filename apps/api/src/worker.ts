@@ -178,7 +178,10 @@ async function sweepOrphanSubmissions() {
   );
 }
 
-const sweepIntervalMs = Math.max(5_000, Number(process.env.SWEEP_PENDING_INTERVAL_MS || 15_000));
+const sweepIntervalRaw = Number(process.env.SWEEP_PENDING_INTERVAL_MS || 60_000);
+if (!Number.isFinite(sweepIntervalRaw)) logger.warn('SWEEP_PENDING_INTERVAL_MS is not a number, using default');
+const sweepIntervalMs = Number.isFinite(sweepIntervalRaw) ? Math.max(60_000, sweepIntervalRaw) : 60_000;
+logger.info({ sweepIntervalMs }, 'orphan sweep interval');
 const sweepTimer = setInterval(() => {
   void sweepOrphanSubmissions().catch((err) => {
     logger.error({ err }, 'sweepOrphanSubmissions crashed');
